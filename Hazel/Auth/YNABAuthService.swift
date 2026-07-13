@@ -23,6 +23,12 @@ final class YNABAuthService {
 
     var isAuthenticated: Bool { accessToken != nil }
 
+    /// Reads the token directly from the Keychain, for use in contexts (like
+    /// App Intents) that run without an owning `YNABAuthService` instance.
+    nonisolated static var currentAccessToken: String? {
+        KeychainStore.load(for: keychainKey)
+    }
+
     init() {
         accessToken = KeychainStore.load(for: Self.keychainKey)
     }
