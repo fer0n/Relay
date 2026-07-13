@@ -30,7 +30,22 @@ final class SplitwiseAuthService {
         KeychainStore.load(for: accessTokenKey)
     }
 
+    /// Clears the stored token once the API reports it's no longer valid,
+    /// so the app stops showing "Connected" for a token that no longer
+    /// works. Called from App Intents contexts too, which run without an
+    /// owning `SplitwiseAuthService` instance.
+    nonisolated static func invalidateAccessToken() {
+        KeychainStore.delete(for: accessTokenKey)
+        KeychainStore.delete(for: refreshTokenKey)
+    }
+
     init() {
+        accessToken = KeychainStore.load(for: Self.accessTokenKey)
+    }
+
+    /// Re-reads the Keychain, in case an App Intent invalidated the token
+    /// (see `invalidateAccessToken()`) while this instance was already alive.
+    func refreshFromKeychain() {
         accessToken = KeychainStore.load(for: Self.accessTokenKey)
     }
 

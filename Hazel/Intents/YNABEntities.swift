@@ -8,6 +8,9 @@
 //
 
 import AppIntents
+import os
+
+private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "YNABEntities")
 
 nonisolated struct YNABAccountEntity: AppEntity {
     let id: String
@@ -23,22 +26,33 @@ nonisolated struct YNABAccountEntity: AppEntity {
 
 nonisolated struct YNABAccountQuery: EntityQuery {
     func entities(for identifiers: [String]) async throws -> [YNABAccountEntity] {
-        try await allAccounts().filter { identifiers.contains($0.id) }
+        await allAccounts().filter { identifiers.contains($0.id) }
     }
 
     func suggestedEntities() async throws -> [YNABAccountEntity] {
-        try await allAccounts()
+        await allAccounts()
     }
 
-    private func allAccounts() async throws -> [YNABAccountEntity] {
+    /// Never throws: Shortcuts resolves this query just to render the
+    /// account picker, so a throw here (expired token, API error) makes
+    /// the picker fail to load rather than show an error. Missing/expired
+    /// auth instead surfaces from `perform()` when the transaction is
+    /// actually submitted.
+    private func allAccounts() async -> [YNABAccountEntity] {
         guard let token = YNABAuthService.currentAccessToken else {
-            throw YNABIntentError.notAuthenticated
+            logger.error("YNABAccountQuery: no access token in Keychain")
+            return []
         }
         do {
             let accounts = try await YNABService.fetchAccounts(token: token)
+            logger.log("YNABAccountQuery: fetched \(accounts.count, privacy: .public) accounts")
             return accounts.map { YNABAccountEntity(id: $0.id, name: $0.name) }
         } catch {
-            throw YNABIntentError.from(error)
+            // Also invalidates the stored token on a 401, so Hazel's own
+            // UI reflects "Not Connected" instead of silently failing.
+            let mapped = YNABIntentError.from(error)
+            logger.error("YNABAccountQuery: fetchAccounts failed: \(String(describing: mapped), privacy: .public)")
+            return []
         }
     }
 }
@@ -57,22 +71,27 @@ nonisolated struct YNABCategoryEntity: AppEntity {
 
 nonisolated struct YNABCategoryQuery: EntityQuery {
     func entities(for identifiers: [String]) async throws -> [YNABCategoryEntity] {
-        try await allCategories().filter { identifiers.contains($0.id) }
+        await allCategories().filter { identifiers.contains($0.id) }
     }
 
     func suggestedEntities() async throws -> [YNABCategoryEntity] {
-        try await allCategories()
+        await allCategories()
     }
 
-    private func allCategories() async throws -> [YNABCategoryEntity] {
+    /// Never throws — see YNABAccountQuery.allAccounts().
+    private func allCategories() async -> [YNABCategoryEntity] {
         guard let token = YNABAuthService.currentAccessToken else {
-            throw YNABIntentError.notAuthenticated
+            logger.error("YNABCategoryQuery: no access token in Keychain")
+            return []
         }
         do {
             let categories = try await YNABService.fetchCategories(token: token)
+            logger.log("YNABCategoryQuery: fetched \(categories.count, privacy: .public) categories")
             return categories.map { YNABCategoryEntity(id: $0.id, name: $0.name) }
         } catch {
-            throw YNABIntentError.from(error)
+            let mapped = YNABIntentError.from(error)
+            logger.error("YNABCategoryQuery: fetchCategories failed: \(String(describing: mapped), privacy: .public)")
+            return []
         }
     }
 }

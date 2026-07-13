@@ -6,6 +6,13 @@
 //  replaced (see docs/project-goals.md). Fields mirror that shortcut:
 //  amount, memo, payee, account, category, cleared.
 //
+//  "Split with Splitwise" mirrors the "splitwise" field the original "Add
+//  YNAB Expense" shortcut passed into "YNAB Toolkit"/"YNAB Master": fixed
+//  to "always" or "never" per duplicated shortcut there, or a live
+//  Ja/Manuell/Nein (yes-equal/manual-share/no) menu otherwise. Here: set
+//  `splitwiseOption` fixed for the same always/never behavior, or leave it
+//  "Ask Each Time" in the Shortcuts editor for the same live per-run choice.
+//
 
 import AppIntents
 
@@ -31,17 +38,39 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
     @Parameter(title: "Mark as Cleared", default: false)
     var cleared: Bool
 
+    @Parameter(title: "Split with Splitwise", default: .never)
+    var splitwiseOption: SplitwiseSplitOption
+
+    @Parameter(title: "Split With")
+    var splitwiseFriend: SplitwiseFriendEntity?
+
+    @Parameter(title: "Your Splitwise Share", description: "Only used when Split with Splitwise is Manual")
+    var splitwiseOwnShare: Double?
+
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) expense at \(\.$payee) to \(\.$account)") {
             \.$category
             \.$memo
             \.$cleared
+            \.$splitwiseOption
+            \.$splitwiseFriend
+            \.$splitwiseOwnShare
         }
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let token = YNABAuthService.currentAccessToken else {
             throw YNABIntentError.notAuthenticated
+        }
+
+        // Resolve all needed values before the YNAB API call below: throwing
+        // requestValue re-runs perform() from the top, which would otherwise
+        // create a second, duplicate YNAB transaction.
+        if splitwiseOption != .never, splitwiseFriend == nil {
+            throw $splitwiseFriend.requestValue("Split with which Splitwise friend?")
+        }
+        if splitwiseOption == .manual, splitwiseOwnShare == nil {
+            throw $splitwiseOwnShare.requestValue("Your share of the expense?")
         }
 
         do {
@@ -63,6 +92,29 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
         }
 
         let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
-        return .result(dialog: "Added \(formattedAmount) at \(payee)")
+        var dialog = "Added \(formattedAmount) at \(payee)"
+
+        if splitwiseOption != .never, let friend = splitwiseFriend {
+            // Mirrors the original shortcut's description: "payee (memo)" when a memo is set.
+            let description = (memo?.isEmpty == false) ? "\(payee) (\(memo!))" : payee
+            // "Always" forces an equal split even if a share happens to be
+            // set; only "Manual" actually uses the entered share.
+            let ownShare = (splitwiseOption == .manual) ? splitwiseOwnShare : nil
+            do {
+                let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+                    amount: amount,
+                    description: description,
+                    friend: friend,
+                    ownShare: ownShare
+                )
+                dialog += ", split with Splitwise — \(shareSummary)"
+            } catch {
+                let message = (error as? SplitwiseIntentError)?.localizedStringResource
+                    ?? "Couldn't add the Splitwise expense."
+                dialog += ". \(String(localized: message))"
+            }
+        }
+
+        return .result(dialog: "\(dialog)")
     }
 }

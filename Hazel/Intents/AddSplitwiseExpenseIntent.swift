@@ -34,33 +34,12 @@ nonisolated struct AddSplitwiseExpenseIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let token = SplitwiseAuthService.currentAccessToken else {
-            throw SplitwiseIntentError.notAuthenticated
-        }
-
-        do {
-            let user = try await SplitwiseService.fetchCurrentUser(token: token)
-
-            let costCents = Int((amount * 100).rounded())
-            let ownShareCents = ownShare.map { Int(($0 * 100).rounded()) } ?? costCents / 2
-            let friendShareCents = costCents - ownShareCents
-
-            let expense = SplitwiseExpenseRequest(
-                costCents: costCents,
-                description: expenseDescription,
-                currencyCode: "EUR",
-                payerUserId: user.id,
-                payerOwedCents: ownShareCents,
-                friendUserId: friend.id,
-                friendOwedCents: friendShareCents
-            )
-            try await SplitwiseService.createExpense(expense, token: token)
-
-            let ownAmount = (Double(ownShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
-            let friendAmount = (Double(friendShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
-            return .result(dialog: "Added \(expenseDescription) — you: \(ownAmount), \(friend.name): \(friendAmount)")
-        } catch {
-            throw SplitwiseIntentError.from(error)
-        }
+        let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+            amount: amount,
+            description: expenseDescription,
+            friend: friend,
+            ownShare: ownShare
+        )
+        return .result(dialog: "Added \(expenseDescription) — \(shareSummary)")
     }
 }

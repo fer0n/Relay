@@ -25,6 +25,11 @@ struct WalletTransactionConfig: Codable {
     struct Template: Codable {
         var categoryId: String?
         var autoMatch: [AutoMatchRule] = []
+        /// Mirrors the original shortcut's per-bucket "Use Splitwise?"
+        /// choice, asked once during template setup and reused thereafter.
+        /// `.ask` keeps prompting on every future transaction for this
+        /// merchant, rather than fixing the answer forever.
+        var splitwiseOption: SplitwiseTemplateOption = .never
     }
 
     struct AutoMatchRule: Codable {

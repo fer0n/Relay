@@ -6,8 +6,14 @@
 //  replaced (see docs/project-goals.md). Meant to be wired up as the action
 //  of a Shortcuts "Transaction" Personal Automation, receiving the Wallet
 //  transaction's Merchant/Amount/Card magic variables directly — no more
-//  DataJar/Jayson/YNAB Toolkit dependency. Splitwise is intentionally not
-//  handled here yet.
+//  DataJar/Jayson/YNAB Toolkit dependency.
+//
+//  Splitwise mirrors the original: "Use Splitwise?" (always/manual/ask/
+//  never — see SplitwiseTemplateOption) is asked once per new template
+//  (right after choosing its category) and the choice is remembered on the
+//  template, same as category/account. "Ask" keeps prompting live on every
+//  future transaction for that merchant via `splitwiseRuntimeChoice`,
+//  mirroring the original's Ja/Manuell/Nein menu.
 //
 
 import AppIntents
@@ -57,6 +63,21 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Account")
     var accountOverride: YNABAccountEntity?
 
+    @Parameter(title: "Split with Splitwise")
+    var splitwiseOptionOverride: SplitwiseTemplateOption?
+
+    @Parameter(title: "Split With")
+    var splitwiseFriend: SplitwiseFriendEntity?
+
+    @Parameter(title: "Your Splitwise Share", description: "Only used when Split with Splitwise is Manual")
+    var splitwiseOwnShare: Double?
+
+    /// Only used when the resolved template's Splitwise option is "Ask
+    /// Each Time" — the live per-transaction equivalent of the original's
+    /// Ja/Manuell/Nein menu.
+    @Parameter(title: "Split This Transaction?")
+    var splitwiseRuntimeChoice: SplitwiseSplitOption?
+
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) at \(\.$merchant) to YNAB") {
             \.$card
@@ -66,6 +87,10 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             \.$categoryOverride
             \.$autoMatchPattern
             \.$accountOverride
+            \.$splitwiseOptionOverride
+            \.$splitwiseFriend
+            \.$splitwiseOwnShare
+            \.$splitwiseRuntimeChoice
         }
     }
 
@@ -83,6 +108,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
 
         let payeeName: String
         let categoryId: String?
+        let splitwiseOption: SplitwiseTemplateOption
 
         if let info = config.resolvedMerchantInfo(for: merchant) {
             logger.log("merchant resolved to payee=\(info.payeeName, privacy: .public) template=\(info.templateName, privacy: .public)")
@@ -92,6 +118,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
             payeeName = info.payeeName
             categoryId = config.templates[info.templateName]?.categoryId
+            splitwiseOption = config.templates[info.templateName]?.splitwiseOption ?? .never
         } else {
             guard let templateChoice else {
                 logger.log("no merchant match — requesting template choice")
@@ -128,6 +155,17 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 resolvedCategoryId = category.id
             }
 
+            let resolvedSplitwiseOption: SplitwiseTemplateOption
+            if let existingTemplate {
+                resolvedSplitwiseOption = existingTemplate.splitwiseOption
+            } else {
+                guard let splitOption = splitwiseOptionOverride else {
+                    logger.log("categoryId=\(resolvedCategoryId ?? "nil", privacy: .public) — requesting Splitwise option")
+                    throw $splitwiseOptionOverride.requestValue("Split \(templateName) expenses with Splitwise?")
+                }
+                resolvedSplitwiseOption = splitOption
+            }
+
             guard let pattern = autoMatchPattern else {
                 logger.log("categoryId=\(resolvedCategoryId ?? "nil", privacy: .public) — requesting auto-match pattern")
                 throw $autoMatchPattern.requestValue(
@@ -136,7 +174,10 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
             logger.log("autoMatchPattern=\"\(pattern, privacy: .public)\"")
 
-            var template = existingTemplate ?? WalletTransactionConfig.Template(categoryId: resolvedCategoryId)
+            var template = existingTemplate ?? WalletTransactionConfig.Template(
+                categoryId: resolvedCategoryId,
+                splitwiseOption: resolvedSplitwiseOption
+            )
             if !pattern.isEmpty {
                 template.autoMatch.append(.init(pattern: pattern, payeeName: resolvedPayeeName))
             }
@@ -144,6 +185,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: resolvedPayeeName, templateName: templateName)
             payeeName = resolvedPayeeName
             categoryId = resolvedCategoryId
+            splitwiseOption = resolvedSplitwiseOption
             changed = true
         }
 
@@ -160,6 +202,34 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             config.cards[card] = account.id
             accountId = account.id
             changed = true
+        }
+
+        // Resolve all needed values before the mutating calls below: throwing
+        // requestValue re-runs perform() from the top, which would otherwise
+        // create a second, duplicate YNAB transaction.
+        let splitwiseAction: SplitwiseSplitOption
+        switch splitwiseOption {
+        case .never:
+            splitwiseAction = .never
+        case .always:
+            splitwiseAction = .always
+        case .manual:
+            splitwiseAction = .manual
+        case .ask:
+            guard let choice = splitwiseRuntimeChoice else {
+                logger.log("splitwiseOption=ask — requesting runtime choice")
+                throw $splitwiseRuntimeChoice.requestValue("Split this \(payeeName) transaction with Splitwise?")
+            }
+            splitwiseAction = choice
+        }
+
+        if splitwiseAction != .never, splitwiseFriend == nil {
+            logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
+            throw $splitwiseFriend.requestValue("Split with which Splitwise friend?")
+        }
+        if splitwiseAction == .manual, splitwiseOwnShare == nil {
+            logger.log("splitwiseAction=manual — requesting own share")
+            throw $splitwiseOwnShare.requestValue("Your share of the expense?")
         }
 
         if changed {
@@ -193,7 +263,28 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         }
 
         let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        var dialog = "Added \(formattedAmount) at \(payeeName)"
+
+        if splitwiseAction != .never, let friend = splitwiseFriend {
+            let ownShare = (splitwiseAction == .manual) ? splitwiseOwnShare : nil
+            do {
+                let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+                    amount: amount,
+                    description: payeeName,
+                    friend: friend,
+                    ownShare: ownShare
+                )
+                logger.log("Splitwise expense created: \(shareSummary, privacy: .public)")
+                dialog += ", split with Splitwise — \(shareSummary)"
+            } catch {
+                let message = (error as? SplitwiseIntentError)?.localizedStringResource
+                    ?? "Couldn't add the Splitwise expense."
+                logger.error("Splitwise split failed: \(String(describing: error), privacy: .public)")
+                dialog += ". \(String(localized: message))"
+            }
+        }
+
         logger.log("perform() done")
-        return .result(dialog: "Added \(formattedAmount) at \(payeeName)")
+        return .result(dialog: "\(dialog)")
     }
 }

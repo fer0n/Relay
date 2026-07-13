@@ -29,6 +29,9 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
     static func from(_ error: Error) -> SplitwiseIntentError {
         switch error {
         case SplitwiseAPIError.unauthorized:
+            // Clears the stale token so Hazel's own UI shows "Not
+            // Connected" instead of silently failing on every Splitwise call.
+            SplitwiseAuthService.invalidateAccessToken()
             return .notAuthenticated
         case SplitwiseAPIError.rateLimited:
             return .rateLimited

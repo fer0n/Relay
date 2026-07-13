@@ -29,7 +29,21 @@ final class YNABAuthService {
         KeychainStore.load(for: keychainKey)
     }
 
+    /// Clears the stored token once the API reports it's no longer valid
+    /// (expired/revoked), so the app stops showing "Connected" for a token
+    /// that no longer works. Called from App Intents contexts too, which
+    /// run without an owning `YNABAuthService` instance.
+    nonisolated static func invalidateAccessToken() {
+        KeychainStore.delete(for: keychainKey)
+    }
+
     init() {
+        accessToken = KeychainStore.load(for: Self.keychainKey)
+    }
+
+    /// Re-reads the Keychain, in case an App Intent invalidated the token
+    /// (see `invalidateAccessToken()`) while this instance was already alive.
+    func refreshFromKeychain() {
         accessToken = KeychainStore.load(for: Self.keychainKey)
     }
 

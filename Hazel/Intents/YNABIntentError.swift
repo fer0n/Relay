@@ -29,6 +29,9 @@ nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertibl
     static func from(_ error: Error) -> YNABIntentError {
         switch error {
         case YNABAPIError.unauthorized:
+            // Clears the stale token so Hazel's own UI shows "Not
+            // Connected" instead of silently failing on every YNAB call.
+            YNABAuthService.invalidateAccessToken()
             return .notAuthenticated
         case YNABAPIError.rateLimited:
             return .rateLimited

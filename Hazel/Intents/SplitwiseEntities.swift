@@ -7,6 +7,9 @@
 //
 
 import AppIntents
+import os
+
+private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "SplitwiseEntities")
 
 nonisolated struct SplitwiseFriendEntity: AppEntity {
     let id: Int
@@ -22,22 +25,34 @@ nonisolated struct SplitwiseFriendEntity: AppEntity {
 
 nonisolated struct SplitwiseFriendQuery: EntityQuery {
     func entities(for identifiers: [Int]) async throws -> [SplitwiseFriendEntity] {
-        try await allFriends().filter { identifiers.contains($0.id) }
+        await allFriends().filter { identifiers.contains($0.id) }
     }
 
     func suggestedEntities() async throws -> [SplitwiseFriendEntity] {
-        try await allFriends()
+        await allFriends()
     }
 
-    private func allFriends() async throws -> [SplitwiseFriendEntity] {
+    /// Never throws: Shortcuts resolves this query just to render an
+    /// action's configuration sheet — e.g. "Add YNAB Transaction"'s
+    /// optional "Split With" parameter — even when the user isn't using
+    /// Splitwise at all. A throw here (e.g. not-authenticated) would break
+    /// that sheet from loading. Missing auth instead surfaces from
+    /// `perform()`/`SplitwiseExpenseHelper` when splitting is actually used.
+    private func allFriends() async -> [SplitwiseFriendEntity] {
         guard let token = SplitwiseAuthService.currentAccessToken else {
-            throw SplitwiseIntentError.notAuthenticated
+            logger.error("SplitwiseFriendQuery: no access token in Keychain")
+            return []
         }
         do {
             let friends = try await SplitwiseService.fetchFriends(token: token)
+            logger.log("SplitwiseFriendQuery: fetched \(friends.count, privacy: .public) friends")
             return friends.map { SplitwiseFriendEntity(id: $0.id, name: $0.firstName) }
         } catch {
-            throw SplitwiseIntentError.from(error)
+            // Also invalidates the stored token on a 401, so Hazel's own
+            // UI reflects "Not Connected" instead of silently failing.
+            let mapped = SplitwiseIntentError.from(error)
+            logger.error("SplitwiseFriendQuery: fetchFriends failed: \(String(describing: mapped), privacy: .public)")
+            return []
         }
     }
 }

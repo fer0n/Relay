@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var didDeleteWalletConfig = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(spacing: 16) {
@@ -45,6 +46,15 @@ struct ContentView: View {
             }
         }
         .padding()
+        // Picks up a token invalidated by an App Intent (e.g. an expired
+        // YNAB token found while running a Shortcut) while this view's
+        // YNABAuthService instance was already alive.
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                ynabAuth.refreshFromKeychain()
+                splitwiseAuth.refreshFromKeychain()
+            }
+        }
     }
 }
 

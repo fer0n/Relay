@@ -45,3 +45,9 @@ before implementing the equivalent feature.
 - [x] Implement "Add YNAB transaction" intent
 - [x] Implement "Add Splitwise expense" intent
 - [ ] Implement YNAB file import flow
+
+## Future improvements
+
+- [ ] Splitwise expense currency is hardcoded to EUR (matching the original
+  Shortcut); make it a parameter or infer it if multi-currency support is
+  ever needed.
