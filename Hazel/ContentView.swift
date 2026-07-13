@@ -8,6 +8,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
+    @State private var didDeleteWalletConfig = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -30,6 +31,18 @@ struct ContentView: View {
             )
 
             Spacer()
+
+            Button("Delete Wallet Transaction Config") {
+                try? WalletTransactionConfigStore.delete()
+                didDeleteWalletConfig = true
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+            if didDeleteWalletConfig {
+                Text("Deleted")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
     }
