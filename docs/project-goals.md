@@ -42,6 +42,6 @@ before implementing the equivalent feature.
 - [ ] Design App Intents + auth architecture
 - [ ] Implement YNAB auth
 - [ ] Implement Splitwise auth
-- [ ] Implement "Add YNAB transaction" intent
+- [x] Implement "Add YNAB transaction" intent
 - [ ] Implement "Add Splitwise expense" intent
 - [ ] Implement YNAB file import flow
