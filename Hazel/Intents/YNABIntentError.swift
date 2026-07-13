@@ -7,7 +7,7 @@ import AppIntents
 
 nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertible {
     case notAuthenticated
-    case noBudget
+    case noDefaultBudget
     case rateLimited
     case requestFailed
 
@@ -15,8 +15,8 @@ nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertibl
         switch self {
         case .notAuthenticated:
             return "Open Hazel and connect your YNAB account first."
-        case .noBudget:
-            return "No YNAB budget was found for this account."
+        case .noDefaultBudget:
+            return "No default YNAB budget is set for this account. Reconnect YNAB in Hazel and choose a default budget when prompted."
         case .rateLimited:
             return "YNAB is rate-limiting requests right now. Try again in a few minutes."
         case .requestFailed:
@@ -32,8 +32,8 @@ nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertibl
             return .notAuthenticated
         case YNABAPIError.rateLimited:
             return .rateLimited
-        case YNABAPIError.noBudget:
-            return .noBudget
+        case YNABAPIError.server(let status) where status == 404:
+            return .noDefaultBudget
         default:
             return .requestFailed
         }

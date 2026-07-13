@@ -8,6 +8,16 @@
 //  logged, and requests are not retried in a tight loop on 429 — a single
 //  rate-limit error is surfaced to the caller instead.
 //
+//  Uses /plans/default/... rather than picking a budget/plan client-side:
+//  this Hazel OAuth app has "default plan selection" enabled, so each user
+//  chooses their own plan once during YNAB authorization (see
+//  https://api.ynab.com/#oauth-default-plan) and "default" then always
+//  resolves to that plan for their token — important since the underlying
+//  YNAB account is shared by multiple people, each with their own plan.
+//  (/budgets/{budget_id} still works but is undocumented per YNAB's
+//  changelog, so it's not used here — see CLAUDE.md's "no undocumented
+//  endpoints" constraint.)
+//
 
 import Foundation
 
@@ -15,7 +25,6 @@ enum YNABAPIError: Error {
     case unauthorized
     case rateLimited(retryAfter: TimeInterval?)
     case server(status: Int)
-    case noBudget
 }
 
 nonisolated enum YNABService {
@@ -33,29 +42,22 @@ nonisolated enum YNABService {
         return encoder
     }
 
-    /// The account has one budget per person sharing it, so the user picks
-    /// which one to use rather than the app guessing.
-    static func fetchBudgets(token: String) async throws -> [YNABBudgetSummary] {
-        let data = try await get("budgets", token: token)
-        return try decoder.decode(YNABBudgetsResponse.self, from: data).data.budgets
-    }
-
-    static func fetchAccounts(budgetID: String, token: String) async throws -> [YNABAccount] {
-        let data = try await get("budgets/\(budgetID)/accounts", token: token)
+    static func fetchAccounts(token: String) async throws -> [YNABAccount] {
+        let data = try await get("plans/default/accounts", token: token)
         return try decoder.decode(YNABAccountsResponse.self, from: data).data.accounts
             .filter { !$0.closed && !$0.deleted }
     }
 
-    static func fetchCategories(budgetID: String, token: String) async throws -> [YNABCategory] {
-        let data = try await get("budgets/\(budgetID)/categories", token: token)
+    static func fetchCategories(token: String) async throws -> [YNABCategory] {
+        let data = try await get("plans/default/categories", token: token)
         return try decoder.decode(YNABCategoriesResponse.self, from: data).data.categoryGroups
             .filter { !$0.hidden && !$0.deleted }
             .flatMap { $0.categories }
             .filter { !$0.hidden && !$0.deleted }
     }
 
-    static func createTransaction(_ transaction: YNABTransactionRequest, budgetID: String, token: String) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("budgets/\(budgetID)/transactions"))
+    static func createTransaction(_ transaction: YNABTransactionRequest, token: String) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("plans/default/transactions"))
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

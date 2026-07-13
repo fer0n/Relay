@@ -13,9 +13,6 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
     static let title: LocalizedStringResource = "Add YNAB Transaction"
     static let description = IntentDescription("Adds an expense transaction to your YNAB budget.")
 
-    @Parameter(title: "Budget")
-    var budget: YNABBudgetEntity
-
     @Parameter(title: "Amount", description: "The expense amount, e.g. 12.34")
     var amount: Double
 
@@ -36,7 +33,6 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) expense at \(\.$payee) to \(\.$account)") {
-            \.$budget
             \.$category
             \.$memo
             \.$cleared
@@ -49,7 +45,6 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
         }
 
         do {
-            let budgetID = budget.id
             // Expenses are outflows in YNAB: stored as negative milliunits.
             let milliunits = -Int((amount * 1000).rounded())
             let transaction = YNABTransactionRequest(
@@ -62,7 +57,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
                 cleared: cleared ? "cleared" : "uncleared",
                 approved: true
             )
-            try await YNABService.createTransaction(transaction, budgetID: budgetID, token: token)
+            try await YNABService.createTransaction(transaction, token: token)
         } catch {
             throw YNABIntentError.from(error)
         }

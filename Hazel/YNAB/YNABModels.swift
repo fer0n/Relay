@@ -9,11 +9,6 @@
 
 import Foundation
 
-struct YNABBudgetSummary: Codable {
-    let id: String
-    let name: String
-}
-
 struct YNABAccount: Codable {
     let id: String
     let name: String
@@ -52,11 +47,6 @@ struct YNABTransactionEnvelope: Codable {
 }
 
 // MARK: - Response envelopes
-
-struct YNABBudgetsResponse: Codable {
-    struct DataWrapper: Codable { let budgets: [YNABBudgetSummary] }
-    let data: DataWrapper
-}
 
 struct YNABAccountsResponse: Codable {
     struct DataWrapper: Codable { let accounts: [YNABAccount] }
