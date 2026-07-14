@@ -117,7 +117,7 @@ private struct DefaultSplitwiseFriendRow: View {
                     Text("Default Splitwise Friend")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text(defaultFriend?.name ?? "None set")
+                    Text(defaultFriend?.fullName ?? "None set")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -137,7 +137,7 @@ private struct DefaultSplitwiseFriendRow: View {
     }
 
     private func select(_ friend: SplitwiseFriend) {
-        let value = SplitwiseDefaultFriend(id: friend.id, name: friend.fullName)
+        let value = SplitwiseDefaultFriend(id: friend.id, firstName: friend.firstName, fullName: friend.fullName)
         defaultFriend = value
         try? SplitwiseDefaultFriendStore.save(value)
     }

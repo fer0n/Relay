@@ -294,7 +294,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             case .defaultFriend:
                 if let defaultFriend = SplitwiseDefaultFriendStore.load() {
                     logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — using default Splitwise friend")
-                    resolvedFriend = SplitwiseFriendEntity(id: defaultFriend.id, name: defaultFriend.name)
+                    resolvedFriend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
                 }
             case .ask:
                 logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
@@ -309,7 +309,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         if splitwiseAction == .manual, resolvedOwnShare == nil {
             logger.log("splitwiseAction=manual — requesting own share")
             let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
-            let friendName = resolvedFriend?.name ?? "your friend"
+            let friendName = resolvedFriend?.firstName ?? "your friend"
             resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(payeeName), split with \(friendName)?")
         }
         if splitwiseAction == .manual, let resolvedOwnShare {

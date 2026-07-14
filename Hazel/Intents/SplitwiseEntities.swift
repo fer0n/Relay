@@ -13,13 +13,17 @@ private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "Spl
 
 nonisolated struct SplitwiseFriendEntity: AppEntity {
     let id: Int
-    let name: String
+    let firstName: String
+    /// Only used for `displayRepresentation` (i.e. when picking among
+    /// several friends) so people sharing a first name are distinguishable
+    /// there. Everywhere else — prompts, dialogs — use `firstName`.
+    let fullName: String
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Splitwise Friend"
     static let defaultQuery = SplitwiseFriendQuery()
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(name)")
+        DisplayRepresentation(title: "\(fullName)")
     }
 }
 
@@ -46,7 +50,7 @@ nonisolated struct SplitwiseFriendQuery: EntityQuery {
         do {
             let friends = try await SplitwiseService.fetchFriends(token: token)
             logger.log("SplitwiseFriendQuery: fetched \(friends.count, privacy: .public) friends")
-            return SplitwiseFriendUsageStore.sorted(friends).map { SplitwiseFriendEntity(id: $0.id, name: $0.fullName) }
+            return SplitwiseFriendUsageStore.sorted(friends).map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
         } catch {
             // Also invalidates the stored token on a 401, so Hazel's own
             // UI reflects "Not Connected" instead of silently failing.

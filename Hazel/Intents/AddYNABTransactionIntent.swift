@@ -71,7 +71,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
         }
         if splitwiseOption == .manual, splitwiseOwnShare == nil {
             let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
-            let friendName = splitwiseFriend?.name ?? "your friend"
+            let friendName = splitwiseFriend?.firstName ?? "your friend"
             throw $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(payee), split with \(friendName)?")
         }
         if splitwiseOption == .manual, let splitwiseOwnShare {

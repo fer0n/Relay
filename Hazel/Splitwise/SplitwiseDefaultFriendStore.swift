@@ -12,7 +12,10 @@ import Foundation
 
 struct SplitwiseDefaultFriend: Codable {
     let id: Int
-    let name: String
+    let firstName: String
+    /// Shown in ContentView as the current selection; AddWalletTransactionToYNABIntent
+    /// uses `firstName` instead when building prompts/dialogs.
+    let fullName: String
 }
 
 nonisolated enum SplitwiseDefaultFriendStore {

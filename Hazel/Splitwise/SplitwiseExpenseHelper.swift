@@ -64,7 +64,7 @@ nonisolated enum SplitwiseExpenseHelper {
 
             let ownAmount = (Double(ownShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
             let friendAmount = (Double(friendShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
-            return "you: \(ownAmount), \(friend.name): \(friendAmount)"
+            return "you: \(ownAmount), \(friend.firstName): \(friendAmount)"
         } catch {
             throw SplitwiseIntentError.from(error)
         }
