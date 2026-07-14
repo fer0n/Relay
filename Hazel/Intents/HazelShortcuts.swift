@@ -26,5 +26,14 @@ struct HazelShortcuts: AppShortcutsProvider {
             shortTitle: "Add Splitwise Expense",
             systemImageName: "person.2.circle"
         )
+        AppShortcut(
+            intent: ImportYNABFileIntent(),
+            phrases: [
+                "Import a file to \(.applicationName)",
+                "Import a statement to \(.applicationName)",
+            ],
+            shortTitle: "Import File",
+            systemImageName: "doc.badge.plus"
+        )
     }
 }

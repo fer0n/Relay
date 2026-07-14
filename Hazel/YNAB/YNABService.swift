@@ -67,6 +67,22 @@ nonisolated enum YNABService {
         try validate(response, data: data)
     }
 
+    /// Creates many transactions in a single request (same documented
+    /// endpoint as `createTransaction`, just with a `transactions` array
+    /// body) — used for file import so a whole statement only costs one
+    /// call against the 200-req/hour rate limit, regardless of size.
+    static func createTransactions(_ transactions: [YNABTransactionRequest], token: String) async throws -> YNABBulkImportResult {
+        var request = URLRequest(url: baseURL.appendingPathComponent("plans/default/transactions"))
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(YNABBulkTransactionEnvelope(transactions: transactions))
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response, data: data)
+        return try decoder.decode(YNABBulkImportResponse.self, from: data).data
+    }
+
     static func todayDateString() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"

@@ -44,7 +44,7 @@ before implementing the equivalent feature.
 - [ ] Implement Splitwise auth
 - [x] Implement "Add YNAB transaction" intent
 - [x] Implement "Add Splitwise expense" intent
-- [ ] Implement YNAB file import flow
+- [x] Implement YNAB file import flow
 
 ## Future improvements
 

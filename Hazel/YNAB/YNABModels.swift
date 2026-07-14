@@ -40,10 +40,46 @@ struct YNABTransactionRequest: Codable {
     let memo: String?
     let cleared: String
     let approved: Bool
+    /// Only set for file-import transactions (see StatementTransactionBuilder):
+    /// lets YNAB dedupe re-imports of an overlapping statement date range
+    /// server-side, rather than Hazel tracking what's already been sent.
+    let importId: String?
+
+    init(
+        accountId: String,
+        date: String,
+        amount: Int,
+        payeeName: String,
+        categoryId: String? = nil,
+        memo: String? = nil,
+        cleared: String,
+        approved: Bool,
+        importId: String? = nil
+    ) {
+        self.accountId = accountId
+        self.date = date
+        self.amount = amount
+        self.payeeName = payeeName
+        self.categoryId = categoryId
+        self.memo = memo
+        self.cleared = cleared
+        self.approved = approved
+        self.importId = importId
+    }
 }
 
 struct YNABTransactionEnvelope: Codable {
     let transaction: YNABTransactionRequest
+}
+
+nonisolated struct YNABBulkTransactionEnvelope: Codable {
+    let transactions: [YNABTransactionRequest]
+}
+
+nonisolated struct YNABCreatedTransaction: Codable {
+    let amount: Int
+    let payeeName: String?
+    let accountName: String?
 }
 
 // MARK: - Response envelopes
@@ -56,4 +92,14 @@ struct YNABAccountsResponse: Codable {
 struct YNABCategoriesResponse: Codable {
     struct DataWrapper: Codable { let categoryGroups: [YNABCategoryGroup] }
     let data: DataWrapper
+}
+
+nonisolated struct YNABBulkImportResult: Codable {
+    let transactionIds: [String]
+    let transactions: [YNABCreatedTransaction]
+    let duplicateImportIds: [String]
+}
+
+nonisolated struct YNABBulkImportResponse: Codable {
+    let data: YNABBulkImportResult
 }

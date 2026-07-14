@@ -10,6 +10,8 @@ nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertibl
     case noDefaultBudget
     case rateLimited
     case requestFailed
+    case unsupportedFileType
+    case invalidFile(reason: String)
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
@@ -21,6 +23,10 @@ nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertibl
             return "YNAB is rate-limiting requests right now. Try again in a few minutes."
         case .requestFailed:
             return "Couldn't add the transaction. Please try again."
+        case .unsupportedFileType:
+            return "Hazel can only import .csv or .qif files."
+        case .invalidFile(let reason):
+            return "Couldn't read that file: \(reason)"
         }
     }
 
