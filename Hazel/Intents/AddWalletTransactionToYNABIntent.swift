@@ -80,22 +80,23 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
 
     // Parameters requested at runtime via `$param.requestValue(...)` MUST
     // appear here: on iOS 18+ requestValue throws a connection error for a
-    // parameter that isn't in parameterSummary (FB14828592). That rules out
-    // hiding the free-text/number setup fields (newTemplateName,
-    // payeeOverride, autoMatchPattern, splitwiseOwnShare). The entity/enum
-    // setup fields (categoryOverride, accountOverride, splitwiseOptionOverride)
-    // are instead resolved with requestDisambiguation, which passes its
-    // candidate list inline and so works while omitted here — that's why
-    // they're absent from this summary. Shortcuts collapses the rest under
-    // "Show More" rather than showing them inline.
+    // parameter that isn't in parameterSummary (FB14828592, confirmed still
+    // present on iOS 26). That rules out hiding the free-text/number setup
+    // fields (newTemplateName, payeeOverride, autoMatchPattern,
+    // splitwiseOwnShare). The entity/enum setup fields (categoryOverride,
+    // accountOverride, splitwiseOptionOverride) are instead resolved with
+    // requestDisambiguation, which passes its candidate list inline and so
+    // works while omitted here. `splitwiseFriend` is also absent: it's never
+    // actively requested anymore (see the fallback-to-default logic in
+    // perform()), so it doesn't need to be listed either. `card` is folded
+    // into the main sentence since it's required. Shortcuts collapses the
+    // rest under "Show More" rather than showing them inline.
     static var parameterSummary: some ParameterSummary {
-        Summary("Add \(\.$amount) at \(\.$merchant) to YNAB") {
-            \.$card
+        Summary("Add \(\.$amount) at \(\.$merchant) with \(\.$card) to YNAB") {
             \.$templateChoice
             \.$newTemplateName
             \.$payeeOverride
             \.$autoMatchPattern
-            \.$splitwiseFriend
             \.$splitwiseOwnShare
             \.$splitwiseRuntimeChoice
         }
@@ -269,10 +270,14 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
         }
 
+        // No live ask here: splitwiseFriend is only a manual per-automation
+        // override now (see parameterSummary's note). The normal case falls
+        // back to the app-configured default (ContentView's
+        // DefaultSplitwiseFriendRow) instead of prompting every run.
         var resolvedFriend: SplitwiseFriendEntity? = splitwiseFriend
-        if splitwiseAction != .never, resolvedFriend == nil {
-            logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
-            resolvedFriend = try await $splitwiseFriend.requestValue("Split with which Splitwise friend?")
+        if splitwiseAction != .never, resolvedFriend == nil, let defaultFriend = SplitwiseDefaultFriendStore.load() {
+            logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — using default Splitwise friend")
+            resolvedFriend = SplitwiseFriendEntity(id: defaultFriend.id, name: defaultFriend.name)
         }
         var resolvedOwnShare: Double? = splitwiseOwnShare
         if splitwiseAction == .manual, resolvedOwnShare == nil {
@@ -330,6 +335,9 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 logger.error("Splitwise split failed: \(String(describing: error), privacy: .public)")
                 dialog += ". \(String(localized: message))"
             }
+        } else if splitwiseAction != .never {
+            logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) but no friend available — skipping split")
+            dialog += ". No default Splitwise friend set — pick one in Hazel, or set \"Split With\" for this automation."
         }
 
         logger.log("perform() done")
