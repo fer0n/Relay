@@ -75,7 +75,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "If Split With Isn't Set", default: .defaultFriend)
     var splitwiseFriendFallback: SplitwiseFriendFallback
 
-    @Parameter(title: "Your Splitwise Share", description: "Only used when Split with Splitwise is Manual")
+    @Parameter(title: "Your Share")
     var splitwiseOwnShare: Double?
 
     /// Only used when the resolved template's Splitwise option is "Ask

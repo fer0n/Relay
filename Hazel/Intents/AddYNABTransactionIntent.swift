@@ -44,7 +44,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
     @Parameter(title: "Split With")
     var splitwiseFriend: SplitwiseFriendEntity?
 
-    @Parameter(title: "Your Splitwise Share", description: "Only used when Split with Splitwise is Manual")
+    @Parameter(title: "Your Share")
     var splitwiseOwnShare: Double?
 
     static var parameterSummary: some ParameterSummary {
