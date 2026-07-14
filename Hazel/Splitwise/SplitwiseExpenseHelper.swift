@@ -51,6 +51,7 @@ nonisolated enum SplitwiseExpenseHelper {
                 friendOwedCents: friendShareCents
             )
             try await SplitwiseService.createExpense(expense, token: token)
+            SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
 
             let ownAmount = (Double(ownShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
             let friendAmount = (Double(friendShareCents) / 100).formatted(.number.precision(.fractionLength(2)))

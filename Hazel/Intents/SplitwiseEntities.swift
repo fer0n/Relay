@@ -46,7 +46,7 @@ nonisolated struct SplitwiseFriendQuery: EntityQuery {
         do {
             let friends = try await SplitwiseService.fetchFriends(token: token)
             logger.log("SplitwiseFriendQuery: fetched \(friends.count, privacy: .public) friends")
-            return friends.map { SplitwiseFriendEntity(id: $0.id, name: $0.firstName) }
+            return SplitwiseFriendUsageStore.sorted(friends).map { SplitwiseFriendEntity(id: $0.id, name: $0.fullName) }
         } catch {
             // Also invalidates the stored token on a 401, so Hazel's own
             // UI reflects "Not Connected" instead of silently failing.
