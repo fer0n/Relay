@@ -78,16 +78,23 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Split This Transaction?")
     var splitwiseRuntimeChoice: SplitwiseSplitOption?
 
+    // Parameters requested at runtime via `$param.requestValue(...)` MUST
+    // appear here: on iOS 18+ requestValue throws a connection error for a
+    // parameter that isn't in parameterSummary (FB14828592). That rules out
+    // hiding the free-text/number setup fields (newTemplateName,
+    // payeeOverride, autoMatchPattern, splitwiseOwnShare). The entity/enum
+    // setup fields (categoryOverride, accountOverride, splitwiseOptionOverride)
+    // are instead resolved with requestDisambiguation, which passes its
+    // candidate list inline and so works while omitted here — that's why
+    // they're absent from this summary. Shortcuts collapses the rest under
+    // "Show More" rather than showing them inline.
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) at \(\.$merchant) to YNAB") {
             \.$card
             \.$templateChoice
             \.$newTemplateName
             \.$payeeOverride
-            \.$categoryOverride
             \.$autoMatchPattern
-            \.$accountOverride
-            \.$splitwiseOptionOverride
             \.$splitwiseFriend
             \.$splitwiseOwnShare
             \.$splitwiseRuntimeChoice
@@ -106,6 +113,13 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         var config = WalletTransactionConfigStore.load()
         var changed = false
 
+        // Uses the async `requestValue` API (suspend perform() in place, await
+        // the answer, resume) rather than the deprecated throwing form that
+        // re-runs perform() from the top. In-place resolution is why these
+        // parameters don't need to appear in `parameterSummary` (the throwing
+        // form only binds collected values back for summary parameters, so a
+        // hidden parameter would hang), and it also removes the duplicate-
+        // transaction risk of a restart since perform() now runs exactly once.
         let payeeName: String
         let categoryId: String?
         let splitwiseOption: SplitwiseTemplateOption
@@ -120,37 +134,55 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             categoryId = config.templates[info.templateName]?.categoryId
             splitwiseOption = config.templates[info.templateName]?.splitwiseOption ?? .never
         } else {
-            guard let templateChoice else {
+            let resolvedTemplateChoice: String
+            if let templateChoice {
+                resolvedTemplateChoice = templateChoice
+            } else {
                 logger.log("no merchant match — requesting template choice")
-                throw $templateChoice.requestValue("Which template for \"\(merchant)\"?")
+                resolvedTemplateChoice = try await $templateChoice.requestValue("Which template for \"\(merchant)\"?")
             }
 
             let templateName: String
             let existingTemplate: WalletTransactionConfig.Template?
-            if templateChoice != createNewTemplateOption, let existing = config.templates[templateChoice] {
-                templateName = templateChoice
+            if resolvedTemplateChoice != createNewTemplateOption, let existing = config.templates[resolvedTemplateChoice] {
+                templateName = resolvedTemplateChoice
                 existingTemplate = existing
             } else {
-                guard let newName = newTemplateName else {
+                let newName: String
+                if let newTemplateName {
+                    newName = newTemplateName
+                } else {
                     logger.log("creating new template — requesting template name")
-                    throw $newTemplateName.requestValue("Template name?")
+                    newName = try await $newTemplateName.requestValue("Template name?")
                 }
                 templateName = newName
                 existingTemplate = config.templates[newName]
             }
 
-            guard let resolvedPayeeName = payeeOverride else {
+            let resolvedPayeeName: String
+            if let payeeOverride {
+                resolvedPayeeName = payeeOverride
+            } else {
                 logger.log("template=\(templateName, privacy: .public) — requesting payee name")
-                throw $payeeOverride.requestValue("Payee name for \"\(merchant)\"?")
+                resolvedPayeeName = try await $payeeOverride.requestValue("Payee name for \"\(merchant)\"?")
             }
 
             let resolvedCategoryId: String?
             if let existingTemplate {
                 resolvedCategoryId = existingTemplate.categoryId
             } else {
-                guard let category = categoryOverride else {
+                let category: YNABCategoryEntity
+                if let categoryOverride {
+                    category = categoryOverride
+                } else {
                     logger.log("payeeName=\(resolvedPayeeName, privacy: .public) — requesting category")
-                    throw $categoryOverride.requestValue("Category for \(templateName)?")
+                    // requestDisambiguation (not requestValue) so this param
+                    // can stay out of parameterSummary — see the note there.
+                    let categories = try await YNABCategoryEntity.defaultQuery.suggestedEntities()
+                    category = try await $categoryOverride.requestDisambiguation(
+                        among: categories,
+                        dialog: "Category for \(templateName)?"
+                    )
                 }
                 resolvedCategoryId = category.id
             }
@@ -159,16 +191,23 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             if let existingTemplate {
                 resolvedSplitwiseOption = existingTemplate.splitwiseOption
             } else {
-                guard let splitOption = splitwiseOptionOverride else {
+                if let splitwiseOptionOverride {
+                    resolvedSplitwiseOption = splitwiseOptionOverride
+                } else {
                     logger.log("categoryId=\(resolvedCategoryId ?? "nil", privacy: .public) — requesting Splitwise option")
-                    throw $splitwiseOptionOverride.requestValue("Split \(templateName) expenses with Splitwise?")
+                    resolvedSplitwiseOption = try await $splitwiseOptionOverride.requestDisambiguation(
+                        among: Array(SplitwiseTemplateOption.allCases),
+                        dialog: "Split \(templateName) expenses with Splitwise?"
+                    )
                 }
-                resolvedSplitwiseOption = splitOption
             }
 
-            guard let pattern = autoMatchPattern else {
+            let pattern: String
+            if let autoMatchPattern {
+                pattern = autoMatchPattern
+            } else {
                 logger.log("categoryId=\(resolvedCategoryId ?? "nil", privacy: .public) — requesting auto-match pattern")
-                throw $autoMatchPattern.requestValue(
+                pattern = try await $autoMatchPattern.requestValue(
                     "Match other merchant names to \(resolvedPayeeName) too? Enter text/regex, or leave blank to skip."
                 )
             }
@@ -194,9 +233,18 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             logger.log("card matched existing accountId=\(existingAccountId, privacy: .public)")
             accountId = existingAccountId
         } else {
-            guard let account = accountOverride else {
+            let account: YNABAccountEntity
+            if let accountOverride {
+                account = accountOverride
+            } else {
                 logger.log("no account match for card — requesting account")
-                throw $accountOverride.requestValue("YNAB account for card \"\(card)\"?")
+                // requestDisambiguation (not requestValue) so this param can
+                // stay out of parameterSummary — see the note there.
+                let accounts = try await YNABAccountEntity.defaultQuery.suggestedEntities()
+                account = try await $accountOverride.requestDisambiguation(
+                    among: accounts,
+                    dialog: "YNAB account for card \"\(card)\"?"
+                )
             }
             logger.log("accountId=\(account.id, privacy: .public)")
             config.cards[card] = account.id
@@ -204,9 +252,6 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             changed = true
         }
 
-        // Resolve all needed values before the mutating calls below: throwing
-        // requestValue re-runs perform() from the top, which would otherwise
-        // create a second, duplicate YNAB transaction.
         let splitwiseAction: SplitwiseSplitOption
         switch splitwiseOption {
         case .never:
@@ -216,20 +261,23 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         case .manual:
             splitwiseAction = .manual
         case .ask:
-            guard let choice = splitwiseRuntimeChoice else {
+            if let splitwiseRuntimeChoice {
+                splitwiseAction = splitwiseRuntimeChoice
+            } else {
                 logger.log("splitwiseOption=ask — requesting runtime choice")
-                throw $splitwiseRuntimeChoice.requestValue("Split this \(payeeName) transaction with Splitwise?")
+                splitwiseAction = try await $splitwiseRuntimeChoice.requestValue("Split this \(payeeName) transaction with Splitwise?")
             }
-            splitwiseAction = choice
         }
 
-        if splitwiseAction != .never, splitwiseFriend == nil {
+        var resolvedFriend: SplitwiseFriendEntity? = splitwiseFriend
+        if splitwiseAction != .never, resolvedFriend == nil {
             logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
-            throw $splitwiseFriend.requestValue("Split with which Splitwise friend?")
+            resolvedFriend = try await $splitwiseFriend.requestValue("Split with which Splitwise friend?")
         }
-        if splitwiseAction == .manual, splitwiseOwnShare == nil {
+        var resolvedOwnShare: Double? = splitwiseOwnShare
+        if splitwiseAction == .manual, resolvedOwnShare == nil {
             logger.log("splitwiseAction=manual — requesting own share")
-            throw $splitwiseOwnShare.requestValue("Your share of the expense?")
+            resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the expense?")
         }
 
         if changed {
@@ -265,8 +313,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
         var dialog = "Added \(formattedAmount) at \(payeeName)"
 
-        if splitwiseAction != .never, let friend = splitwiseFriend {
-            let ownShare = (splitwiseAction == .manual) ? splitwiseOwnShare : nil
+        if splitwiseAction != .never, let friend = resolvedFriend {
+            let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
             do {
                 let shareSummary = try await SplitwiseExpenseHelper.addExpense(
                     amount: amount,
