@@ -7,57 +7,19 @@ import SwiftUI
 import UserNotifications
 
 struct ContentView: View {
-    @State private var ynabAuth = YNABAuthService()
-    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var pendingQueue = PendingOperationQueue.shared
     @State private var draftRouter = DraftNotificationRouter.shared
     @State private var draftCount = TransactionDraftStore.load().count
-    @State private var didDeleteWalletConfig = false
     @State private var path: [ContentRoute] = []
+    @State private var showSettings = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 16) {
-                Text("Hazel")
-                    .font(.largeTitle.bold())
-                    .padding(.bottom, 8)
-
-                AccountConnectionRow(
-                    title: "YNAB",
-                    isConnected: ynabAuth.isAuthenticated,
-                    connect: ynabAuth.signIn,
-                    disconnect: ynabAuth.signOut
-                )
-
-                AccountConnectionRow(
-                    title: "Splitwise",
-                    isConnected: splitwiseAuth.isAuthenticated,
-                    connect: splitwiseAuth.signIn,
-                    disconnect: splitwiseAuth.signOut
-                )
-
-                if splitwiseAuth.isAuthenticated {
-                    DefaultSplitwiseFriendRow()
-                }
-
                 NavigationLink(value: ContentRoute.templates) {
                     HStack {
                         Text("Templates")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-
-                NavigationLink(value: ContentRoute.howHazelWorks) {
-                    HStack {
-                        Text("How Hazel Works")
                             .font(.headline)
                             .foregroundStyle(.primary)
                         Spacer()
@@ -114,34 +76,12 @@ struct ContentView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
-
-                Button("Delete Wallet Transaction Config") {
-                    try? WalletTransactionConfigStore.delete()
-                    didDeleteWalletConfig = true
-                }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                if didDeleteWalletConfig {
-                    Text("Deleted")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                // Required by YNAB's API Terms of Service (see CLAUDE.md) —
-                // must be visible somewhere in the app, not just the privacy
-                // policy.
-                Text("We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
             }
             .padding()
             .navigationDestination(for: ContentRoute.self) { route in
                 switch route {
                 case .templates:
                     TemplatesView()
-                case .howHazelWorks:
-                    HowHazelWorksView()
                 case .pendingQueue:
                     PendingQueueView()
                 case .transactionDrafts:
@@ -150,14 +90,22 @@ struct ContentView: View {
                     ContinueDraftView(draftId: draftId)
                 }
             }
+            .safeAreaBar(edge: .bottom) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+                .padding(.horizontal)
+            }
         }
         // Picks up a token invalidated by an App Intent (e.g. an expired
         // YNAB token found while running a Shortcut) while this view's
         // YNABAuthService instance was already alive.
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                ynabAuth.refreshFromKeychain()
-                splitwiseAuth.refreshFromKeychain()
                 Task { await pendingQueue.flush() }
                 draftCount = TransactionDraftStore.load().count
             }
@@ -175,6 +123,9 @@ struct ContentView: View {
             guard let newValue else { return }
             path = [.continueDraft(newValue)]
             draftRouter.pendingDraftID = nil
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 }

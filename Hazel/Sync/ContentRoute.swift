@@ -13,7 +13,6 @@ import Foundation
 
 enum ContentRoute: Hashable {
     case templates
-    case howHazelWorks
     case pendingQueue
     case transactionDrafts
     case continueDraft(UUID)
