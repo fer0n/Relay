@@ -18,6 +18,7 @@
 //
 
 import Foundation
+import SwiftUI
 import UserNotifications
 import os
 
@@ -59,7 +60,9 @@ final class PendingOperationQueue {
     }
 
     func delete(id: UUID) {
-        operations.removeAll { $0.id == id }
+        withAnimation {
+            operations.removeAll { $0.id == id }
+        }
         persist()
         updateBadge()
         if operations.isEmpty {
