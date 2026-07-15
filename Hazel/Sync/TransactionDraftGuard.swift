@@ -26,8 +26,11 @@ private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "Tra
 nonisolated enum TransactionDraftGuard {
     /// Long enough that a normal, uninterrupted run always finishes and
     /// cancels this first; short enough to still be a timely nudge if
-    /// something goes wrong.
-    private static let fireDelay: TimeInterval = 20
+    /// something goes wrong. A live follow-up question (e.g. "Split with
+    /// Splitwise?") can easily take longer than this to get answered —
+    /// that's fine, since complete() retracts the notification even after
+    /// it's already fired.
+    private static let fireDelay: TimeInterval = 30
 
     @discardableResult
     static func begin(summary: String, service: TransactionDraft.Service) -> UUID {
@@ -51,7 +54,13 @@ nonisolated enum TransactionDraftGuard {
         } catch {
             logger.error("failed to save transaction drafts: \(String(describing: error), privacy: .public)")
         }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id.uuidString])
+        // Covers both cases: the notification hasn't fired yet (e.g. a fast
+        // run), or it already has (e.g. the user was mid-checkout and only
+        // just got back to answering a follow-up question) — either way,
+        // once the transaction's actually done it shouldn't linger.
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id.uuidString])
+        center.removeDeliveredNotifications(withIdentifiers: [id.uuidString])
     }
 
     private static func scheduleNotification(for draft: TransactionDraft) {
