@@ -17,18 +17,25 @@ enum WalletTransactionConfigStore {
 
     static func load() -> WalletTransactionConfig {
         logger.log("loading config from \(fileURL.path, privacy: .public)")
-        guard let data = try? Data(contentsOf: fileURL) else {
+        var config: WalletTransactionConfig
+        if let data = try? Data(contentsOf: fileURL) {
+            do {
+                config = try JSONDecoder().decode(WalletTransactionConfig.self, from: data)
+                logger.log("loaded config: \(config.merchants.count, privacy: .public) merchants, \(config.templates.count, privacy: .public) templates, \(config.cards.count, privacy: .public) cards")
+            } catch {
+                logger.error("failed to decode config, starting empty: \(String(describing: error), privacy: .public)")
+                config = WalletTransactionConfig()
+            }
+        } else {
             logger.log("no existing config file — starting empty")
-            return WalletTransactionConfig()
+            config = WalletTransactionConfig()
         }
-        do {
-            let config = try JSONDecoder().decode(WalletTransactionConfig.self, from: data)
-            logger.log("loaded config: \(config.merchants.count, privacy: .public) merchants, \(config.templates.count, privacy: .public) templates, \(config.cards.count, privacy: .public) cards")
-            return config
-        } catch {
-            logger.error("failed to decode config, starting empty: \(String(describing: error), privacy: .public)")
-            return WalletTransactionConfig()
+
+        if let migrated = LegacySplitwiseConfigMigration.mergeIfNeeded(into: config) {
+            config = migrated
+            try? save(config)
         }
+        return config
     }
 
     static func save(_ config: WalletTransactionConfig) throws {

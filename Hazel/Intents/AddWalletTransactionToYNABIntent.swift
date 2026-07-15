@@ -15,6 +15,13 @@
 //  future transaction for that merchant via `splitwiseRuntimeChoice`,
 //  mirroring the original's Ja/Manuell/Nein menu.
 //
+//  The Splitwise friend to split with is a separate question from whether
+//  to split at all: if the resolved template already has one set (e.g.
+//  configured in Templates, or shared with AddWalletTransactionToSplitwise
+//  Intent's template of the same name), that's used directly; otherwise
+//  this falls back to `splitwiseFriendFallback` (default friend or a live
+//  ask) exactly as before templates could carry a friend.
+//
 
 import AppIntents
 import os
@@ -158,6 +165,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             let payeeName: String
             let categoryId: String?
             let splitwiseOption: SplitwiseTemplateOption
+            let templateFriend: (id: Int, firstName: String, fullName: String)?
 
             if let info = config.resolvedMerchantInfo(for: merchant) {
                 logger.log("merchant resolved to payee=\(info.payeeName, privacy: .public) template=\(info.templateName, privacy: .public)")
@@ -165,9 +173,11 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                     config.merchants[merchant] = info
                     changed = true
                 }
+                let template = config.templates[info.templateName]
                 payeeName = info.payeeName
-                categoryId = config.templates[info.templateName]?.categoryId
-                splitwiseOption = config.templates[info.templateName]?.splitwiseOption ?? .never
+                categoryId = template?.categoryId
+                splitwiseOption = template?.splitwiseOption ?? .never
+                templateFriend = template?.splitwiseFriend
             } else {
                 let resolvedTemplateChoice: String
                 if let templateChoice {
@@ -270,6 +280,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 payeeName = resolvedPayeeName
                 categoryId = resolvedCategoryId
                 splitwiseOption = resolvedSplitwiseOption
+                templateFriend = template.splitwiseFriend
                 changed = true
             }
 
@@ -328,20 +339,25 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             // or prompt live, so it's opt-in rather than nagging every run.
             var resolvedFriend: SplitwiseFriendEntity? = splitwiseFriend
             if splitwiseAction != .never, resolvedFriend == nil {
-                switch splitwiseFriendFallback {
-                case .defaultFriend:
-                    if let defaultFriend = SplitwiseDefaultFriendStore.load() {
-                        logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — using default Splitwise friend")
-                        resolvedFriend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
+                if let templateFriend {
+                    logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — using template's Splitwise friend")
+                    resolvedFriend = SplitwiseFriendEntity(id: templateFriend.id, firstName: templateFriend.firstName, fullName: templateFriend.fullName)
+                } else {
+                    switch splitwiseFriendFallback {
+                    case .defaultFriend:
+                        if let defaultFriend = SplitwiseDefaultFriendStore.load() {
+                            logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — using default Splitwise friend")
+                            resolvedFriend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
+                        }
+                    case .ask:
+                        logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
+                        let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
+                        resolvedFriend = try await $splitwiseFriend.requestDisambiguation(
+                            among: friends,
+                            dialog: "Split with which Splitwise friend?"
+                        )
+                        touchDraft()
                     }
-                case .ask:
-                    logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
-                    let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
-                    resolvedFriend = try await $splitwiseFriend.requestDisambiguation(
-                        among: friends,
-                        dialog: "Split with which Splitwise friend?"
-                    )
-                    touchDraft()
                 }
             }
             var resolvedOwnShare: Double? = splitwiseOwnShare

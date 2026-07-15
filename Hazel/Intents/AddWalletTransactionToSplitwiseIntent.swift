@@ -6,15 +6,17 @@
 //  purely for shared expenses: wired as the action of a Shortcuts
 //  "Transaction" Personal Automation (receiving Merchant/Amount magic
 //  variables), but creates a Splitwise expense directly — no YNAB
-//  transaction at all. Remembers merchant -> friend/split-mode via the
-//  same per-merchant "template" pattern as the YNAB intent, backed by
-//  SplitwiseWalletTransactionConfigStore.
+//  transaction at all. Remembers merchant -> friend/split-mode via the same
+//  per-merchant "template" pattern as the YNAB intent, backed by the same
+//  WalletTransactionConfigStore — a template created by either intent works
+//  for both, so the same bucket (e.g. "Supermarkt") can be used whether a
+//  given transaction goes to YNAB, straight to Splitwise, or both.
 //
-//  Unlike AddWalletTransactionToYNABIntent (where the Splitwise friend is
-//  asked live on every transaction, never cached), the friend here is
-//  fixed on the template and never re-asked once set — this intent's
-//  whole point is splitting, so "who to split with" is a merchant-level
-//  setup choice, not a per-run one.
+//  Unlike AddWalletTransactionToYNABIntent (where the friend is asked live
+//  whenever the template doesn't already have one, since splitting is a
+//  side effect of a YNAB transaction there), this intent's whole point is
+//  splitting — so a friend it has to ask for gets written back onto the
+//  template once resolved, fixing it for next time rather than re-asking.
 //
 //  Built entirely with the async requestValue/requestDisambiguation style
 //  (perform() never restarts, so there's no duplicate-expense risk from a
@@ -32,13 +34,6 @@ private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "Wal
 
 private let createNewTemplateOption = "Create New Template"
 
-nonisolated struct SplitwiseTemplateOptionsProvider: DynamicOptionsProvider {
-    func results() async throws -> [String] {
-        let config = SplitwiseWalletTransactionConfigStore.load()
-        return [createNewTemplateOption] + config.templates.keys.sorted()
-    }
-}
-
 nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to Splitwise"
     static let description = IntentDescription(
@@ -51,7 +46,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     @Parameter(title: "Amount")
     var amount: Double
 
-    @Parameter(title: "Template", optionsProvider: SplitwiseTemplateOptionsProvider())
+    @Parameter(title: "Template", optionsProvider: TemplateOptionsProvider())
     var templateChoice: String?
 
     @Parameter(title: "Template Name")
@@ -114,6 +109,26 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             }
         }
 
+        // Resolves a friend to split with: uses `existing` (a template's
+        // already-cached friend) if there is one, otherwise a manual
+        // override, otherwise asks live.
+        func resolveFriend(existing: (id: Int, firstName: String, fullName: String)?, dialog: IntentDialog) async throws -> (id: Int, firstName: String, fullName: String) {
+            if let existing { return existing }
+            let friend: SplitwiseFriendEntity
+            if let friendOverride {
+                friend = friendOverride
+            } else {
+                logger.log("requesting Splitwise friend")
+                let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
+                friend = try await $friendOverride.requestDisambiguation(
+                    among: friends,
+                    dialog: dialog
+                )
+                touchDraft()
+            }
+            return (friend.id, friend.firstName, friend.fullName)
+        }
+
         do {
             await PendingOperationQueue.shared.flush()
 
@@ -122,7 +137,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 throw SplitwiseIntentError.notAuthenticated
             }
 
-            var config = SplitwiseWalletTransactionConfigStore.load()
+            var config = WalletTransactionConfigStore.load()
             var changed = false
 
             let expenseDescription: String
@@ -132,17 +147,34 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             let splitOption: SplitwiseTemplateOption
 
             if let info = config.resolvedMerchantInfo(for: merchant) {
-                logger.log("merchant resolved to description=\(info.expenseDescription, privacy: .public) template=\(info.templateName, privacy: .public)")
+                logger.log("merchant resolved to description=\(info.payeeName, privacy: .public) template=\(info.templateName, privacy: .public)")
                 if config.merchants[merchant] == nil {
                     config.merchants[merchant] = info
                     changed = true
                 }
-                expenseDescription = info.expenseDescription
+                expenseDescription = info.payeeName
                 let template = config.templates[info.templateName]
-                friendId = template?.friendId ?? 0
-                friendFirstName = template?.friendFirstName ?? ""
-                friendFullName = template?.friendFullName ?? ""
-                splitOption = template?.splitOption ?? .never
+                splitOption = template?.splitwiseOption ?? .never
+
+                let resolved = try await resolveFriend(
+                    existing: template?.splitwiseFriend,
+                    dialog: "Split \(info.templateName) expenses with which friend?"
+                )
+                friendId = resolved.id
+                friendFirstName = resolved.firstName
+                friendFullName = resolved.fullName
+                if template?.splitwiseFriend == nil {
+                    // The template didn't have a friend yet (e.g. it was
+                    // only ever used from the YNAB intent) — fix it now so
+                    // future runs skip asking, same as a freshly-created
+                    // template below.
+                    var updated = template ?? WalletTransactionConfig.Template()
+                    updated.splitwiseFriendId = resolved.id
+                    updated.splitwiseFriendFirstName = resolved.firstName
+                    updated.splitwiseFriendFullName = resolved.fullName
+                    config.templates[info.templateName] = updated
+                    changed = true
+                }
             } else {
                 let resolvedTemplateChoice: String
                 if let templateChoice {
@@ -154,7 +186,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 }
 
                 let templateName: String
-                let existingTemplate: SplitwiseWalletTransactionConfig.Template?
+                let existingTemplate: WalletTransactionConfig.Template?
                 if resolvedTemplateChoice != createNewTemplateOption, let existing = config.templates[resolvedTemplateChoice] {
                     templateName = resolvedTemplateChoice
                     existingTemplate = existing
@@ -192,34 +224,14 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 }
                 logger.log("autoMatchPattern=\"\(pattern, privacy: .public)\"")
 
-                let resolvedFriendId: Int
-                let resolvedFriendFirstName: String
-                let resolvedFriendFullName: String
-                if let existingTemplate {
-                    resolvedFriendId = existingTemplate.friendId
-                    resolvedFriendFirstName = existingTemplate.friendFirstName
-                    resolvedFriendFullName = existingTemplate.friendFullName
-                } else {
-                    let friend: SplitwiseFriendEntity
-                    if let friendOverride {
-                        friend = friendOverride
-                    } else {
-                        logger.log("template=\(templateName, privacy: .public) — requesting Splitwise friend")
-                        let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
-                        friend = try await $friendOverride.requestDisambiguation(
-                            among: friends,
-                            dialog: "Split \(templateName) expenses with which friend?"
-                        )
-                        touchDraft()
-                    }
-                    resolvedFriendId = friend.id
-                    resolvedFriendFirstName = friend.firstName
-                    resolvedFriendFullName = friend.fullName
-                }
+                let resolvedFriend = try await resolveFriend(
+                    existing: existingTemplate?.splitwiseFriend,
+                    dialog: "Split \(templateName) expenses with which friend?"
+                )
 
                 let resolvedSplitOption: SplitwiseTemplateOption
                 if let existingTemplate {
-                    resolvedSplitOption = existingTemplate.splitOption
+                    resolvedSplitOption = existingTemplate.splitwiseOption
                 } else {
                     if let splitOptionOverride {
                         resolvedSplitOption = splitOptionOverride
@@ -233,24 +245,23 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     }
                 }
 
-                var template = existingTemplate ?? SplitwiseWalletTransactionConfig.Template(
-                    friendId: resolvedFriendId,
-                    friendFirstName: resolvedFriendFirstName,
-                    friendFullName: resolvedFriendFullName,
-                    splitOption: resolvedSplitOption
-                )
+                var template = existingTemplate ?? WalletTransactionConfig.Template()
+                template.splitwiseFriendId = resolvedFriend.id
+                template.splitwiseFriendFirstName = resolvedFriend.firstName
+                template.splitwiseFriendFullName = resolvedFriend.fullName
+                template.splitwiseOption = resolvedSplitOption
                 if !pattern.isEmpty {
-                    template.autoMatch.append(.init(pattern: pattern, expenseDescription: resolvedDescription))
+                    template.autoMatch.append(.init(pattern: pattern, payeeName: resolvedDescription))
                 }
                 config.templates[templateName] = template
-                config.merchants[merchant] = SplitwiseWalletTransactionConfig.MerchantInfo(
-                    expenseDescription: resolvedDescription,
+                config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(
+                    payeeName: resolvedDescription,
                     templateName: templateName
                 )
                 expenseDescription = resolvedDescription
-                friendId = resolvedFriendId
-                friendFirstName = resolvedFriendFirstName
-                friendFullName = resolvedFriendFullName
+                friendId = resolvedFriend.id
+                friendFirstName = resolvedFriend.firstName
+                friendFullName = resolvedFriend.fullName
                 splitOption = resolvedSplitOption
                 changed = true
             }
@@ -275,7 +286,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
 
             if changed {
                 do {
-                    try SplitwiseWalletTransactionConfigStore.save(config)
+                    try WalletTransactionConfigStore.save(config)
                     logger.log("config saved")
                 } catch {
                     logger.error("failed to save config: \(String(describing: error), privacy: .public)")

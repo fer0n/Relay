@@ -1,18 +1,20 @@
 //
-//  YNABTemplateEditView.swift
+//  TemplateEditView.swift
 //  Hazel
 //
-//  Create/edit form for a single WalletTransactionConfig.Template. Reads and
-//  writes WalletTransactionConfigStore directly — the same store
-//  AddWalletTransactionToYNABIntent.perform() mutates — so there's a single
-//  source of truth regardless of whether a template was set up via a
-//  Shortcuts run or here.
+//  Create/edit form for a single WalletTransactionConfig.Template, shared by
+//  both YNAB and Splitwise wallet automations — a template used to be split
+//  into two separate per-provider types/screens; now one template can carry
+//  a YNAB category, a Splitwise split option/friend, or both, with each
+//  provider's fields hidden here when that provider isn't connected.
+//  AddWalletTransactionToYNABIntent and AddWalletTransactionToSplitwiseIntent
+//  both read/write this same WalletTransactionConfigStore.
 //
 
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "YNABTemplateEditView")
+private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TemplateEditView")
 
 private struct LinkedMerchant: Identifiable {
     let merchant: String
@@ -20,7 +22,7 @@ private struct LinkedMerchant: Identifiable {
     var id: String { merchant }
 }
 
-struct YNABTemplateEditView: View {
+struct TemplateEditView: View {
     /// nil means "creating a new template".
     let templateName: String?
     var onSave: () -> Void
@@ -28,17 +30,31 @@ struct YNABTemplateEditView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
+
     @State private var name: String
+
     @State private var categories: [YNABCategory] = []
     @State private var selectedCategoryId: String?
+    @State private var isLoadingCategories = false
+
+    @State private var friends: [SplitwiseFriend] = []
+    @State private var selectedFriendId: Int?
     @State private var splitwiseOption: SplitwiseTemplateOption
+    @State private var isLoadingFriends = false
+
     @State private var autoMatchRules: [WalletTransactionConfig.AutoMatchRule]
     @State private var linkedMerchants: [LinkedMerchant]
     @State private var otherTemplateNames: [String]
-    @State private var isLoadingCategories = false
     @State private var errorMessage: String?
     @State private var showDeleteConfirmation = false
+
+    /// Fallback used at save time if the existing template's friend no
+    /// longer appears in a fresh fetchFriends() (e.g. fetch still in
+    /// flight, or the friend was removed on Splitwise) but the selection
+    /// hasn't changed from what was already saved.
+    private let existingFriend: (id: Int, firstName: String, fullName: String)?
 
     init(templateName: String?, onSave: @escaping () -> Void, onDelete: @escaping () -> Void) {
         self.templateName = templateName
@@ -49,6 +65,8 @@ struct YNABTemplateEditView: View {
         _name = State(initialValue: templateName ?? "")
         _selectedCategoryId = State(initialValue: existing?.categoryId)
         _splitwiseOption = State(initialValue: existing?.splitwiseOption ?? .never)
+        _selectedFriendId = State(initialValue: existing?.splitwiseFriendId)
+        existingFriend = existing?.splitwiseFriend
         _autoMatchRules = State(initialValue: existing?.autoMatch ?? [])
         _linkedMerchants = State(initialValue: config.merchants
             .filter { $0.value.templateName == templateName }
@@ -65,34 +83,63 @@ struct YNABTemplateEditView: View {
                 TextField("Template Name", text: $name)
             }
 
-            Section("Category") {
-                if isLoadingCategories {
-                    ProgressView()
-                } else {
-                    Picker("Category", selection: $selectedCategoryId) {
-                        Text("None").tag(String?.none)
-                        ForEach(categories, id: \.id) { category in
-                            Text(category.name).tag(Optional(category.id))
+            if ynabAuth.isAuthenticated {
+                Section("Category") {
+                    if isLoadingCategories {
+                        ProgressView()
+                    } else {
+                        Picker("Category", selection: $selectedCategoryId) {
+                            Text("None").tag(String?.none)
+                            ForEach(categories, id: \.id) { category in
+                                Text(category.name).tag(Optional(category.id))
+                            }
                         }
                     }
                 }
             }
 
             if splitwiseAuth.isAuthenticated {
-                Section("Splitwise") {
+                Section {
                     Picker("Split Option", selection: $splitwiseOption) {
                         ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
                             Text(option.label).tag(option)
                         }
                     }
+                    if isLoadingFriends {
+                        ProgressView()
+                    } else {
+                        Picker("Split With", selection: $selectedFriendId) {
+                            Text("None").tag(Int?.none)
+                            ForEach(friends, id: \.id) { friend in
+                                Text(friend.fullName).tag(Optional(friend.id))
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Splitwise")
+                } footer: {
+                    Text("\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split.")
                 }
             }
 
             Section("Auto-Match Rules") {
+                if !autoMatchRules.isEmpty {
+                    HStack {
+                        Text("Pattern")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Payee Name")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
                 ForEach(autoMatchRules.indices, id: \.self) { index in
-                    VStack(alignment: .leading, spacing: 4) {
-                        TextField("Pattern (text or regex)", text: $autoMatchRules[index].pattern)
+                    HStack {
+                        TextField("Text or regex", text: $autoMatchRules[index].pattern)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Divider()
                         TextField("Payee Name", text: $autoMatchRules[index].payeeName)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 .onDelete { autoMatchRules.remove(atOffsets: $0) }
@@ -152,7 +199,10 @@ struct YNABTemplateEditView: View {
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .task { await loadCategories() }
+        .task {
+            await loadCategories()
+            await loadFriends()
+        }
         .confirmationDialog(
             "Delete this template?",
             isPresented: $showDeleteConfirmation,
@@ -163,23 +213,33 @@ struct YNABTemplateEditView: View {
     }
 
     private func loadCategories() async {
-        guard let token = await YNABAuthService.validAccessToken() else {
-            logger.error("no YNAB access token — not authenticated")
-            return
-        }
+        guard ynabAuth.isAuthenticated, let token = await YNABAuthService.validAccessToken() else { return }
         if let cached = YNABCategoryCacheStore.load() {
             categories = YNABCategoryUsageStore.sorted(cached)
         }
         isLoadingCategories = categories.isEmpty
         defer { isLoadingCategories = false }
         do {
-            let fetched = try await YNABCategoryCacheStore.fetch(token: token)
-            categories = YNABCategoryUsageStore.sorted(fetched)
+            categories = YNABCategoryUsageStore.sorted(try await YNABCategoryCacheStore.fetch(token: token))
         } catch {
             logger.error("failed to load categories: \(String(describing: error), privacy: .public)")
             if categories.isEmpty {
                 errorMessage = "Failed to load categories: \(error.localizedDescription)"
             }
+        }
+    }
+
+    private func loadFriends() async {
+        guard splitwiseAuth.isAuthenticated, let token = SplitwiseAuthService.currentAccessToken else { return }
+        if let cached = SplitwiseFriendCacheStore.load() {
+            friends = SplitwiseFriendUsageStore.sorted(cached)
+        }
+        isLoadingFriends = friends.isEmpty
+        defer { isLoadingFriends = false }
+        do {
+            friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
+        } catch {
+            logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -194,10 +254,27 @@ struct YNABTemplateEditView: View {
         }
 
         let cleanedRules = autoMatchRules.filter { !$0.pattern.isEmpty && !$0.payeeName.isEmpty }
+
+        let resolvedFriend: (id: Int, firstName: String, fullName: String)?
+        if let selectedFriendId {
+            if let match = friends.first(where: { $0.id == selectedFriendId }) {
+                resolvedFriend = (match.id, match.firstName, match.fullName)
+            } else if let existingFriend, existingFriend.id == selectedFriendId {
+                resolvedFriend = existingFriend
+            } else {
+                resolvedFriend = nil
+            }
+        } else {
+            resolvedFriend = nil
+        }
+
         let template = WalletTransactionConfig.Template(
             categoryId: selectedCategoryId,
             autoMatch: cleanedRules,
-            splitwiseOption: splitwiseOption
+            splitwiseOption: splitwiseOption,
+            splitwiseFriendId: resolvedFriend?.id,
+            splitwiseFriendFirstName: resolvedFriend?.firstName,
+            splitwiseFriendFullName: resolvedFriend?.fullName
         )
 
         if let templateName {
@@ -273,8 +350,33 @@ struct YNABTemplateEditView: View {
     }
 }
 
+#if DEBUG
+extension TemplateEditView {
+    /// Preview-only initializer that seeds sample auto-match rules directly,
+    /// bypassing WalletTransactionConfigStore so previewing never touches
+    /// the real on-disk config.
+    init(previewAutoMatchRules: [WalletTransactionConfig.AutoMatchRule]) {
+        self.templateName = nil
+        self.onSave = {}
+        self.onDelete = {}
+        existingFriend = nil
+        _name = State(initialValue: "Groceries")
+        _selectedCategoryId = State(initialValue: nil)
+        _splitwiseOption = State(initialValue: .never)
+        _selectedFriendId = State(initialValue: nil)
+        _autoMatchRules = State(initialValue: previewAutoMatchRules)
+        _linkedMerchants = State(initialValue: [])
+        _otherTemplateNames = State(initialValue: [])
+    }
+}
+#endif
+
 #Preview {
     NavigationStack {
-        YNABTemplateEditView(templateName: nil, onSave: {}, onDelete: {})
+        TemplateEditView(previewAutoMatchRules: [
+            .init(pattern: "STARBUCKS", payeeName: "Starbucks"),
+            .init(pattern: "(?i)uber( eats)?", payeeName: "Uber Eats"),
+            .init(pattern: "TRADER JOE'?S", payeeName: "Trader Joe's")
+        ])
     }
 }

@@ -6,10 +6,9 @@
 //  reached by tapping a "Continue Adding Transaction" notification (or a
 //  draft row in TransactionDraftsView) after that Shortcuts run got
 //  interrupted before finishing. Reads/writes the exact same
-//  SplitwiseWalletTransactionConfigStore and calls the same
-//  SplitwiseExpenseHelper the intent does — the only thing that differs is
-//  asking the remaining questions via a SwiftUI form instead of
-//  requestValue/requestDisambiguation.
+//  WalletTransactionConfigStore and calls the same SplitwiseExpenseHelper
+//  the intent does — the only thing that differs is asking the remaining
+//  questions via a SwiftUI form instead of requestValue/requestDisambiguation.
 //
 //  Unlike the intent, this doesn't replicate auto-match patterns or
 //  multi-merchant template linking — creating a template here just links
@@ -30,14 +29,17 @@ struct ContinueSplitwiseWalletTransactionView: View {
     @State private var resultMessage: String?
     @State private var isSubmitting = false
 
-    /// True once a merchant→template match is found — description/friend/
-    /// split setting are then fixed (read-only here) instead of asked again.
+    /// True once a merchant→template match is found — description/split
+    /// setting are then fixed (read-only here) instead of asked again.
     @State private var templateResolved = false
+    @State private var resolvedTemplateName: String?
     @State private var expenseDescription = ""
 
-    @State private var resolvedFriendId = 0
-    @State private var resolvedFriendFirstName = ""
-    @State private var resolvedFriendFullName = ""
+    /// True once the resolved (or matched) template already has a cached
+    /// Splitwise friend — false also covers "no template yet", so the
+    /// friend picker below is shown whenever this is false, regardless of
+    /// `templateResolved`.
+    @State private var templateHasFriend = false
     @State private var resolvedTemplateSplitOption: SplitwiseTemplateOption = .never
 
     @State private var friends: [SplitwiseFriend] = []
@@ -65,15 +67,17 @@ struct ContinueSplitwiseWalletTransactionView: View {
             return
         }
 
-        let config = SplitwiseWalletTransactionConfigStore.load()
+        let config = WalletTransactionConfigStore.load()
         if let info = config.resolvedMerchantInfo(for: merchant) {
             _templateResolved = State(initialValue: true)
-            _expenseDescription = State(initialValue: info.expenseDescription)
+            _resolvedTemplateName = State(initialValue: info.templateName)
+            _expenseDescription = State(initialValue: info.payeeName)
             let template = config.templates[info.templateName]
-            _resolvedFriendId = State(initialValue: template?.friendId ?? 0)
-            _resolvedFriendFirstName = State(initialValue: template?.friendFirstName ?? "")
-            _resolvedFriendFullName = State(initialValue: template?.friendFullName ?? "")
-            _resolvedTemplateSplitOption = State(initialValue: template?.splitOption ?? .never)
+            _resolvedTemplateSplitOption = State(initialValue: template?.splitwiseOption ?? .never)
+            if let friend = template?.splitwiseFriend {
+                _templateHasFriend = State(initialValue: true)
+                _selectedFriendId = State(initialValue: friend.id)
+            }
         } else {
             _expenseDescription = State(initialValue: merchant)
         }
@@ -88,10 +92,8 @@ struct ContinueSplitwiseWalletTransactionView: View {
     }
 
     private var canSubmit: Bool {
-        if !templateResolved {
-            if expenseDescription.trimmingCharacters(in: .whitespaces).isEmpty { return false }
-            if selectedFriendId == nil { return false }
-        }
+        if !templateResolved, expenseDescription.trimmingCharacters(in: .whitespaces).isEmpty { return false }
+        if !templateHasFriend, selectedFriendId == nil { return false }
         if effectiveSplitOption == .ask, splitwiseRuntimeChoice == nil { return false }
         if resolvedSplitwiseAction == .manual, Double(ownShareText) == nil { return false }
         return true
@@ -131,26 +133,28 @@ struct ContinueSplitwiseWalletTransactionView: View {
             if templateResolved {
                 Section("Resolved From Template") {
                     LabeledContent("Description", value: expenseDescription)
-                    LabeledContent("Split With", value: resolvedFriendFullName)
                 }
             } else {
                 Section("Description") {
                     TextField("Description", text: $expenseDescription)
                 }
-                Section("Split With") {
-                    if isLoadingFriends {
-                        ProgressView()
-                    } else {
-                        Picker(selection: $selectedFriendId) {
-                            Text("None").tag(Int?.none)
-                            ForEach(friends, id: \.id) { friend in
-                                Text(friend.fullName).tag(Optional(friend.id))
-                            }
-                        } label: {
-                            Text("Friend").foregroundStyle(.tint)
+            }
+
+            Section("Split With") {
+                if templateHasFriend {
+                    LabeledContent("Friend", value: friends.first { $0.id == selectedFriendId }?.fullName ?? "Unknown")
+                } else if isLoadingFriends {
+                    ProgressView()
+                } else {
+                    Picker(selection: $selectedFriendId) {
+                        Text("None").tag(Int?.none)
+                        ForEach(friends, id: \.id) { friend in
+                            Text(friend.fullName).tag(Optional(friend.id))
                         }
-                        .tint(.accentColor)
+                    } label: {
+                        Text("Friend").foregroundStyle(.tint)
                     }
+                    .tint(.accentColor)
                 }
             }
 
@@ -213,7 +217,7 @@ struct ContinueSplitwiseWalletTransactionView: View {
     }
 
     private func loadFriends() async {
-        guard !templateResolved else { return }
+        guard !templateHasFriend else { return }
         guard let token = SplitwiseAuthService.currentAccessToken else { return }
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
@@ -237,49 +241,61 @@ struct ContinueSplitwiseWalletTransactionView: View {
         isSubmitting = true
         defer { isSubmitting = false }
 
-        var config = SplitwiseWalletTransactionConfigStore.load()
+        var config = WalletTransactionConfigStore.load()
         var configChanged = false
-        let finalDescription: String
-        let finalFriendId: Int
-        let finalFriendFirstName: String
-        let finalFriendFullName: String
 
+        let finalDescription: String
         if templateResolved {
             finalDescription = expenseDescription
-            finalFriendId = resolvedFriendId
-            finalFriendFirstName = resolvedFriendFirstName
-            finalFriendFullName = resolvedFriendFullName
         } else {
             let trimmed = expenseDescription.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty else {
                 errorMessage = "Description can't be empty."
                 return
             }
+            finalDescription = trimmed
+        }
+
+        let finalFriendId: Int
+        let finalFriendFirstName: String
+        let finalFriendFullName: String
+        if templateHasFriend, let templateName = resolvedTemplateName, let existing = config.templates[templateName]?.splitwiseFriend {
+            finalFriendId = existing.id
+            finalFriendFirstName = existing.firstName
+            finalFriendFullName = existing.fullName
+        } else {
             guard let selectedFriendId, let match = friends.first(where: { $0.id == selectedFriendId }) else {
                 errorMessage = "Pick a Splitwise friend."
                 return
             }
-            var template = config.templates[trimmed] ?? SplitwiseWalletTransactionConfig.Template(
-                friendId: match.id,
-                friendFirstName: match.firstName,
-                friendFullName: match.fullName
-            )
-            template.friendId = match.id
-            template.friendFirstName = match.firstName
-            template.friendFullName = match.fullName
-            template.splitOption = newTemplateSplitOption
-            config.templates[trimmed] = template
-            config.merchants[merchant] = SplitwiseWalletTransactionConfig.MerchantInfo(expenseDescription: trimmed, templateName: trimmed)
-            finalDescription = trimmed
             finalFriendId = match.id
             finalFriendFirstName = match.firstName
             finalFriendFullName = match.fullName
+        }
+
+        if templateResolved, let templateName = resolvedTemplateName {
+            if !templateHasFriend {
+                var template = config.templates[templateName] ?? WalletTransactionConfig.Template()
+                template.splitwiseFriendId = finalFriendId
+                template.splitwiseFriendFirstName = finalFriendFirstName
+                template.splitwiseFriendFullName = finalFriendFullName
+                config.templates[templateName] = template
+                configChanged = true
+            }
+        } else {
+            var template = config.templates[finalDescription] ?? WalletTransactionConfig.Template()
+            template.splitwiseFriendId = finalFriendId
+            template.splitwiseFriendFirstName = finalFriendFirstName
+            template.splitwiseFriendFullName = finalFriendFullName
+            template.splitwiseOption = newTemplateSplitOption
+            config.templates[finalDescription] = template
+            config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: finalDescription, templateName: finalDescription)
             configChanged = true
         }
 
         if configChanged {
             do {
-                try SplitwiseWalletTransactionConfigStore.save(config)
+                try WalletTransactionConfigStore.save(config)
             } catch {
                 logger.error("failed to save config: \(String(describing: error), privacy: .public)")
             }
