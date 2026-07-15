@@ -15,84 +15,74 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                AccountConnectionRow(
-                    title: "YNAB",
-                    isConnected: ynabAuth.isAuthenticated,
-                    connect: ynabAuth.signIn,
-                    disconnect: ynabAuth.signOut
-                )
+            List {
+                Section {
+                    AccountConnectionRow(
+                        title: "YNAB",
+                        isConnected: ynabAuth.isAuthenticated,
+                        connect: ynabAuth.signIn,
+                        disconnect: ynabAuth.signOut
+                    )
 
-                AccountConnectionRow(
-                    title: "Splitwise",
-                    isConnected: splitwiseAuth.isAuthenticated,
-                    connect: splitwiseAuth.signIn,
-                    disconnect: splitwiseAuth.signOut
-                )
+                    AccountConnectionRow(
+                        title: "Splitwise",
+                        isConnected: splitwiseAuth.isAuthenticated,
+                        connect: splitwiseAuth.signIn,
+                        disconnect: splitwiseAuth.signOut
+                    )
 
-                if splitwiseAuth.isAuthenticated {
-                    DefaultSplitwiseFriendRow()
-                }
-
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Notifications")
-                            .font(.headline)
-                        Text(notificationStatusText)
-                            .font(.subheadline)
-                            .foregroundStyle(notificationStatus == .authorized ? .green : .secondary)
-                    }
-                    Spacer()
-                    if notificationStatus != .authorized {
-                        Button("Enable") {
-                            requestNotificationPermission()
-                        }
-                        .buttonStyle(.borderedProminent)
+                    if splitwiseAuth.isAuthenticated {
+                        DefaultSplitwiseFriendRow()
                     }
                 }
-                .padding()
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-                .task {
-                    notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
-                }
 
-                NavigationLink(value: SettingsRoute.howHazelWorks) {
+                Section {
                     HStack {
-                        Text("How Hazel Works")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
+                        VStack(alignment: .leading) {
+                            Text("Notifications")
+                                .font(.headline)
+                            Text(notificationStatusText)
+                                .font(.subheadline)
+                                .foregroundStyle(notificationStatus == .authorized ? .green : .secondary)
+                        }
                         Spacer()
-                        Image(systemName: "chevron.right")
+                        if notificationStatus != .authorized {
+                            Button("Enable") {
+                                requestNotificationPermission()
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .task {
+                        notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+                    }
+                } footer: {
+                    Text("Used to remind you if a wallet transaction is left unfinished, so it doesn't silently get lost.")
+                }
+
+                Section {
+                    NavigationLink("How Hazel Works", value: SettingsRoute.howHazelWorks)
+                }
+
+                Section {
+                    Button("Delete Wallet Transaction Config", role: .destructive) {
+                        try? WalletTransactionConfigStore.delete()
+                        didDeleteWalletConfig = true
+                    }
+                    if didDeleteWalletConfig {
+                        Text("Deleted")
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
-                    .padding()
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                } footer: {
+                    // Required by YNAB's API Terms of Service (see CLAUDE.md) —
+                    // must be visible somewhere in the app, not just the privacy
+                    // policy.
+                    Text("Hazel is not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Button("Delete Wallet Transaction Config") {
-                    try? WalletTransactionConfigStore.delete()
-                    didDeleteWalletConfig = true
-                }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                if didDeleteWalletConfig {
-                    Text("Deleted")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                // Required by YNAB's API Terms of Service (see CLAUDE.md) —
-                // must be visible somewhere in the app, not just the privacy
-                // policy.
-                Text("Hazel is not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
             }
-            .padding()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SettingsRoute.self) { route in

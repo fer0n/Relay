@@ -15,26 +15,10 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VStack(spacing: 16) {
-                NavigationLink(value: ContentRoute.templates) {
-                    HStack {
-                        Text("Templates")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-
+            List {
                 NavigationLink(value: ContentRoute.pendingQueue) {
                     HStack {
                         Text("Pending Queue")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
                         Spacer()
                         if !pendingQueue.operations.isEmpty {
                             Text("\(pendingQueue.operations.count)")
@@ -44,19 +28,12 @@ struct ContentView: View {
                                 .background(.orange, in: Capsule())
                                 .foregroundStyle(.white)
                         }
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
                     }
-                    .padding()
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                 }
-                .buttonStyle(.plain)
-
+                
                 NavigationLink(value: ContentRoute.transactionDrafts) {
                     HStack {
                         Text("Transaction Drafts")
-                            .font(.headline)
-                            .foregroundStyle(.primary)
                         Spacer()
                         if draftCount > 0 {
                             Text("\(draftCount)")
@@ -66,17 +43,15 @@ struct ContentView: View {
                                 .background(.orange, in: Capsule())
                                 .foregroundStyle(.white)
                         }
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
                     }
-                    .padding()
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                 }
-                .buttonStyle(.plain)
-
-                Spacer()
+                
+                Section {
+                    NavigationLink(value: ContentRoute.templates) {
+                        Text("Templates")
+                    }
+                }
             }
-            .padding()
             .navigationDestination(for: ContentRoute.self) { route in
                 switch route {
                 case .templates:
@@ -94,10 +69,10 @@ struct ContentView: View {
                     showSettings = true
                 } label: {
                     Text("Settings")
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
                 }
                 .buttonStyle(.glass)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 15)
             }
         }
         // Picks up a token invalidated by an App Intent (e.g. an expired

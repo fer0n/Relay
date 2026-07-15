@@ -39,8 +39,6 @@ struct DefaultSplitwiseFriendRow: View {
             }
             .contentShape(Rectangle())
         }
-        .padding()
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         .task {
             if let cached = SplitwiseFriendCacheStore.load() {
                 friends = SplitwiseFriendUsageStore.sorted(cached)

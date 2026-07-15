@@ -31,7 +31,5 @@ struct AccountConnectionRow: View {
             .buttonStyle(.borderedProminent)
             .tint(isConnected ? .red : .accentColor)
         }
-        .padding()
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
     }
 }
