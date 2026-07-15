@@ -123,12 +123,15 @@ struct ContinueYNABWalletTransactionView: View {
                     if isLoadingCategories {
                         ProgressView()
                     } else {
-                        Picker("Category", selection: $selectedCategoryId) {
+                        Picker(selection: $selectedCategoryId) {
                             Text("None").tag(String?.none)
                             ForEach(categories, id: \.id) { category in
                                 Text(category.name).tag(Optional(category.id))
                             }
+                        } label: {
+                            Text("Category").foregroundStyle(.tint)
                         }
+                        .tint(.accentColor)
                     }
                 }
             }
@@ -139,12 +142,15 @@ struct ContinueYNABWalletTransactionView: View {
                 } else if isLoadingAccounts {
                     ProgressView()
                 } else {
-                    Picker("Account", selection: $selectedAccountId) {
+                    Picker(selection: $selectedAccountId) {
                         Text("None").tag(String?.none)
                         ForEach(accounts, id: \.id) { account in
                             Text(account.name).tag(Optional(account.id))
                         }
+                    } label: {
+                        Text("Account").foregroundStyle(.tint)
                     }
+                    .tint(.accentColor)
                 }
             }
 
@@ -152,32 +158,41 @@ struct ContinueYNABWalletTransactionView: View {
                 if templateResolved {
                     LabeledContent("Split Setting", value: resolvedTemplateSplitwiseOption.label)
                 } else {
-                    Picker("Split With Splitwise", selection: $newTemplateSplitwiseOption) {
+                    Picker(selection: $newTemplateSplitwiseOption) {
                         ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
                             Text(option.label).tag(option)
                         }
+                    } label: {
+                        Text("Split With Splitwise").foregroundStyle(.tint)
                     }
+                    .tint(.accentColor)
                 }
 
                 if effectiveSplitwiseOption == .ask {
-                    Picker("Split This Transaction?", selection: $splitwiseRuntimeChoice) {
+                    Picker(selection: $splitwiseRuntimeChoice) {
                         Text("Choose").tag(SplitwiseSplitOption?.none)
                         ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
                             Text(option.label).tag(SplitwiseSplitOption?.some(option))
                         }
+                    } label: {
+                        Text("Split This Transaction?").foregroundStyle(.tint)
                     }
+                    .tint(.accentColor)
                 }
 
                 if resolvedSplitwiseAction != .never {
                     if isLoadingFriends {
                         ProgressView()
                     } else {
-                        Picker("Split With", selection: $selectedFriendId) {
+                        Picker(selection: $selectedFriendId) {
                             Text("None").tag(Int?.none)
                             ForEach(friends, id: \.id) { friend in
                                 Text(friend.fullName).tag(Optional(friend.id))
                             }
+                        } label: {
+                            Text("Split With").foregroundStyle(.tint)
                         }
+                        .tint(.accentColor)
                     }
                 }
 
@@ -206,11 +221,6 @@ struct ContinueYNABWalletTransactionView: View {
                 .disabled(!canSubmit || isSubmitting)
             }
         }
-        // Menu-style pickers show their value in the same secondary gray as
-        // read-only LabeledContent rows, with only a tiny chevron.up.chevron.down
-        // glyph to tell them apart — easy to miss. A navigation chevron is a
-        // much clearer "this is tappable" signal.
-        .pickerStyle(.navigationLink)
     }
 
     private func load() async {

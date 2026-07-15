@@ -116,12 +116,15 @@ struct ContinueSplitwiseWalletTransactionView: View {
                     if isLoadingFriends {
                         ProgressView()
                     } else {
-                        Picker("Friend", selection: $selectedFriendId) {
+                        Picker(selection: $selectedFriendId) {
                             Text("None").tag(Int?.none)
                             ForEach(friends, id: \.id) { friend in
                                 Text(friend.fullName).tag(Optional(friend.id))
                             }
+                        } label: {
+                            Text("Friend").foregroundStyle(.tint)
                         }
+                        .tint(.accentColor)
                     }
                 }
             }
@@ -130,20 +133,26 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 if templateResolved {
                     LabeledContent("Split Setting", value: resolvedTemplateSplitOption.label)
                 } else {
-                    Picker("Split", selection: $newTemplateSplitOption) {
+                    Picker(selection: $newTemplateSplitOption) {
                         ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
                             Text(option.label).tag(option)
                         }
+                    } label: {
+                        Text("Split").foregroundStyle(.tint)
                     }
+                    .tint(.accentColor)
                 }
 
                 if effectiveSplitOption == .ask {
-                    Picker("Split This Transaction?", selection: $splitwiseRuntimeChoice) {
+                    Picker(selection: $splitwiseRuntimeChoice) {
                         Text("Choose").tag(SplitwiseSplitOption?.none)
                         ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
                             Text(option.label).tag(SplitwiseSplitOption?.some(option))
                         }
+                    } label: {
+                        Text("Split This Transaction?").foregroundStyle(.tint)
                     }
+                    .tint(.accentColor)
                 }
 
                 if resolvedSplitwiseAction == .manual {
@@ -171,11 +180,6 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 .disabled(!canSubmit || isSubmitting)
             }
         }
-        // Menu-style pickers show their value in the same secondary gray as
-        // read-only LabeledContent rows, with only a tiny chevron.up.chevron.down
-        // glyph to tell them apart — easy to miss. A navigation chevron is a
-        // much clearer "this is tappable" signal.
-        .pickerStyle(.navigationLink)
     }
 
     private func load() async {
