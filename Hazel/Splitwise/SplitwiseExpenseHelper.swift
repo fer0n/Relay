@@ -11,6 +11,13 @@
 
 import Foundation
 
+private let splitwiseDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.timeZone = .current
+    return formatter
+}()
+
 enum SplitwiseExpenseOutcome {
     case created(shareSummary: String)
     /// Offline — the expense was handed to PendingOperationQueue and will
@@ -37,7 +44,8 @@ nonisolated enum SplitwiseExpenseHelper {
         amount: Double,
         description: String,
         friend: SplitwiseFriendEntity,
-        ownShare: Double?
+        ownShare: Double?,
+        date: Date? = nil
     ) async throws -> SplitwiseExpenseOutcome {
         guard amount.isFinite, amount > 0 else {
             throw SplitwiseIntentError.validation("Amount must be a positive number.")
@@ -79,7 +87,8 @@ nonisolated enum SplitwiseExpenseHelper {
             payerUserId: user.id,
             payerOwedCents: ownShareCents,
             friendUserId: friend.id,
-            friendOwedCents: friendShareCents
+            friendOwedCents: friendShareCents,
+            date: date.map { splitwiseDateFormatter.string(from: $0) }
         )
 
         let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))

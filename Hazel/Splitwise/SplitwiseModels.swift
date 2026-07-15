@@ -62,9 +62,13 @@ struct SplitwiseExpenseRequest: Codable {
     let payerOwedCents: Int
     let friendUserId: Int
     let friendOwedCents: Int
+    /// ISO-8601 date string. Omitted (nil) means "now", which is every call
+    /// site's intent except the statement-file-import flow, where the
+    /// expense should carry the transaction's actual date instead of today.
+    let date: String?
 
     var asJSONObject: [String: Any] {
-        [
+        var object: [String: Any] = [
             "cost": Self.decimalString(costCents),
             "description": description,
             "currency_code": currencyCode,
@@ -76,6 +80,10 @@ struct SplitwiseExpenseRequest: Codable {
             "users__1__paid_share": "0.00",
             "users__1__owed_share": Self.decimalString(friendOwedCents),
         ]
+        if let date {
+            object["date"] = date
+        }
+        return object
     }
 
     private static func decimalString(_ cents: Int) -> String {
