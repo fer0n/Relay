@@ -10,8 +10,15 @@
 //  and wouldn't cover the native-macOS build of this app anyway), so a
 //  queued item only retries the next time Hazel is opened or a Shortcut runs.
 //
+//  Two things make a stuck queue hard to miss in the meantime: the app icon
+//  badge always mirrors `operations.count`, and a single local notification
+//  (same replace-on-reschedule/cancel-on-empty pattern as
+//  TransactionDraftGuard) reminds the user a day after the queue first goes
+//  non-empty, in case it's still stuck by then.
+//
 
 import Foundation
+import UserNotifications
 import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "PendingOperationQueue")
@@ -21,24 +28,43 @@ private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "Pen
 final class PendingOperationQueue {
     static let shared = PendingOperationQueue()
 
+    static let reminderNotificationID = "pendingOperationQueueReminder"
+    private static let reminderDelay: TimeInterval = 60 * 60 * 24
+
     private(set) var operations: [PendingOperation] = []
     private var isFlushing = false
 
     private init() {
         operations = PendingOperationQueueStore.load()
+        updateBadge()
+        // Best-effort: re-arms the reminder if Hazel was killed before a
+        // previous schedule call completed. Harmless if one's already
+        // pending — re-adding the same identifier just replaces it.
+        if !operations.isEmpty {
+            scheduleReminderNotification()
+        }
     }
 
     func enqueue(_ payload: PendingOperation.Payload, summary: String) {
+        let wasEmpty = operations.isEmpty
         operations.append(
             PendingOperation(id: UUID(), queuedAt: Date(), summary: summary, attemptCount: 0, lastError: nil, payload: payload)
         )
         persist()
+        updateBadge()
+        if wasEmpty {
+            scheduleReminderNotification()
+        }
         logger.log("queued operation: \(summary, privacy: .public)")
     }
 
     func delete(id: UUID) {
         operations.removeAll { $0.id == id }
         persist()
+        updateBadge()
+        if operations.isEmpty {
+            cancelReminderNotification()
+        }
     }
 
     /// Retries every queued operation once, in submission order, pausing
@@ -134,5 +160,36 @@ final class PendingOperationQueue {
         } catch {
             logger.error("failed to save pending operations: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    private func updateBadge() {
+        UNUserNotificationCenter.current().setBadgeCount(operations.count) { error in
+            if let error {
+                logger.error("failed to set badge count: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    private func scheduleReminderNotification() {
+        guard NotificationsPreferenceStore.isEnabled else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Pending Transactions"
+        content.body = "Some transactions are still waiting to sync with YNAB/Splitwise."
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Self.reminderDelay, repeats: false)
+        let request = UNNotificationRequest(identifier: Self.reminderNotificationID, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                logger.error("failed to schedule pending queue reminder: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    private func cancelReminderNotification() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.reminderNotificationID])
+        center.removeDeliveredNotifications(withIdentifiers: [Self.reminderNotificationID])
     }
 }

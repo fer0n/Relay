@@ -58,7 +58,7 @@ struct SettingsView: View {
                             }
                         }
                 } footer: {
-                    Text("Used to remind you if a wallet transaction is left unfinished, so it doesn't silently get lost.")
+                    Text("Used to remind you if a wallet transaction is left unfinished or a queued transaction is still waiting to sync, so nothing silently gets lost.")
                         .footerText()
                 }
                 .tint(.accentColor)
@@ -178,7 +178,7 @@ struct SettingsView: View {
     // denial just does nothing rather than needing its own branch.
     private func requestNotificationPermission() {
         Task {
-            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
     }
 

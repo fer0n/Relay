@@ -2,11 +2,12 @@
 //  DraftNotificationRouter.swift
 //  Hazel
 //
-//  Bridges a tapped "Continue Adding Transaction" notification (see
-//  TransactionDraftGuard) into SwiftUI navigation: the notification's
-//  identifier is the draft's UUID, so the delegate callback just needs to
-//  hand that id to ContentView, which reacts by pushing
-//  ContinueYNABWalletTransactionView/ContinueSplitwiseWalletTransactionView.
+//  Bridges a tapped notification into SwiftUI navigation. Two kinds arrive
+//  here: a "Continue Adding Transaction" notification (see
+//  TransactionDraftGuard), whose identifier is the draft's UUID, and the
+//  fixed-identifier pending-queue reminder (see PendingOperationQueue).
+//  Either way the delegate callback just needs to flag which one fired;
+//  ContentView reacts by pushing the matching destination.
 //
 
 import Foundation
@@ -24,6 +25,10 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     /// Set when the user taps a draft notification; ContentView observes
     /// this and clears it once it's acted on.
     var pendingDraftID: UUID?
+
+    /// Set when the user taps the pending-queue reminder; ContentView
+    /// observes this and clears it once it's acted on.
+    var pendingQueueReminderTapped = false
 
     private override init() {
         super.init()
@@ -43,10 +48,12 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     ) {
         let identifier = response.notification.request.identifier
         Task { @MainActor in
-            if let id = UUID(uuidString: identifier) {
+            if identifier == PendingOperationQueue.reminderNotificationID {
+                DraftNotificationRouter.shared.pendingQueueReminderTapped = true
+            } else if let id = UUID(uuidString: identifier) {
                 DraftNotificationRouter.shared.pendingDraftID = id
             } else {
-                logger.error("draft notification identifier wasn't a UUID: \(identifier, privacy: .public)")
+                logger.error("notification identifier wasn't recognized: \(identifier, privacy: .public)")
             }
             completionHandler()
         }

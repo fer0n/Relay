@@ -87,6 +87,12 @@ struct ContentView: View {
             path = [.continueDraft(newValue)]
             draftRouter.pendingDraftID = nil
         }
+        // Same deep-link pattern as the draft notification above.
+        .onChange(of: draftRouter.pendingQueueReminderTapped) { _, tapped in
+            guard tapped else { return }
+            path = [.pendingQueue]
+            draftRouter.pendingQueueReminderTapped = false
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
