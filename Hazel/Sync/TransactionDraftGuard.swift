@@ -27,7 +27,7 @@ import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TransactionDraftGuard")
 
-nonisolated enum TransactionDraftGuard {
+enum TransactionDraftGuard {
     /// Long enough that a normal, uninterrupted run always finishes and
     /// cancels this first; short enough to still be a timely nudge if
     /// something goes wrong. A live follow-up question (e.g. "Split with

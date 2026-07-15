@@ -8,7 +8,7 @@ import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TransactionDraftStore")
 
-nonisolated enum TransactionDraftStore {
+enum TransactionDraftStore {
     private static let fileURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
