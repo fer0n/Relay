@@ -105,6 +105,15 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             ? TransactionDraftGuard.begin(.splitwiseWallet(merchant: merchant, amount: amount))
             : nil
 
+        // Pushes the "still needs finishing" reminder back out — called
+        // after every follow-up question below is answered, so a normal but
+        // slow-to-answer run doesn't get a premature nudge mid-flow.
+        func touchDraft() {
+            if let draftId {
+                TransactionDraftGuard.touch(draftId)
+            }
+        }
+
         await PendingOperationQueue.shared.flush()
 
         guard SplitwiseAuthService.currentAccessToken != nil else {
@@ -140,6 +149,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             } else {
                 logger.log("no merchant match — requesting template choice")
                 resolvedTemplateChoice = try await $templateChoice.requestValue("Which template for \"\(merchant)\"?")
+                touchDraft()
             }
 
             let templateName: String
@@ -154,6 +164,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 } else {
                     logger.log("creating new template — requesting template name")
                     newName = try await $newTemplateName.requestValue("Template name?")
+                    touchDraft()
                 }
                 templateName = newName
                 existingTemplate = config.templates[newName]
@@ -165,6 +176,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             } else {
                 logger.log("template=\(templateName, privacy: .public) — requesting description")
                 resolvedDescription = try await $descriptionOverride.requestValue("Description for \"\(merchant)\"?")
+                touchDraft()
             }
 
             let pattern: String
@@ -175,6 +187,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 pattern = try await $autoMatchPattern.requestValue(
                     "Match other merchant names to \(resolvedDescription) too? Enter text/regex, or leave blank to skip."
                 )
+                touchDraft()
             }
             logger.log("autoMatchPattern=\"\(pattern, privacy: .public)\"")
 
@@ -196,6 +209,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                         among: friends,
                         dialog: "Split \(templateName) expenses with which friend?"
                     )
+                    touchDraft()
                 }
                 resolvedFriendId = friend.id
                 resolvedFriendFirstName = friend.firstName
@@ -214,6 +228,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                         among: [.ask, .always, .manual, .never],
                         dialog: "Split \(templateName) expenses with Splitwise?"
                     )
+                    touchDraft()
                 }
             }
 
@@ -253,6 +268,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             } else {
                 logger.log("splitOption=ask — requesting runtime choice")
                 splitwiseAction = try await $splitwiseRuntimeChoice.requestValue("Split this \(expenseDescription) transaction with Splitwise?")
+                touchDraft()
             }
         }
 
@@ -278,6 +294,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             logger.log("splitwiseAction=manual — requesting own share")
             let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
             resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(expenseDescription), split with \(friendFirstName)?")
+            touchDraft()
         }
         if splitwiseAction == .manual, let resolvedOwnShare {
             try SplitwiseExpenseHelper.validateOwnShare(resolvedOwnShare, amount: amount)

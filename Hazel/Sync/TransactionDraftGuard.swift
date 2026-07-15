@@ -4,9 +4,13 @@
 //
 //  Safety net behind the wallet automations' "Ensure Completion" parameter.
 //  begin() marks a transaction/expense as started and schedules a local
-//  notification a short delay out; complete() cancels that notification and
-//  clears the draft once the transaction actually finishes (created,
-//  queued, or a deliberate "don't split").
+//  notification a short delay out; touch() pushes that deadline back out
+//  again (called after every follow-up question is answered, so a normal
+//  but slow-to-answer run — typing a new template name, picking a category —
+//  doesn't get a premature nudge while the user is still actively working
+//  through it); complete() cancels the notification and clears the draft
+//  once the transaction actually finishes (created, queued, or a deliberate
+//  "don't split").
 //
 //  There's no way to resume a suspended App Intent perform() call — if a
 //  follow-up question gets dismissed or the process is killed outright
@@ -28,12 +32,10 @@ import os
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TransactionDraftGuard")
 
 enum TransactionDraftGuard {
-    /// Long enough that a normal, uninterrupted run always finishes and
-    /// cancels this first; short enough to still be a timely nudge if
-    /// something goes wrong. A live follow-up question (e.g. "Split with
-    /// Splitwise?") can easily take longer than this to get answered —
-    /// that's fine, since complete() retracts the notification even after
-    /// it's already fired.
+    /// How long a run can go quiet (no question answered, no completion)
+    /// before the reminder fires. touch() resets this on every answered
+    /// question, so it's really "30s of inactivity", not "30s since the
+    /// run started".
     private static let fireDelay: TimeInterval = 30
 
     @discardableResult
@@ -48,6 +50,20 @@ enum TransactionDraftGuard {
         }
         scheduleNotification(for: draft)
         return draft.id
+    }
+
+    /// Pushes the reminder deadline back out to `fireDelay` from now —
+    /// call after every follow-up question is answered. Re-adding a
+    /// notification request with the same identifier replaces the pending
+    /// one outright, and this also clears an already-*delivered* copy (the
+    /// user could easily answer a later question after the first one took
+    /// long enough for the original reminder to already have fired), so
+    /// there's never a stale reminder sitting around once the run is
+    /// visibly still making progress.
+    static func touch(_ id: UUID) {
+        guard let draft = TransactionDraftStore.load().first(where: { $0.id == id }) else { return }
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id.uuidString])
+        scheduleNotification(for: draft)
     }
 
     static func complete(_ id: UUID) {
