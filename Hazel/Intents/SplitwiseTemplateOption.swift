@@ -24,7 +24,7 @@ nonisolated enum SplitwiseTemplateOption: String, AppEnum, Codable {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Splitwise Template Option"
     static let caseDisplayRepresentations: [SplitwiseTemplateOption: DisplayRepresentation] = [
         .always: "Split Equally",
-        .manual: "Split — Manual Share",
+        .manual: "Split Manually",
         .ask: "Ask Each Time",
         .never: "Don't Split",
     ]

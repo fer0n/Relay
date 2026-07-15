@@ -20,7 +20,7 @@ nonisolated enum SplitwiseSplitOption: String, AppEnum, Codable {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Splitwise Split Option"
     static let caseDisplayRepresentations: [SplitwiseSplitOption: DisplayRepresentation] = [
         .always: "Split Equally",
-        .manual: "Split — Manual Share",
+        .manual: "Split Manually",
         .never: "Don't Split",
     ]
 }

@@ -98,7 +98,7 @@ extension SplitwiseTemplateOption {
     var label: String {
         switch self {
         case .always: "Split Equally"
-        case .manual: "Split — Manual Share"
+        case .manual: "Split Manually"
         case .ask: "Ask Each Time"
         case .never: "Don't Split"
         }
