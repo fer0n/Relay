@@ -52,6 +52,22 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
 
+                NavigationLink {
+                    HowHazelWorksView()
+                } label: {
+                    HStack {
+                        Text("How Hazel Works")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
 
                 Button("Delete Wallet Transaction Config") {
