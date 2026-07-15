@@ -17,7 +17,7 @@ struct DefaultSplitwiseFriendRow: View {
             Text("Splitwise Default")
             
         Menu {
-            ForEach(friends, id: \.id) { friend in
+            splitwiseFriendRows(friends) { friend in
                 Button(friend.fullName) { select(friend) }
             }
             if defaultFriend != nil {

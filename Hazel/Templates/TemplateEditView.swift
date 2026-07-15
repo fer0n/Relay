@@ -110,7 +110,7 @@ struct TemplateEditView: View {
                     } else {
                         Picker("Split With", selection: $selectedFriendId) {
                             Text("None").tag(Int?.none)
-                            ForEach(friends, id: \.id) { friend in
+                            splitwiseFriendRows(friends) { friend in
                                 Text(friend.fullName).tag(Optional(friend.id))
                             }
                         }

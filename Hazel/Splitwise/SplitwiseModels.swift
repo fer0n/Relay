@@ -19,11 +19,34 @@ struct SplitwiseFriend: Codable {
     let id: Int
     let firstName: String
     let lastName: String?
+    let balance: [SplitwiseBalance]?
 
     /// Disambiguates friends sharing a first name (e.g. in the default
     /// friend picker in ContentView.swift).
     var fullName: String {
         [firstName, lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    /// True once this friend has a nonzero balance in any shared currency —
+    /// used to surface not-yet-settled-up friends first in the pickers.
+    /// Splitwise lists a zero-amount entry (rather than omitting it) once a
+    /// currency is settled, so this checks the amount, not just presence.
+    var hasOutstandingBalance: Bool {
+        (balance ?? []).contains { Double($0.amount) != 0 }
+    }
+}
+
+struct SplitwiseBalance: Codable {
+    let currencyCode: String
+    let amount: String
+}
+
+extension Array where Element == SplitwiseFriend {
+    /// Splits into (not settled up, settled up), each preserving relative
+    /// order — used to group friend pickers under an "Outstanding Balance"
+    /// section.
+    var partitionedByBalance: (outstanding: [SplitwiseFriend], settled: [SplitwiseFriend]) {
+        (filter(\.hasOutstandingBalance), filter { !$0.hasOutstandingBalance })
     }
 }
 

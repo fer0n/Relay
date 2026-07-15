@@ -148,7 +148,7 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 } else {
                     Picker(selection: $selectedFriendId) {
                         Text("None").tag(Int?.none)
-                        ForEach(friends, id: \.id) { friend in
+                        splitwiseFriendRows(friends) { friend in
                             Text(friend.fullName).tag(Optional(friend.id))
                         }
                     } label: {
