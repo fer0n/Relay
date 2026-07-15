@@ -1,0 +1,44 @@
+//
+//  PendingOperationQueueStore.swift
+//  Hazel
+//
+
+import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "PendingOperationQueueStore")
+
+enum PendingOperationQueueStore {
+    private static let fileURL: URL = {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("pending-operations.json")
+    }()
+
+    private static var decoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+
+    private static var encoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    static func load() -> [PendingOperation] {
+        guard let data = try? Data(contentsOf: fileURL) else { return [] }
+        do {
+            return try decoder.decode([PendingOperation].self, from: data)
+        } catch {
+            logger.error("failed to decode pending operations, starting empty: \(String(describing: error), privacy: .public)")
+            return []
+        }
+    }
+
+    static func save(_ operations: [PendingOperation]) throws {
+        let data = try encoder.encode(operations)
+        try data.write(to: fileURL, options: .atomic)
+    }
+}

@@ -29,8 +29,9 @@ struct SplitwiseFriend: Codable {
 
 /// Non-group expense split between the signed-in user (who pays the full
 /// cost) and one friend, each owing their own share back. Currency mirrors
-/// the original Shortcut, which hardcoded EUR.
-struct SplitwiseExpenseRequest {
+/// the original Shortcut, which hardcoded EUR. Codable so PendingOperationQueue
+/// can persist one to disk while offline.
+struct SplitwiseExpenseRequest: Codable {
     let costCents: Int
     let description: String
     let currencyCode: String

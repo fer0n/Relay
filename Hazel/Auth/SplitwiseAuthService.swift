@@ -109,6 +109,7 @@ final class SplitwiseAuthService {
         accessToken = nil
         KeychainStore.delete(for: Self.accessTokenKey)
         KeychainStore.delete(for: Self.refreshTokenKey)
+        SplitwiseCurrentUserStore.delete()
     }
 }
 
