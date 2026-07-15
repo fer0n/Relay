@@ -17,24 +17,24 @@ struct TransactionDraftsView: View {
 
     var body: some View {
         List {
-            if drafts.isEmpty {
-                ContentUnavailableView(
-                    "Nothing Open",
-                    systemImage: "checkmark.circle",
-                    description: Text("No wallet transactions are waiting to be finished.")
-                )
-            } else {
-                ForEach(drafts) { draft in
-                    NavigationLink(value: ContentRoute.continueDraft(draft.id)) {
-                        TransactionDraftRow(draft: draft)
-                    }
-                    .swipeActions {
-                        Button("Dismiss", role: .destructive) {
-                            TransactionDraftGuard.complete(draft.id)
-                            drafts.removeAll { $0.id == draft.id }
-                        }
+            ForEach(drafts) { draft in
+                NavigationLink(value: ContentRoute.continueDraft(draft.id)) {
+                    TransactionDraftRow(draft: draft)
+                }
+                .cardRowBackground()
+                .swipeActions {
+                    Button("Dismiss", role: .destructive) {
+                        TransactionDraftGuard.complete(draft.id)
+                        drafts.removeAll { $0.id == draft.id }
                     }
                 }
+            }
+        }
+        .themedListStyle()
+        .background {
+            Color.backgroundColor
+            if drafts.isEmpty {
+                EmptyListBackground(systemName: "checkmark.circle")
             }
         }
         .navigationTitle("Transaction Drafts")

@@ -26,10 +26,13 @@ struct TemplatesView: View {
                         YNABTemplateRow(name: name, template: ynabConfig.templates[name])
                     }
                 }
-                NavigationLink("Add Template") {
+                NavigationLink {
                     YNABTemplateEditView(templateName: nil, onSave: reloadYNAB, onDelete: reloadYNAB)
+                } label: {
+                    RowLabel(title: "Add Template")
                 }
             }
+            .cardRowBackground()
 
             Section("Splitwise") {
                 ForEach(splitwiseConfig.templates.keys.sorted(), id: \.self) { name in
@@ -39,11 +42,15 @@ struct TemplatesView: View {
                         SplitwiseTemplateRow(name: name, template: splitwiseConfig.templates[name])
                     }
                 }
-                NavigationLink("Add Template") {
+                NavigationLink {
                     SplitwiseTemplateEditView(templateName: nil, onSave: reloadSplitwise, onDelete: reloadSplitwise)
+                } label: {
+                    RowLabel(title: "Add Template")
                 }
             }
+            .cardRowBackground()
         }
+        .themedList(background: .backgroundColor)
         .navigationTitle("Templates")
         .onAppear {
             reloadYNAB()
@@ -65,13 +72,17 @@ private struct YNABTemplateRow: View {
     let template: WalletTransactionConfig.Template?
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(name)
-            if let template {
-                Text("\(template.splitwiseOption.label) · \(template.autoMatch.count) auto-match rule\(template.autoMatch.count == 1 ? "" : "s")")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        HStack {
+            VStack(alignment: .leading) {
+                Text(name)
+                if let template {
+                    Text("\(template.splitwiseOption.label) · \(template.autoMatch.count) auto-match rule\(template.autoMatch.count == 1 ? "" : "s")")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
+            Spacer()
+            ListChevron()
         }
     }
 }
@@ -81,13 +92,17 @@ private struct SplitwiseTemplateRow: View {
     let template: SplitwiseWalletTransactionConfig.Template?
 
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(name)
-            if let template {
-                Text("Split with \(template.friendFirstName) · \(template.splitOption.label)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        HStack {
+            VStack(alignment: .leading) {
+                Text(name)
+                if let template {
+                    Text("Split with \(template.friendFirstName) · \(template.splitOption.label)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
+            Spacer()
+            ListChevron()
         }
     }
 }

@@ -11,25 +11,33 @@ struct AccountConnectionRow: View {
     let connect: () -> Void
     let disconnect: () -> Void
 
+    @State private var showDisconnectConfirm = false
+
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
-                Text(title)
-                    .font(.headline)
-                Text(isConnected ? "Connected" : "Not connected")
-                    .font(.subheadline)
-                    .foregroundStyle(isConnected ? .green : .secondary)
+            Text(title)
+            if isConnected {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 8, height: 8)
             }
             Spacer()
             Button(isConnected ? "Disconnect" : "Connect") {
                 if isConnected {
-                    disconnect()
+                    showDisconnectConfirm = true
                 } else {
                     connect()
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(isConnected ? .red : .accentColor)
+            .buttonStyle(.bordered)
+            .tint(isConnected ? .gray : nil)
+            .confirmationDialog(
+                "Disconnect from \(title)?",
+                isPresented: $showDisconnectConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Disconnect", role: .destructive, action: disconnect)
+            }
         }
     }
 }

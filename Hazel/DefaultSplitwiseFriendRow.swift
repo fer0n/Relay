@@ -13,8 +13,9 @@ struct DefaultSplitwiseFriendRow: View {
     @State private var friends: [SplitwiseFriend] = []
 
     var body: some View {
-        // The whole row is the Menu's label (not just the chevron), so the
-        // entire card is tappable rather than a small icon-sized target.
+        HStack {
+            Text("Splitwise Default")
+            
         Menu {
             ForEach(friends, id: \.id) { friend in
                 Button(friend.fullName) { select(friend) }
@@ -24,18 +25,12 @@ struct DefaultSplitwiseFriendRow: View {
                 Button("Clear", role: .destructive, action: clear)
             }
         } label: {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("Default Splitwise Friend")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text(defaultFriend?.fullName ?? "None set")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
                 Spacer()
+                Text(defaultFriend?.fullName ?? "None")
+                    .foregroundStyle(.secondary)
                 Image(systemName: "chevron.up.chevron.down")
                     .foregroundStyle(.secondary)
+                    .imageScale(.small)
             }
             .contentShape(Rectangle())
         }

@@ -16,25 +16,25 @@ struct PendingQueueView: View {
 
     var body: some View {
         List {
-            if queue.operations.isEmpty {
-                ContentUnavailableView(
-                    "All Synced",
-                    systemImage: "checkmark.circle",
-                    description: Text("Nothing is waiting to be sent to YNAB or Splitwise.")
-                )
-            } else {
-                ForEach(queue.operations) { operation in
-                    PendingOperationRow(operation: operation)
-                        .swipeActions {
-                            Button("Delete", role: .destructive) {
-                                queue.delete(id: operation.id)
-                            }
-                            Button("Retry") {
-                                Task { await queue.retryNow(id: operation.id) }
-                            }
-                            .tint(.blue)
+            ForEach(queue.operations) { operation in
+                PendingOperationRow(operation: operation)
+                    .cardRowBackground()
+                    .swipeActions {
+                        Button("Delete", role: .destructive) {
+                            queue.delete(id: operation.id)
                         }
-                }
+                        Button("Retry") {
+                            Task { await queue.retryNow(id: operation.id) }
+                        }
+                        .tint(.blue)
+                    }
+            }
+        }
+        .themedListStyle()
+        .background {
+            Color.backgroundColor
+            if queue.operations.isEmpty {
+                EmptyListBackground(systemName: "checkmark.circle")
             }
         }
         .navigationTitle("Pending Queue")

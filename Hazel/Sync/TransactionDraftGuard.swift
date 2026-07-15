@@ -98,6 +98,8 @@ enum TransactionDraftGuard {
     }
 
     private static func scheduleNotification(for draft: TransactionDraft, delay: TimeInterval = fireDelay) {
+        guard NotificationsPreferenceStore.isEnabled else { return }
+
         let content = UNMutableNotificationContent()
         content.title = "Transaction Incomplete"
         content.body = "\(draft.summary). Tap to continue."

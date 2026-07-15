@@ -23,55 +23,29 @@ struct ContentView: View {
                         .frame(maxWidth: 240, maxHeight: 180)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 24)
+                        .opacity(0.8)
                 }
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.backgroundColor)
 
                 NavigationLink(value: ContentRoute.pendingQueue) {
-                    HStack {
-                        Text("Pending Queue")
-                        Spacer()
-                        if !pendingQueue.operations.isEmpty {
-                            Text("\(pendingQueue.operations.count)")
-                                .font(.caption.bold())
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(.orange, in: Capsule())
-                                .foregroundStyle(.white)
-                        }
-                    }
+                    RowLabel(title: "Pending Queue", systemImage: "arrow.triangle.2.circlepath", badge: pendingQueue.operations.count)
                 }
-                .listRowBackground(Color.sheetInsetColor)
+                .cardRowBackground()
 
                 NavigationLink(value: ContentRoute.transactionDrafts) {
-                    HStack {
-                        Text("Transaction Drafts")
-                        Spacer()
-                        if draftCount > 0 {
-                            Text("\(draftCount)")
-                                .font(.caption.bold())
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(.orange, in: Capsule())
-                                .foregroundStyle(.white)
-                        }
-                    }
+                    RowLabel(title: "Transaction Drafts", systemImage: "square.and.pencil", badge: draftCount)
                 }
-                .listRowBackground(Color.sheetInsetColor)
+                .cardRowBackground()
 
                 Section {
                     NavigationLink(value: ContentRoute.templates) {
-                        Text("Templates")
+                        RowLabel(title: "Templates", systemImage: "doc.on.doc")
                     }
                 }
-                .listRowBackground(Color.sheetInsetColor)
+                .cardRowBackground()
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.backgroundColor)
-            .font(.system(size: 18))
-            .fontWeight(.medium)
-            .foregroundStyle(Color.foregroundColor)
-            .listRowSeparatorTint(Color.secondary.opacity(0.15))
+            .themedList(background: .backgroundColor)
             .navigationDestination(for: ContentRoute.self) { route in
                 switch route {
                 case .templates:
@@ -91,6 +65,7 @@ struct ContentView: View {
                     Text("Settings")
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
+                        .themedText()
                 }
                 .buttonStyle(.glass)
             }
