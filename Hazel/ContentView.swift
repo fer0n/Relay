@@ -16,6 +16,17 @@ struct ContentView: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                Section {
+                    Image("Logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 240, maxHeight: 180)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.backgroundColor)
+
                 NavigationLink(value: ContentRoute.pendingQueue) {
                     HStack {
                         Text("Pending Queue")
@@ -30,7 +41,8 @@ struct ContentView: View {
                         }
                     }
                 }
-                
+                .listRowBackground(Color.sheetInsetColor)
+
                 NavigationLink(value: ContentRoute.transactionDrafts) {
                     HStack {
                         Text("Transaction Drafts")
@@ -45,13 +57,21 @@ struct ContentView: View {
                         }
                     }
                 }
-                
+                .listRowBackground(Color.sheetInsetColor)
+
                 Section {
                     NavigationLink(value: ContentRoute.templates) {
                         Text("Templates")
                     }
                 }
+                .listRowBackground(Color.sheetInsetColor)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.backgroundColor)
+            .font(.system(size: 18))
+            .fontWeight(.medium)
+            .foregroundStyle(Color.foregroundColor)
+            .listRowSeparatorTint(Color.secondary.opacity(0.15))
             .navigationDestination(for: ContentRoute.self) { route in
                 switch route {
                 case .templates:

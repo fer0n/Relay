@@ -35,6 +35,7 @@ struct SettingsView: View {
                         DefaultSplitwiseFriendRow()
                     }
                 }
+                .listRowBackground(Color.sheetInsetColor)
 
                 Section {
                     HStack {
@@ -59,16 +60,19 @@ struct SettingsView: View {
                 } footer: {
                     Text("Used to remind you if a wallet transaction is left unfinished, so it doesn't silently get lost.")
                 }
+                .listRowBackground(Color.sheetInsetColor)
 
                 Section {
                     NavigationLink("How Hazel Works", value: SettingsRoute.howHazelWorks)
                 }
+                .listRowBackground(Color.sheetInsetColor)
 
                 Section {
                     Button("Delete Wallet Transaction Config", role: .destructive) {
                         try? WalletTransactionConfigStore.delete()
                         didDeleteWalletConfig = true
                     }
+                    .foregroundStyle(.red)
                     if didDeleteWalletConfig {
                         Text("Deleted")
                             .font(.footnote)
@@ -82,7 +86,14 @@ struct SettingsView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                 }
+                .listRowBackground(Color.sheetInsetColor)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.sheetBackgroundColor)
+            .font(.system(size: 18))
+            .fontWeight(.medium)
+            .foregroundStyle(Color.foregroundColor)
+            .listRowSeparatorTint(Color.secondary.opacity(0.15))
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SettingsRoute.self) { route in
