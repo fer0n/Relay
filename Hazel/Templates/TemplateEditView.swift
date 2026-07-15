@@ -122,12 +122,12 @@ struct TemplateEditView: View {
                 }
             }
 
-            Section("Auto-Match Rules") {
+            Section {
                 if !autoMatchRules.isEmpty {
                     HStack {
-                        Text("Pattern")
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text("Payee Name")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Pattern")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .font(.caption)
@@ -135,10 +135,10 @@ struct TemplateEditView: View {
                 }
                 ForEach(autoMatchRules.indices, id: \.self) { index in
                     HStack {
-                        TextField("Text or regex", text: $autoMatchRules[index].pattern)
+                        TextField("Payee Name", text: $autoMatchRules[index].payeeName)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Divider()
-                        TextField("Payee Name", text: $autoMatchRules[index].payeeName)
+                        TextField("Text or regex", text: $autoMatchRules[index].pattern)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -146,6 +146,10 @@ struct TemplateEditView: View {
                 Button("Add Rule") {
                     autoMatchRules.append(.init(pattern: "", payeeName: ""))
                 }
+            } header: {
+                Text("Auto-Match Rules")
+            } footer: {
+                Text("Pattern can be plain text or a regex, and is matched case-insensitively.")
             }
 
             if templateName != nil, !linkedMerchants.isEmpty {
