@@ -26,8 +26,7 @@ seems out of date before relying on it.
   see it (e.g. an About/Settings screen — not just the privacy policy),
   the disclaimer: "We are not affiliated, associated, or in any way
   officially connected with YNAB or any of its subsidiaries or
-  affiliates." This is not yet implemented in the UI — add it when
-  building Settings/About.
+  affiliates." Implemented as a footer in ContentView.swift.
 - **Naming/branding**: never name the app or a feature "YNAB ___"; "___
   for YNAB" is fine. Don't alter YNAB's logo/branding.
 - **Privacy policy must stay accurate**: [docs/privacy-policy.md](docs/privacy-policy.md)
