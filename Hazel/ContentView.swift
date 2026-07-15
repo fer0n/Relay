@@ -4,7 +4,6 @@
 //
 
 import SwiftUI
-import UserNotifications
 
 struct ContentView: View {
     @State private var pendingQueue = PendingOperationQueue.shared
@@ -109,12 +108,6 @@ struct ContentView: View {
                 Task { await pendingQueue.flush() }
                 draftCount = TransactionDraftStore.load().count
             }
-        }
-        // Needed so TransactionDraftGuard's "Ensure Completion" reminders
-        // can actually be delivered — requesting more than once is a no-op
-        // once the user has already answered the system prompt.
-        .task {
-            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
         }
         // A tapped draft notification always jumps straight to that draft's
         // continue flow, resetting whatever else was on the stack — it's a

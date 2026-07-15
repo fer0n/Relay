@@ -4,11 +4,13 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 struct SettingsView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var didDeleteWalletConfig = false
+    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -30,6 +32,28 @@ struct SettingsView: View {
 
                 if splitwiseAuth.isAuthenticated {
                     DefaultSplitwiseFriendRow()
+                }
+
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Notifications")
+                            .font(.headline)
+                        Text(notificationStatusText)
+                            .font(.subheadline)
+                            .foregroundStyle(notificationStatus == .authorized ? .green : .secondary)
+                    }
+                    Spacer()
+                    if notificationStatus != .authorized {
+                        Button("Enable") {
+                            requestNotificationPermission()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding()
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                .task {
+                    notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
                 }
 
                 NavigationLink(value: SettingsRoute.howHazelWorks) {
@@ -81,6 +105,31 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+
+    private var notificationStatusText: String {
+        switch notificationStatus {
+        case .authorized, .provisional, .ephemeral:
+            "Enabled"
+        case .denied:
+            "Disabled — enable in iOS Settings"
+        case .notDetermined:
+            "Not enabled"
+        @unknown default:
+            "Not enabled"
+        }
+    }
+
+    // Needed so TransactionDraftGuard's "Ensure Completion" reminders can
+    // actually be delivered — requesting more than once is a no-op once the
+    // user has already answered the system prompt, so this just re-reads
+    // the resulting status rather than needing its own denied/authorized
+    // branch.
+    private func requestNotificationPermission() {
+        Task {
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+            notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
         }
     }
 }
