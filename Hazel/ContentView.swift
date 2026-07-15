@@ -93,11 +93,11 @@ struct ContentView: View {
                 Button {
                     showSettings = true
                 } label: {
-                    Label("Settings", systemImage: "gearshape")
-                        .frame(maxWidth: .infinity)
+                    Text("Settings")
                 }
                 .buttonStyle(.glass)
                 .padding(.horizontal)
+                .padding(.vertical)
             }
         }
         // Picks up a token invalidated by an App Intent (e.g. an expired

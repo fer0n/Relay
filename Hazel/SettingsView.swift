@@ -87,13 +87,14 @@ struct SettingsView: View {
                 // Required by YNAB's API Terms of Service (see CLAUDE.md) —
                 // must be visible somewhere in the app, not just the privacy
                 // policy.
-                Text("We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
+                Text("Hazel is not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             .padding()
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SettingsRoute.self) { route in
                 switch route {
                 case .howHazelWorks:
