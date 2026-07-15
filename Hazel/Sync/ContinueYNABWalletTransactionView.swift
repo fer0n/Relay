@@ -105,6 +105,9 @@ struct ContinueYNABWalletTransactionView: View {
         Form {
             Section {
                 Text(draft.summary).font(.headline)
+                Text("Started \(RelativeDateTimeFormatter().localizedString(for: draft.startedAt, relativeTo: Date()))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             if templateResolved {
@@ -203,6 +206,11 @@ struct ContinueYNABWalletTransactionView: View {
                 .disabled(!canSubmit || isSubmitting)
             }
         }
+        // Menu-style pickers show their value in the same secondary gray as
+        // read-only LabeledContent rows, with only a tiny chevron.up.chevron.down
+        // glyph to tell them apart — easy to miss. A navigation chevron is a
+        // much clearer "this is tappable" signal.
+        .pickerStyle(.navigationLink)
     }
 
     private func load() async {
