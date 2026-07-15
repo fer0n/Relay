@@ -59,6 +59,8 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        await PendingOperationQueue.shared.flush()
+
         guard let token = await YNABAuthService.validAccessToken() else {
             throw YNABIntentError.notAuthenticated
         }
@@ -78,29 +80,31 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
             try SplitwiseExpenseHelper.validateOwnShare(splitwiseOwnShare, amount: amount)
         }
 
-        do {
-            // Expenses are outflows in YNAB: stored as negative milliunits.
-            let milliunits = -Int((amount * 1000).rounded())
-            let transaction = YNABTransactionRequest(
-                accountId: account.id,
-                date: YNABService.todayDateString(),
-                amount: milliunits,
-                payeeName: payee,
-                categoryId: category?.id,
-                memo: memo,
-                cleared: cleared ? "cleared" : "uncleared",
-                approved: true
-            )
-            try await YNABService.createTransaction(transaction, token: token)
+        // Expenses are outflows in YNAB: stored as negative milliunits.
+        let milliunits = -Int((amount * 1000).rounded())
+        let transaction = YNABTransactionRequest(
+            accountId: account.id,
+            date: YNABService.todayDateString(),
+            amount: milliunits,
+            payeeName: payee,
+            categoryId: category?.id,
+            memo: memo,
+            cleared: cleared ? "cleared" : "uncleared",
+            approved: true
+        )
+        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let outcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payee)")
+
+        var dialog: String
+        switch outcome {
+        case .created:
             if let categoryId = category?.id {
                 YNABCategoryUsageStore.recordUsage(categoryId: categoryId)
             }
-        } catch {
-            throw YNABIntentError.from(error)
+            dialog = "Added \(formattedAmount) at \(payee)"
+        case .queued:
+            dialog = "You're offline — queued \(formattedAmount) at \(payee) to add to YNAB once you're back online"
         }
-
-        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
-        var dialog = "Added \(formattedAmount) at \(payee)"
 
         if splitwiseOption != .never, let friend = splitwiseFriend {
             // Mirrors the original shortcut's description: "payee (memo)" when a memo is set.
@@ -109,13 +113,18 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
             // set; only "Manual" actually uses the entered share.
             let ownShare = (splitwiseOption == .manual) ? splitwiseOwnShare : nil
             do {
-                let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+                let splitOutcome = try await SplitwiseExpenseHelper.addExpense(
                     amount: amount,
                     description: description,
                     friend: friend,
                     ownShare: ownShare
                 )
-                dialog += ", split with Splitwise — \(shareSummary)"
+                switch splitOutcome {
+                case .created(let shareSummary):
+                    dialog += ", split with Splitwise — \(shareSummary)"
+                case .queued:
+                    dialog += ". Splitwise is offline — the split will sync automatically"
+                }
             } catch {
                 let message = (error as? SplitwiseIntentError)?.localizedStringResource
                     ?? "Couldn't add the Splitwise expense."

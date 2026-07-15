@@ -92,6 +92,8 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public)")
 
+        await PendingOperationQueue.shared.flush()
+
         guard SplitwiseAuthService.currentAccessToken != nil else {
             logger.error("no Splitwise access token in Keychain — not authenticated")
             throw SplitwiseIntentError.notAuthenticated
@@ -265,19 +267,29 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             try SplitwiseExpenseHelper.validateOwnShare(resolvedOwnShare, amount: amount)
         }
 
+        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
         do {
-            let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+            let outcome = try await SplitwiseExpenseHelper.addExpense(
                 amount: amount,
                 description: expenseDescription,
                 friend: SplitwiseFriendEntity(id: friendId, firstName: friendFirstName, fullName: friendFullName),
                 ownShare: (splitwiseAction == .manual) ? resolvedOwnShare : nil
             )
-            logger.log("Splitwise expense created: \(shareSummary, privacy: .public)")
-            let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
-            return .result(dialog: "Added \(formattedAmount) at \(expenseDescription) — \(shareSummary)")
+            switch outcome {
+            case .created(let shareSummary):
+                logger.log("Splitwise expense created: \(shareSummary, privacy: .public)")
+                return .result(dialog: "Added \(formattedAmount) at \(expenseDescription) — \(shareSummary)")
+            case .queued:
+                logger.log("Splitwise expense queued — offline")
+                return .result(dialog: "You're offline — queued \(formattedAmount) at \(expenseDescription) to add to Splitwise once you're back online")
+            }
         } catch {
             logger.error("Splitwise addExpense failed: \(String(describing: error), privacy: .public)")
-            throw SplitwiseIntentError.from(error)
+            // addExpense already throws a well-formed SplitwiseIntentError in
+            // most cases (validation, not-authenticated, mapped API errors) —
+            // re-mapping those through `.from` again would lose the specific
+            // reason, since `.from` only pattern-matches the raw API errors.
+            throw (error as? SplitwiseIntentError) ?? SplitwiseIntentError.from(error)
         }
     }
 }

@@ -34,12 +34,19 @@ nonisolated struct AddSplitwiseExpenseIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+        await PendingOperationQueue.shared.flush()
+
+        let outcome = try await SplitwiseExpenseHelper.addExpense(
             amount: amount,
             description: expenseDescription,
             friend: friend,
             ownShare: ownShare
         )
-        return .result(dialog: "Added \(expenseDescription) — \(shareSummary)")
+        switch outcome {
+        case .created(let shareSummary):
+            return .result(dialog: "Added \(expenseDescription) — \(shareSummary)")
+        case .queued:
+            return .result(dialog: "You're offline — queued \(expenseDescription) to add to Splitwise once you're back online")
+        }
     }
 }

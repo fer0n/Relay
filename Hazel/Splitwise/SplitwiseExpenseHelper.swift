@@ -11,6 +11,13 @@
 
 import Foundation
 
+enum SplitwiseExpenseOutcome {
+    case created(shareSummary: String)
+    /// Offline — the expense was handed to PendingOperationQueue and will
+    /// be created automatically once connectivity returns.
+    case queued
+}
+
 nonisolated enum SplitwiseExpenseHelper {
     /// Shared so callers (AddYNABTransactionIntent, AddWalletTransactionToYNABIntent)
     /// can validate the share *before* creating a YNAB transaction, rather
@@ -31,7 +38,7 @@ nonisolated enum SplitwiseExpenseHelper {
         description: String,
         friend: SplitwiseFriendEntity,
         ownShare: Double?
-    ) async throws -> String {
+    ) async throws -> SplitwiseExpenseOutcome {
         guard amount.isFinite, amount > 0 else {
             throw SplitwiseIntentError.validation("Amount must be a positive number.")
         }
@@ -43,30 +50,53 @@ nonisolated enum SplitwiseExpenseHelper {
             throw SplitwiseIntentError.notAuthenticated
         }
 
+        // Needs the signed-in user's id to build the expense request below.
+        // Falls back to the last cached value when offline, so a queued
+        // expense can still be assembled instead of failing before it ever
+        // reaches PendingSync's queue-for-later path.
+        let user: SplitwiseUser
         do {
-            let user = try await SplitwiseService.fetchCurrentUser(token: token)
+            user = try await PendingSync.retryOnConnectivityFailure {
+                try await SplitwiseService.fetchCurrentUser(token: token)
+            }
+            try? SplitwiseCurrentUserStore.save(user)
+        } catch {
+            if error.isConnectivityFailure, let cached = SplitwiseCurrentUserStore.load() {
+                user = cached
+            } else {
+                throw SplitwiseIntentError.from(error)
+            }
+        }
 
-            let costCents = Int((amount * 100).rounded())
-            let ownShareCents = ownShare.map { Int(($0 * 100).rounded()) } ?? costCents / 2
-            let friendShareCents = costCents - ownShareCents
+        let costCents = Int((amount * 100).rounded())
+        let ownShareCents = ownShare.map { Int(($0 * 100).rounded()) } ?? costCents / 2
+        let friendShareCents = costCents - ownShareCents
 
-            let expense = SplitwiseExpenseRequest(
-                costCents: costCents,
-                description: description,
-                currencyCode: "EUR",
-                payerUserId: user.id,
-                payerOwedCents: ownShareCents,
-                friendUserId: friend.id,
-                friendOwedCents: friendShareCents
-            )
-            try await SplitwiseService.createExpense(expense, token: token)
+        let expense = SplitwiseExpenseRequest(
+            costCents: costCents,
+            description: description,
+            currencyCode: "EUR",
+            payerUserId: user.id,
+            payerOwedCents: ownShareCents,
+            friendUserId: friend.id,
+            friendOwedCents: friendShareCents
+        )
+
+        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let outcome = try await PendingSync.createSplitwiseExpense(
+            expense,
+            token: token,
+            summary: "\(formattedAmount) expense for \(description), split with \(friend.firstName)"
+        )
+
+        switch outcome {
+        case .created:
             SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
-
             let ownAmount = (Double(ownShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
             let friendAmount = (Double(friendShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
-            return "you: \(ownAmount), \(friend.firstName): \(friendAmount)"
-        } catch {
-            throw SplitwiseIntentError.from(error)
+            return .created(shareSummary: "you: \(ownAmount), \(friend.firstName): \(friendAmount)")
+        case .queued:
+            return .queued
         }
     }
 }

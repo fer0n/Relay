@@ -114,6 +114,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) card=\(card, privacy: .public)")
 
+        await PendingOperationQueue.shared.flush()
+
         guard let token = await YNABAuthService.validAccessToken() else {
             logger.error("no YNAB access token in Keychain — not authenticated")
             throw YNABIntentError.notAuthenticated
@@ -320,44 +322,52 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
         }
 
-        do {
-            // Expenses are outflows in YNAB: stored as negative milliunits.
-            let milliunits = -Int((amount * 1000).rounded())
-            let transaction = YNABTransactionRequest(
-                accountId: accountId,
-                date: YNABService.todayDateString(),
-                amount: milliunits,
-                payeeName: payeeName,
-                categoryId: categoryId,
-                memo: nil,
-                cleared: "uncleared",
-                approved: true
-            )
-            logger.log("creating YNAB transaction: accountId=\(accountId, privacy: .public) amountMilliunits=\(milliunits, privacy: .public) payee=\(payeeName, privacy: .public) categoryId=\(categoryId ?? "nil", privacy: .public)")
-            try await YNABService.createTransaction(transaction, token: token)
+        // Expenses are outflows in YNAB: stored as negative milliunits.
+        let milliunits = -Int((amount * 1000).rounded())
+        let transaction = YNABTransactionRequest(
+            accountId: accountId,
+            date: YNABService.todayDateString(),
+            amount: milliunits,
+            payeeName: payeeName,
+            categoryId: categoryId,
+            memo: nil,
+            cleared: "uncleared",
+            approved: true
+        )
+        logger.log("creating YNAB transaction: accountId=\(accountId, privacy: .public) amountMilliunits=\(milliunits, privacy: .public) payee=\(payeeName, privacy: .public) categoryId=\(categoryId ?? "nil", privacy: .public)")
+        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let outcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payeeName)")
+
+        var dialog: String
+        switch outcome {
+        case .created:
             logger.log("YNAB transaction created successfully")
             if let categoryId {
                 YNABCategoryUsageStore.recordUsage(categoryId: categoryId)
             }
-        } catch {
-            logger.error("YNAB createTransaction failed: \(String(describing: error), privacy: .public)")
-            throw YNABIntentError.from(error)
+            dialog = "Added \(formattedAmount) at \(payeeName)"
+        case .queued:
+            logger.log("YNAB transaction queued — offline")
+            dialog = "You're offline — queued \(formattedAmount) at \(payeeName) to add to YNAB once you're back online"
         }
-
-        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
-        var dialog = "Added \(formattedAmount) at \(payeeName)"
 
         if splitwiseAction != .never, let friend = resolvedFriend {
             let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
             do {
-                let shareSummary = try await SplitwiseExpenseHelper.addExpense(
+                let splitOutcome = try await SplitwiseExpenseHelper.addExpense(
                     amount: amount,
                     description: payeeName,
                     friend: friend,
                     ownShare: ownShare
                 )
-                logger.log("Splitwise expense created: \(shareSummary, privacy: .public)")
-                dialog += ", split with Splitwise — \(shareSummary)"
+                switch splitOutcome {
+                case .created(let shareSummary):
+                    logger.log("Splitwise expense created: \(shareSummary, privacy: .public)")
+                    dialog += ", split with Splitwise — \(shareSummary)"
+                case .queued:
+                    logger.log("Splitwise expense queued — offline")
+                    dialog += ". Splitwise is offline — the split will sync automatically"
+                }
             } catch {
                 let message = (error as? SplitwiseIntentError)?.localizedStringResource
                     ?? "Couldn't add the Splitwise expense."
