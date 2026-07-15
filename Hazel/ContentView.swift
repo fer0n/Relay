@@ -96,8 +96,8 @@ struct ContentView: View {
                     Text("Settings")
                 }
                 .buttonStyle(.glass)
-                .padding(.horizontal)
-                .padding(.vertical)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 15)
             }
         }
         // Picks up a token invalidated by an App Intent (e.g. an expired
