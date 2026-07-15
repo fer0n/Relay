@@ -28,6 +28,7 @@ struct YNABTemplateEditView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var name: String
     @State private var categories: [YNABCategory] = []
     @State private var selectedCategoryId: String?
@@ -77,10 +78,12 @@ struct YNABTemplateEditView: View {
                 }
             }
 
-            Section("Splitwise") {
-                Picker("Split Option", selection: $splitwiseOption) {
-                    ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
-                        Text(option.label).tag(option)
+            if splitwiseAuth.isAuthenticated {
+                Section("Splitwise") {
+                    Picker("Split Option", selection: $splitwiseOption) {
+                        ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
+                            Text(option.label).tag(option)
+                        }
                     }
                 }
             }

@@ -24,6 +24,7 @@ private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "Con
 struct ContinueYNABWalletTransactionView: View {
     let draft: TransactionDraft
 
+    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var notAuthenticated = false
     @State private var errorMessage: String?
     @State private var resultMessage: String?
@@ -84,8 +85,12 @@ struct ContinueYNABWalletTransactionView: View {
         }
     }
 
+    // A template can carry a non-.never split setting from before Splitwise
+    // was disconnected — treat as "never split" for this run rather than
+    // showing a Splitwise picker/friend field with nothing behind it.
     private var effectiveSplitwiseOption: SplitwiseTemplateOption {
-        templateResolved ? resolvedTemplateSplitwiseOption : newTemplateSplitwiseOption
+        guard splitwiseAuth.isAuthenticated else { return .never }
+        return templateResolved ? resolvedTemplateSplitwiseOption : newTemplateSplitwiseOption
     }
 
     private var resolvedSplitwiseAction: SplitwiseSplitOption {
@@ -176,51 +181,53 @@ struct ContinueYNABWalletTransactionView: View {
                 }
             }
 
-            Section("Splitwise") {
-                if templateResolved {
-                    LabeledContent("Split Setting", value: resolvedTemplateSplitwiseOption.label)
-                } else {
-                    Picker(selection: $newTemplateSplitwiseOption) {
-                        ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
-                            Text(option.label).tag(option)
-                        }
-                    } label: {
-                        Text("Split With Splitwise").foregroundStyle(.tint)
-                    }
-                    .tint(.accentColor)
-                }
-
-                if effectiveSplitwiseOption == .ask {
-                    Picker(selection: $splitwiseRuntimeChoice) {
-                        Text("Choose").tag(SplitwiseSplitOption?.none)
-                        ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
-                            Text(option.label).tag(SplitwiseSplitOption?.some(option))
-                        }
-                    } label: {
-                        Text("Split This Transaction?").foregroundStyle(.tint)
-                    }
-                    .tint(.accentColor)
-                }
-
-                if resolvedSplitwiseAction != .never {
-                    if isLoadingFriends {
-                        ProgressView()
+            if splitwiseAuth.isAuthenticated {
+                Section("Splitwise") {
+                    if templateResolved {
+                        LabeledContent("Split Setting", value: resolvedTemplateSplitwiseOption.label)
                     } else {
-                        Picker(selection: $selectedFriendId) {
-                            Text("None").tag(Int?.none)
-                            ForEach(friends, id: \.id) { friend in
-                                Text(friend.fullName).tag(Optional(friend.id))
+                        Picker(selection: $newTemplateSplitwiseOption) {
+                            ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
+                                Text(option.label).tag(option)
                             }
                         } label: {
-                            Text("Split With").foregroundStyle(.tint)
+                            Text("Split With Splitwise").foregroundStyle(.tint)
                         }
                         .tint(.accentColor)
                     }
-                }
 
-                if resolvedSplitwiseAction == .manual {
-                    TextField("Your Share", text: $ownShareText)
-                        .keyboardType(.decimalPad)
+                    if effectiveSplitwiseOption == .ask {
+                        Picker(selection: $splitwiseRuntimeChoice) {
+                            Text("Choose").tag(SplitwiseSplitOption?.none)
+                            ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
+                                Text(option.label).tag(SplitwiseSplitOption?.some(option))
+                            }
+                        } label: {
+                            Text("Split This Transaction?").foregroundStyle(.tint)
+                        }
+                        .tint(.accentColor)
+                    }
+
+                    if resolvedSplitwiseAction != .never {
+                        if isLoadingFriends {
+                            ProgressView()
+                        } else {
+                            Picker(selection: $selectedFriendId) {
+                                Text("None").tag(Int?.none)
+                                ForEach(friends, id: \.id) { friend in
+                                    Text(friend.fullName).tag(Optional(friend.id))
+                                }
+                            } label: {
+                                Text("Split With").foregroundStyle(.tint)
+                            }
+                            .tint(.accentColor)
+                        }
+                    }
+
+                    if resolvedSplitwiseAction == .manual {
+                        TextField("Your Share", text: $ownShareText)
+                            .keyboardType(.decimalPad)
+                    }
                 }
             }
 

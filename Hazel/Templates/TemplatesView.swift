@@ -16,6 +16,8 @@ import os
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TemplatesView")
 
 struct TemplatesView: View {
+    @State private var ynabAuth = YNABAuthService()
+    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var ynabConfig = WalletTransactionConfigStore.load()
     @State private var splitwiseConfig = SplitwiseWalletTransactionConfigStore.load()
     @State private var pendingDeletion: PendingDeletion?
@@ -40,47 +42,51 @@ struct TemplatesView: View {
 
     var body: some View {
         List {
-            Section("YNAB") {
-                ForEach(ynabConfig.templates.keys.sorted(), id: \.self) { name in
-                    NavigationLink {
-                        YNABTemplateEditView(templateName: name, onSave: reloadYNAB, onDelete: reloadYNAB)
-                    } label: {
-                        YNABTemplateRow(name: name, template: ynabConfig.templates[name])
-                    }
-                    .swipeActions {
-                        Button("Delete", role: .destructive) {
-                            pendingDeletion = .ynab(name)
+            if ynabAuth.isAuthenticated {
+                Section("YNAB") {
+                    ForEach(ynabConfig.templates.keys.sorted(), id: \.self) { name in
+                        NavigationLink {
+                            YNABTemplateEditView(templateName: name, onSave: reloadYNAB, onDelete: reloadYNAB)
+                        } label: {
+                            YNABTemplateRow(name: name, template: ynabConfig.templates[name])
+                        }
+                        .swipeActions {
+                            Button("Delete", role: .destructive) {
+                                pendingDeletion = .ynab(name)
+                            }
                         }
                     }
+                    NavigationLink {
+                        YNABTemplateEditView(templateName: nil, onSave: reloadYNAB, onDelete: reloadYNAB)
+                    } label: {
+                        RowLabel(title: "Add Template")
+                    }
                 }
-                NavigationLink {
-                    YNABTemplateEditView(templateName: nil, onSave: reloadYNAB, onDelete: reloadYNAB)
-                } label: {
-                    RowLabel(title: "Add Template")
-                }
+                .cardRowBackground()
             }
-            .cardRowBackground()
 
-            Section("Splitwise") {
-                ForEach(splitwiseConfig.templates.keys.sorted(), id: \.self) { name in
-                    NavigationLink {
-                        SplitwiseTemplateEditView(templateName: name, onSave: reloadSplitwise, onDelete: reloadSplitwise)
-                    } label: {
-                        SplitwiseTemplateRow(name: name, template: splitwiseConfig.templates[name])
-                    }
-                    .swipeActions {
-                        Button("Delete", role: .destructive) {
-                            pendingDeletion = .splitwise(name)
+            if splitwiseAuth.isAuthenticated {
+                Section("Splitwise") {
+                    ForEach(splitwiseConfig.templates.keys.sorted(), id: \.self) { name in
+                        NavigationLink {
+                            SplitwiseTemplateEditView(templateName: name, onSave: reloadSplitwise, onDelete: reloadSplitwise)
+                        } label: {
+                            SplitwiseTemplateRow(name: name, template: splitwiseConfig.templates[name])
+                        }
+                        .swipeActions {
+                            Button("Delete", role: .destructive) {
+                                pendingDeletion = .splitwise(name)
+                            }
                         }
                     }
+                    NavigationLink {
+                        SplitwiseTemplateEditView(templateName: nil, onSave: reloadSplitwise, onDelete: reloadSplitwise)
+                    } label: {
+                        RowLabel(title: "Add Template")
+                    }
                 }
-                NavigationLink {
-                    SplitwiseTemplateEditView(templateName: nil, onSave: reloadSplitwise, onDelete: reloadSplitwise)
-                } label: {
-                    RowLabel(title: "Add Template")
-                }
+                .cardRowBackground()
             }
-            .cardRowBackground()
         }
         .themedList(background: .backgroundColor)
         .navigationTitle("Templates")
