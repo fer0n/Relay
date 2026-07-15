@@ -78,6 +78,14 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     @Parameter(title: "Split This Transaction?")
     var splitwiseRuntimeChoice: SplitwiseSplitOption?
 
+    /// See TransactionDraftGuard: if this run gets interrupted (a follow-up
+    /// question dismissed/timed out, the process killed by a screen lock)
+    /// before the expense is actually created, a local notification nudges
+    /// the user to go finish it — since there's no way to resume a
+    /// suspended perform() call.
+    @Parameter(title: "Ensure Completion", description: "If this run is interrupted before finishing, send a notification to continue it later.", default: true)
+    var ensureCompletion: Bool
+
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) Splitwise expense for \(\.$merchant)") {
             \.$templateChoice
@@ -86,11 +94,19 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             \.$autoMatchPattern
             \.$splitwiseOwnShare
             \.$splitwiseRuntimeChoice
+            \.$ensureCompletion
         }
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public)")
+
+        let draftId = ensureCompletion
+            ? TransactionDraftGuard.begin(
+                summary: "\(amount.formatted(.number.precision(.fractionLength(2)))) at \(merchant)",
+                service: .splitwise
+              )
+            : nil
 
         await PendingOperationQueue.shared.flush()
 
@@ -254,6 +270,9 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
 
         guard splitwiseAction != .never else {
             logger.log("splitwiseAction=never — skipping Splitwise")
+            if let draftId {
+                TransactionDraftGuard.complete(draftId)
+            }
             return .result(dialog: "Skipping Splitwise for \(expenseDescription) — this merchant is set to not split.")
         }
 
@@ -275,6 +294,9 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 friend: SplitwiseFriendEntity(id: friendId, firstName: friendFirstName, fullName: friendFullName),
                 ownShare: (splitwiseAction == .manual) ? resolvedOwnShare : nil
             )
+            if let draftId {
+                TransactionDraftGuard.complete(draftId)
+            }
             switch outcome {
             case .created(let shareSummary):
                 logger.log("Splitwise expense created: \(shareSummary, privacy: .public)")

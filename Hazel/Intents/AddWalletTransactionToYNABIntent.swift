@@ -84,6 +84,14 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Split This Transaction?")
     var splitwiseRuntimeChoice: SplitwiseSplitOption?
 
+    /// See TransactionDraftGuard: if this run gets interrupted (a follow-up
+    /// question dismissed/timed out, the process killed by a screen lock)
+    /// before the transaction is actually created, a local notification
+    /// nudges the user to go finish it — since there's no way to resume a
+    /// suspended perform() call.
+    @Parameter(title: "Ensure Completion", description: "If this run is interrupted before finishing, send a notification to continue it later.", default: true)
+    var ensureCompletion: Bool
+
     // Parameters requested at runtime via `$param.requestValue(...)` MUST
     // appear here: on iOS 18+ requestValue throws a connection error for a
     // parameter that isn't in parameterSummary (FB14828592, confirmed still
@@ -108,11 +116,19 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             \.$splitwiseFriendFallback
             \.$splitwiseOwnShare
             \.$splitwiseRuntimeChoice
+            \.$ensureCompletion
         }
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) card=\(card, privacy: .public)")
+
+        let draftId = ensureCompletion
+            ? TransactionDraftGuard.begin(
+                summary: "\(amount.formatted(.number.precision(.fractionLength(2)))) at \(merchant)",
+                service: .ynab
+              )
+            : nil
 
         await PendingOperationQueue.shared.flush()
 
@@ -390,6 +406,10 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
 
         if let fragment = await splitDialogFragment {
             dialog += fragment
+        }
+
+        if let draftId {
+            TransactionDraftGuard.complete(draftId)
         }
 
         logger.log("perform() done")
