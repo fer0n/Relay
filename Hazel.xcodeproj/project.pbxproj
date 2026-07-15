@@ -10,22 +10,9 @@
 		8809B8E430054C5E00958913 /* Hazel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hazel.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8809B9153005700400958913 /* Exceptions for "Hazel" folder in "Hazel" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Secrets.swift.example,
-			);
-			target = 8809B8E330054C5E00958913 /* Hazel */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8809B8E630054C5E00958913 /* Hazel */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				8809B9153005700400958913 /* Exceptions for "Hazel" folder in "Hazel" target */,
-			);
 			path = Hazel;
 			sourceTree = "<group>";
 		};
