@@ -34,6 +34,7 @@ struct YNABTemplateEditView: View {
     @State private var splitwiseOption: SplitwiseTemplateOption
     @State private var autoMatchRules: [WalletTransactionConfig.AutoMatchRule]
     @State private var linkedMerchants: [LinkedMerchant]
+    @State private var otherTemplateNames: [String]
     @State private var isLoadingCategories = false
     @State private var errorMessage: String?
     @State private var showDeleteConfirmation = false
@@ -52,6 +53,9 @@ struct YNABTemplateEditView: View {
             .filter { $0.value.templateName == templateName }
             .map { LinkedMerchant(merchant: $0.key, payeeName: $0.value.payeeName) }
             .sorted { $0.merchant < $1.merchant })
+        _otherTemplateNames = State(initialValue: config.templates.keys
+            .filter { $0 != templateName }
+            .sorted())
     }
 
     var body: some View {
@@ -97,18 +101,31 @@ struct YNABTemplateEditView: View {
             if templateName != nil, !linkedMerchants.isEmpty {
                 Section {
                     ForEach(linkedMerchants) { linked in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(linked.merchant)
-                            Text(linked.payeeName)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(linked.merchant)
+                                Text(linked.payeeName)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if !otherTemplateNames.isEmpty {
+                                Menu {
+                                    ForEach(otherTemplateNames, id: \.self) { destination in
+                                        Button(destination) { move(linked, to: destination) }
+                                    }
+                                } label: {
+                                    Image(systemName: "arrow.turn.up.right")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                     .onDelete { linkedMerchants.remove(atOffsets: $0) }
                 } header: {
                     Text("Linked Merchants")
                 } footer: {
-                    Text("Wallet transactions from these exact merchant names go straight to this template. Swipe to unlink one.")
+                    Text("Wallet transactions from these exact merchant names go straight to this template. Swipe to unlink one, or use the arrow to move one to a different template.")
                 }
             }
 
@@ -216,6 +233,23 @@ struct YNABTemplateEditView: View {
         } catch {
             logger.error("failed to delete template: \(String(describing: error), privacy: .public)")
             errorMessage = "Failed to delete: \(error.localizedDescription)"
+        }
+    }
+
+    /// Repoints a merchant at a different, existing template, independent of
+    /// this screen's own pending edits/Save — the merchant no longer belongs
+    /// to the template being edited here, so there's nothing for this
+    /// screen's save() to reconcile once it's removed from `linkedMerchants`.
+    private func move(_ linked: LinkedMerchant, to destinationTemplate: String) {
+        var config = WalletTransactionConfigStore.load()
+        config.merchants[linked.merchant]?.templateName = destinationTemplate
+        do {
+            try WalletTransactionConfigStore.save(config)
+            linkedMerchants.removeAll { $0.id == linked.id }
+            logger.log("moved merchant \(linked.merchant, privacy: .public) to template \(destinationTemplate, privacy: .public)")
+        } catch {
+            logger.error("failed to move merchant: \(String(describing: error), privacy: .public)")
+            errorMessage = "Failed to move \(linked.merchant): \(error.localizedDescription)"
         }
     }
 }
