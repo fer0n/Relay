@@ -11,10 +11,32 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TemplatesView")
 
 struct TemplatesView: View {
     @State private var ynabConfig = WalletTransactionConfigStore.load()
     @State private var splitwiseConfig = SplitwiseWalletTransactionConfigStore.load()
+    @State private var pendingDeletion: PendingDeletion?
+
+    private enum PendingDeletion: Identifiable {
+        case ynab(String)
+        case splitwise(String)
+
+        var id: String {
+            switch self {
+            case .ynab(let name): "ynab-\(name)"
+            case .splitwise(let name): "splitwise-\(name)"
+            }
+        }
+
+        var name: String {
+            switch self {
+            case .ynab(let name), .splitwise(let name): name
+            }
+        }
+    }
 
     var body: some View {
         List {
@@ -24,6 +46,11 @@ struct TemplatesView: View {
                         YNABTemplateEditView(templateName: name, onSave: reloadYNAB, onDelete: reloadYNAB)
                     } label: {
                         YNABTemplateRow(name: name, template: ynabConfig.templates[name])
+                    }
+                    .swipeActions {
+                        Button("Delete", role: .destructive) {
+                            pendingDeletion = .ynab(name)
+                        }
                     }
                 }
                 NavigationLink {
@@ -41,6 +68,11 @@ struct TemplatesView: View {
                     } label: {
                         SplitwiseTemplateRow(name: name, template: splitwiseConfig.templates[name])
                     }
+                    .swipeActions {
+                        Button("Delete", role: .destructive) {
+                            pendingDeletion = .splitwise(name)
+                        }
+                    }
                 }
                 NavigationLink {
                     SplitwiseTemplateEditView(templateName: nil, onSave: reloadSplitwise, onDelete: reloadSplitwise)
@@ -56,6 +88,20 @@ struct TemplatesView: View {
             reloadYNAB()
             reloadSplitwise()
         }
+        .confirmationDialog(
+            "Delete \"\(pendingDeletion?.name ?? "")\"?",
+            isPresented: Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                switch pendingDeletion {
+                case .ynab(let name): deleteYNABTemplate(name)
+                case .splitwise(let name): deleteSplitwiseTemplate(name)
+                case nil: break
+                }
+                pendingDeletion = nil
+            }
+        }
     }
 
     private func reloadYNAB() {
@@ -64,6 +110,32 @@ struct TemplatesView: View {
 
     private func reloadSplitwise() {
         splitwiseConfig = SplitwiseWalletTransactionConfigStore.load()
+    }
+
+    private func deleteYNABTemplate(_ name: String) {
+        var config = WalletTransactionConfigStore.load()
+        config.templates.removeValue(forKey: name)
+        config.merchants = config.merchants.filter { $0.value.templateName != name }
+        do {
+            try WalletTransactionConfigStore.save(config)
+            logger.log("deleted template \(name, privacy: .public)")
+            reloadYNAB()
+        } catch {
+            logger.error("failed to delete template: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    private func deleteSplitwiseTemplate(_ name: String) {
+        var config = SplitwiseWalletTransactionConfigStore.load()
+        config.templates.removeValue(forKey: name)
+        config.merchants = config.merchants.filter { $0.value.templateName != name }
+        do {
+            try SplitwiseWalletTransactionConfigStore.save(config)
+            logger.log("deleted template \(name, privacy: .public)")
+            reloadSplitwise()
+        } catch {
+            logger.error("failed to delete template: \(String(describing: error), privacy: .public)")
+        }
     }
 }
 
