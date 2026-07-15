@@ -48,7 +48,7 @@ nonisolated struct SplitwiseFriendQuery: EntityQuery {
             return []
         }
         do {
-            let friends = try await SplitwiseService.fetchFriends(token: token)
+            let friends = try await SplitwiseFriendCacheStore.fetch(token: token)
             logger.log("SplitwiseFriendQuery: fetched \(friends.count, privacy: .public) friends")
             return SplitwiseFriendUsageStore.sorted(friends).map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
         } catch {

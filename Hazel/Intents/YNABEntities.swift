@@ -44,7 +44,7 @@ nonisolated struct YNABAccountQuery: EntityQuery {
             return []
         }
         do {
-            let accounts = try await YNABService.fetchAccounts(token: token)
+            let accounts = try await YNABAccountCacheStore.fetch(token: token)
             logger.log("YNABAccountQuery: fetched \(accounts.count, privacy: .public) accounts")
             return accounts.map { YNABAccountEntity(id: $0.id, name: $0.name) }
         } catch {
@@ -85,7 +85,7 @@ nonisolated struct YNABCategoryQuery: EntityQuery {
             return []
         }
         do {
-            let categories = try await YNABService.fetchCategories(token: token)
+            let categories = try await YNABCategoryCacheStore.fetch(token: token)
             logger.log("YNABCategoryQuery: fetched \(categories.count, privacy: .public) categories")
             return YNABCategoryUsageStore.sorted(categories).map { YNABCategoryEntity(id: $0.id, name: $0.name) }
         } catch {

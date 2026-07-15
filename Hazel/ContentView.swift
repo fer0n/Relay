@@ -172,8 +172,11 @@ private struct DefaultSplitwiseFriendRow: View {
         .padding()
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         .task {
+            if let cached = SplitwiseFriendCacheStore.load() {
+                friends = SplitwiseFriendUsageStore.sorted(cached)
+            }
             guard let token = SplitwiseAuthService.currentAccessToken else { return }
-            let fetched = (try? await SplitwiseService.fetchFriends(token: token)) ?? []
+            let fetched = (try? await SplitwiseFriendCacheStore.fetch(token: token)) ?? friends
             friends = SplitwiseFriendUsageStore.sorted(fetched)
         }
     }

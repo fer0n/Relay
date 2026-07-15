@@ -92,7 +92,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public)")
 
-        guard let token = SplitwiseAuthService.currentAccessToken else {
+        guard SplitwiseAuthService.currentAccessToken != nil else {
             logger.error("no Splitwise access token in Keychain — not authenticated")
             throw SplitwiseIntentError.notAuthenticated
         }
@@ -176,8 +176,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     friend = friendOverride
                 } else {
                     logger.log("template=\(templateName, privacy: .public) — requesting Splitwise friend")
-                    let friends = try await SplitwiseService.fetchFriends(token: token)
-                        .map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
+                    let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
                     friend = try await $friendOverride.requestDisambiguation(
                         among: friends,
                         dialog: "Split \(templateName) expenses with which friend?"

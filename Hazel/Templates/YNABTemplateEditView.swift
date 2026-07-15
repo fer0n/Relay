@@ -163,14 +163,19 @@ struct YNABTemplateEditView: View {
             logger.error("no YNAB access token — not authenticated")
             return
         }
-        isLoadingCategories = true
+        if let cached = YNABCategoryCacheStore.load() {
+            categories = YNABCategoryUsageStore.sorted(cached)
+        }
+        isLoadingCategories = categories.isEmpty
         defer { isLoadingCategories = false }
         do {
-            let fetched = try await YNABService.fetchCategories(token: token)
+            let fetched = try await YNABCategoryCacheStore.fetch(token: token)
             categories = YNABCategoryUsageStore.sorted(fetched)
         } catch {
             logger.error("failed to load categories: \(String(describing: error), privacy: .public)")
-            errorMessage = "Failed to load categories: \(error.localizedDescription)"
+            if categories.isEmpty {
+                errorMessage = "Failed to load categories: \(error.localizedDescription)"
+            }
         }
     }
 

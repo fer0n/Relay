@@ -169,14 +169,19 @@ struct SplitwiseTemplateEditView: View {
             logger.error("no Splitwise access token — not authenticated")
             return
         }
-        isLoadingFriends = true
+        if let cached = SplitwiseFriendCacheStore.load() {
+            friends = SplitwiseFriendUsageStore.sorted(cached)
+        }
+        isLoadingFriends = friends.isEmpty
         defer { isLoadingFriends = false }
         do {
-            let fetched = try await SplitwiseService.fetchFriends(token: token)
+            let fetched = try await SplitwiseFriendCacheStore.fetch(token: token)
             friends = SplitwiseFriendUsageStore.sorted(fetched)
         } catch {
             logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
-            errorMessage = "Failed to load friends: \(error.localizedDescription)"
+            if friends.isEmpty {
+                errorMessage = "Failed to load friends: \(error.localizedDescription)"
+            }
         }
     }
 
