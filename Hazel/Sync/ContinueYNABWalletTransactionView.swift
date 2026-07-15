@@ -243,7 +243,9 @@ struct ContinueYNABWalletTransactionView: View {
     }
 
     private func loadCategoriesIfNeeded(token: String) async {
-        guard !templateResolved else { return }
+        // Still needed when templateResolved — the "Resolved From Template"
+        // label maps selectedCategoryId to a name via this list, it just
+        // skips showing the picker built from it.
         if let cached = YNABCategoryCacheStore.load() {
             categories = YNABCategoryUsageStore.sorted(cached)
         }
@@ -257,7 +259,9 @@ struct ContinueYNABWalletTransactionView: View {
     }
 
     private func loadAccountsIfNeeded(token: String) async {
-        guard !accountResolved else { return }
+        // Still needed when accountResolved — the read-only account label
+        // maps selectedAccountId to a name via this list, it just skips
+        // showing the picker built from it.
         if let cached = YNABAccountCacheStore.load() {
             accounts = cached
         }
