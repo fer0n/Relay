@@ -10,6 +10,8 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
     case rateLimited
     case requestFailed
     case validation(String)
+    case unsupportedFileType
+    case invalidFile(reason: String)
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
@@ -21,6 +23,10 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
             return "Couldn't add the expense. Please try again."
         case .validation(let message):
             return "\(message)"
+        case .unsupportedFileType:
+            return "Hazel can only import .csv or .qif files."
+        case .invalidFile(let reason):
+            return "Couldn't read that file: \(reason)"
         }
     }
 
@@ -37,6 +43,10 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
             return .rateLimited
         case SplitwiseAPIError.validation(let message):
             return .validation(message)
+        case StatementImportError.unsupportedFileType:
+            return .unsupportedFileType
+        case StatementImportError.invalidFile(let reason):
+            return .invalidFile(reason: reason)
         default:
             return .requestFailed
         }

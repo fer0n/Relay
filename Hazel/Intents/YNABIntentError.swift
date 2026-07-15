@@ -43,6 +43,10 @@ nonisolated enum YNABIntentError: Error, CustomLocalizedStringResourceConvertibl
             return .rateLimited
         case YNABAPIError.server(let status) where status == 404:
             return .noDefaultBudget
+        case StatementImportError.unsupportedFileType:
+            return .unsupportedFileType
+        case StatementImportError.invalidFile(let reason):
+            return .invalidFile(reason: reason)
         default:
             return .requestFailed
         }
