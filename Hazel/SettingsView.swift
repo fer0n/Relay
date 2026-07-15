@@ -59,6 +59,9 @@ struct SettingsView: View {
                     }
                 } footer: {
                     Text("Used to remind you if a wallet transaction is left unfinished, so it doesn't silently get lost.")
+                        .font(.footnote)
+                        .fontWeight(.regular)
+                        .foregroundStyle(.secondary)
                 }
                 .listRowBackground(Color.sheetInsetColor)
 
@@ -83,6 +86,9 @@ struct SettingsView: View {
                     // must be visible somewhere in the app, not just the privacy
                     // policy.
                     Text("Hazel is not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
+                        .font(.footnote)
+                        .fontWeight(.regular)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                 }
