@@ -49,13 +49,20 @@ struct AccountConnectionRow: View {
                 connect()
             }
         }
-        if highlightWhenDisconnected && !isConnected {
-            Button(isConnected ? "Disconnect" : "Connect", action: action)
-                .buttonStyle(.borderedProminent)
-        } else {
-            Button(isConnected ? "Disconnect" : "Connect", action: action)
-                .buttonStyle(.bordered)
-                .tint(isConnected ? .gray : nil)
+        Group {
+            if highlightWhenDisconnected && !isConnected {
+                Button(isConnected ? "Disconnect" : "Connect", action: action)
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Button(isConnected ? "Disconnect" : "Connect", action: action)
+                    .buttonStyle(.bordered)
+                    .tint(isConnected ? .gray : nil)
+            }
         }
+        // Buttons sit inside a themed List, which applies `.foregroundStyle`
+        // to the whole hierarchy — that overrides the accent-tinted label
+        // color these button styles would otherwise pick automatically, so
+        // it must be forced back to a fixed light color here.
+        .foregroundStyle(.white)
     }
 }

@@ -271,8 +271,7 @@ struct ContinueYNABWalletTransactionView: View {
                         .themedText()
                 }
             }
-            .buttonStyle(.glassProminent)
-            .foregroundStyle(Color.accentColor)
+            .glassProminentActionButton()
             .disabled(!canSubmit || isSubmitting)
         }
     }

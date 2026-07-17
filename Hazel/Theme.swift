@@ -146,7 +146,7 @@ struct InlineAlertCard: View {
                                 .padding(7)
                                 .frame(maxWidth: .infinity)
                         }
-                        .tint(.white)
+                        .tint(Color.foregroundColor)
                         .buttonStyle(.bordered)
                     }
                 }
@@ -171,6 +171,21 @@ extension View {
             .font(.system(size: 18))
             .fontWeight(.medium)
             .foregroundStyle(Color.foregroundColor)
+    }
+
+    /// Standard style for a prominent Liquid Glass action button pinned to
+    /// the bottom safe area (Save / Add Expense / Add Transaction). Forces
+    /// dark color scheme because `.glassProminent` derives its label
+    /// contrast from the color scheme rather than from `.foregroundStyle` —
+    /// this also flips any themed color assets used by the label (e.g.
+    /// `.themedText()`'s `Color.foregroundColor`) to their light variant, so
+    /// the label reads correctly against the accent-tinted glass regardless
+    /// of the app's actual light/dark mode.
+    func glassProminentActionButton() -> some View {
+        self
+            .buttonStyle(.glassProminent)
+            .tint(Color.accentColor)
+            .colorScheme(.dark)
     }
 
     /// Text styling shared by themed List section footers.

@@ -197,8 +197,7 @@ struct ContinueSplitwiseWalletTransactionView: View {
                         .themedText()
                 }
             }
-            .buttonStyle(.glassProminent)
-            .foregroundStyle(Color.accentColor)
+            .glassProminentActionButton()
             .disabled(!canSubmit || isSubmitting)
         }
     }

@@ -119,7 +119,7 @@ struct TemplateEditView: View {
                         isLoading: isLoadingFriends,
                         friends: friends,
                         selectedFriendId: $selectedFriendId,
-                        noneLabel: defaultFriend.map { "Default (\($0.fullName))" } ?? "None"
+                        noneLabel: defaultFriend.map { "Default (\($0.firstName))" } ?? "None"
                     )
                 } header: {
                     Text("Splitwise")
@@ -171,8 +171,7 @@ struct TemplateEditView: View {
                     .padding(.vertical, 7)
                     .themedText()
             }
-            .buttonStyle(.glassProminent)
-            .foregroundStyle(Color.accentColor)
+            .glassProminentActionButton()
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .task {
