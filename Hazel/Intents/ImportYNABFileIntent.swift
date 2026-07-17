@@ -103,29 +103,9 @@ nonisolated struct ImportYNABFileIntent: AppIntent {
 
         do {
             let bulkResult = try await YNABService.createTransactions(built.transactions, token: token)
-            return .result(dialog: IntentDialog(stringLiteral: summary(for: bulkResult)))
+            return .result(dialog: IntentDialog(stringLiteral: bulkResult.summaryText))
         } catch {
             throw YNABIntentError.from(error)
         }
-    }
-
-    /// Mirrors the Python original's `handle_response`: the single
-    /// transaction's amount/payee if exactly one was created, otherwise a
-    /// count, plus a duplicate count if YNAB's own `import_id` dedup found any.
-    private func summary(for result: YNABBulkImportResult) -> String {
-        var parts: [String] = []
-        if result.transactions.count == 1, let transaction = result.transactions.first {
-            let amount = Double(transaction.amount) / 1000
-            let formattedAmount = amount.asMoneyString
-            parts.append("\(formattedAmount), \(transaction.payeeName ?? "")")
-        } else if result.transactions.count > 1 {
-            parts.append("\(result.transactions.count) transactions created")
-        } else {
-            parts.append("No new transactions created")
-        }
-        if !result.duplicateImportIds.isEmpty {
-            parts.append("\(result.duplicateImportIds.count) duplicates found")
-        }
-        return parts.joined(separator: ". ")
     }
 }

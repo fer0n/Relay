@@ -17,9 +17,7 @@ struct DefaultSplitwiseFriendRow: View {
             Text("Splitwise Default")
             
         Menu {
-            splitwiseFriendRows(friends) { friend in
-                Button(friend.fullName) { select(friend) }
-            }
+            splitwiseFriendMenuButtons(friends) { select($0) }
             if defaultFriend != nil {
                 Divider()
                 Button("Clear", role: .destructive, action: clear)

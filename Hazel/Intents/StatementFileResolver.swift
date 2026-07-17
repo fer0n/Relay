@@ -2,12 +2,13 @@
 //  StatementFileResolver.swift
 //  Hazel
 //
-//  CSV/QIF statement parsing shared by ImportYNABFileIntent and
-//  ImportSplitwiseFileIntent — turns an IntentFile into
-//  [ImportedStatementRow], asking the same "which column is X"/"what date
-//  format is this" questions either intent needs, but caching the answer in
-//  FileImportConfigStore per distinct header/QIF type so a header already
-//  mapped for one import doesn't get re-asked for the other.
+//  CSV/QIF statement parsing shared by ImportYNABFileIntent,
+//  ImportSplitwiseFileIntent, and the share-sheet import flow — turns any
+//  StatementFileSource (an AppIntents IntentFile, or a SharedStatementFile
+//  read from a shared document) into [ImportedStatementRow], asking the
+//  same "which column is X"/"what date format is this" questions each
+//  caller needs, but caching the answer in FileImportConfigStore per
+//  distinct header/QIF type so a header already mapped once isn't re-asked.
 //
 //  Column/date-format *overrides* and the actual requestDisambiguation calls
 //  stay intent-local (each intent has its own @Parameter-backed
@@ -30,7 +31,7 @@ nonisolated enum StatementFileResolver {
     typealias DateFormatAsk = (_ candidates: [DateFormatEntity], _ dialog: String) async throws -> DateFormatEntity
 
     static func resolveRows(
-        file: IntentFile,
+        file: some StatementFileSource,
         config: inout FileImportConfig,
         askDateColumn: ColumnAsk,
         askPayeeColumn: ColumnAsk,
@@ -63,7 +64,7 @@ nonisolated enum StatementFileResolver {
     /// hides the extension from when "Show all filename extensions" is off
     /// — so a real "Buchungsliste.csv" can arrive as just "Buchungsliste".
     /// Falls back to the file's UTType, then sniffs the content itself.
-    static func detectKind(for file: IntentFile) -> StatementFileKind? {
+    static func detectKind(for file: some StatementFileSource) -> StatementFileKind? {
         if let kind = StatementFileKind(filename: file.filename) {
             return kind
         }
@@ -82,7 +83,7 @@ nonisolated enum StatementFileResolver {
     // MARK: - CSV
 
     private static func resolveCSVRows(
-        file: IntentFile,
+        file: some StatementFileSource,
         config: inout FileImportConfig,
         askDateColumn: ColumnAsk,
         askPayeeColumn: ColumnAsk,
@@ -157,7 +158,7 @@ nonisolated enum StatementFileResolver {
     // MARK: - QIF
 
     private static func resolveQIFRows(
-        file: IntentFile,
+        file: some StatementFileSource,
         config: inout FileImportConfig,
         askDateFormat: DateFormatAsk
     ) async throws -> [ImportedStatementRow] {

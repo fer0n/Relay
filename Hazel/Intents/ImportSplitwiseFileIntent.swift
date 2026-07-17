@@ -6,7 +6,7 @@
 //  (.csv or .qif) via the same StatementFileResolver (so a CSV header
 //  already mapped for the YNAB import isn't re-asked here), resolves which
 //  friend to split with, then stages the parsed rows for
-//  SplitwiseFileImportReviewView instead of creating anything itself —
+//  SharedFileImportView instead of creating anything itself —
 //  AppIntents' requestDisambiguation only resolves a single value at a
 //  time, so there's no supported way to let the user multi-select which of
 //  N parsed transactions to split from inside perform(). The actual
@@ -107,19 +107,21 @@ nonisolated struct ImportSplitwiseFileIntent: AppIntent {
             resolvedFriend = try await $friend.requestDisambiguation(among: friends, dialog: "Split with which Splitwise friend?")
         }
 
-        let candidateRows = SplitwiseImportRowBuilder.build(from: rows)
+        let candidateRows = FileImportRowBuilder.build(from: rows)
         guard !candidateRows.isEmpty else {
             return .result(dialog: "No transactions found to import from \(filename).")
         }
 
         do {
-            try SplitwiseFileImportStagingStore.save(SplitwiseFileImportStaging(
+            try FileImportStagingStore.save(FileImportStaging(
+                destination: .splitwise,
+                rows: candidateRows,
+                selectedIDs: Set(candidateRows.map(\.id)),
+                sourceFilename: filename,
+                importedAt: Date(),
                 friendId: resolvedFriend.id,
                 friendFirstName: resolvedFriend.firstName,
-                friendFullName: resolvedFriend.fullName,
-                rows: candidateRows,
-                sourceFilename: filename,
-                importedAt: Date()
+                friendFullName: resolvedFriend.fullName
             ))
         } catch {
             throw SplitwiseIntentError.requestFailed

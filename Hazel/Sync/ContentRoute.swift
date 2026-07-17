@@ -16,5 +16,4 @@ enum ContentRoute: Hashable {
     case pendingQueue
     case transactionDrafts
     case continueDraft(UUID)
-    case splitwiseFileImport
 }

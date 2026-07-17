@@ -4,23 +4,44 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @State private var pendingQueue = PendingOperationQueue.shared
     @State private var draftRouter = DraftNotificationRouter.shared
     @State private var drafts = TransactionDraftStore.load()
-    @State private var splitwiseImportCount = SplitwiseFileImportStagingStore.load()?.rows.count ?? 0
+    @State private var fileImportCount = Self.loadFileImportCount()
     @State private var history = TransactionHistoryStore.load()
     @State private var readdAlert: ReaddAlert?
     @State private var path: [ContentRoute] = []
     @State private var showSettings = false
     @State private var showOnboarding = false
+    @State private var importSheetContent: ImportSheetContent?
     @Environment(\.scenePhase) private var scenePhase
 
     private struct ReaddAlert: Identifiable {
         let id = UUID()
         let title: String
         let message: String
+    }
+
+    /// What the single file-import sheet should show — a just-shared file
+    /// (`sharedFile`) or reopening an already-staged import (`review`).
+    /// SharedFileImportView resolves the YNAB-vs-Splitwise destination
+    /// itself (an inline picker, not a separate screen), so both cases
+    /// route to the same view. Unifies the share-sheet flow and the main
+    /// view's "File Import" row/Shortcut hand-off onto the same
+    /// presentation so both can use the same "Done" button to close in one
+    /// step.
+    private enum ImportSheetContent: Identifiable, Hashable {
+        case sharedFile(SharedStatementFile)
+        case review
+
+        var id: Self { self }
+    }
+
+    private static func loadFileImportCount() -> Int {
+        FileImportStagingStore.load()?.rows.count ?? 0
     }
 
     /// Shared by every conditionally-shown row/section below so they
@@ -63,12 +84,20 @@ struct ContentView: View {
                     .transition(Self.rowTransition)
                 }
 
-                if splitwiseImportCount > 0 {
-                    NavigationLink(value: ContentRoute.splitwiseFileImport) {
-                        RowLabel(title: "Splitwise Import", systemImage: "person.2.badge.plus", badge: splitwiseImportCount)
+                if fileImportCount > 0 {
+                    Button {
+                        importSheetContent = .review
+                    } label: {
+                        RowLabel(title: "File Import", systemImage: "doc.badge.plus", badge: fileImportCount)
                     }
                     .cardRowBackground()
                     .transition(Self.rowTransition)
+                    .swipeActions {
+                        Button("Delete", role: .destructive) {
+                            FileImportStagingStore.clear()
+                            withAnimation { fileImportCount = Self.loadFileImportCount() }
+                        }
+                    }
                 }
                 
                 if !drafts.isEmpty {
@@ -131,8 +160,6 @@ struct ContentView: View {
                     TransactionDraftsView()
                 case .continueDraft(let draftId):
                     ContinueDraftView(draftId: draftId)
-                case .splitwiseFileImport:
-                    SplitwiseFileImportReviewView()
                 }
             }
             .safeAreaBar(edge: .bottom) {
@@ -155,7 +182,7 @@ struct ContentView: View {
                 Task { await pendingQueue.flush() }
                 withAnimation {
                     drafts = TransactionDraftStore.load()
-                    splitwiseImportCount = SplitwiseFileImportStagingStore.load()?.rows.count ?? 0
+                    fileImportCount = Self.loadFileImportCount()
                     history = TransactionHistoryStore.load()
                 }
             }
@@ -177,11 +204,64 @@ struct ContentView: View {
         // ImportSplitwiseFileIntent brought Hazel to the foreground itself
         // (see its supportedModes) specifically to land here — same
         // deep-link pattern, just triggered by the intent instead of a
-        // tapped notification.
+        // tapped notification. Opens the same import sheet the "File
+        // Import" row and the share-sheet flow use, instead of pushing onto
+        // `path`, so all three entry points share one "Done" button.
         .onChange(of: draftRouter.pendingSplitwiseImport) { _, pending in
             guard pending else { return }
-            path = [.splitwiseFileImport]
+            importSheetContent = .review
             draftRouter.pendingSplitwiseImport = false
+        }
+        // The Share Sheet's "Copy to Hazel" action delivered a bank
+        // statement file via the `.onOpenURL` below — presented as its own
+        // sheet (rather than pushed onto `path`) so its "Done" button can
+        // close the whole YNAB-vs-Splitwise flow in one step regardless of
+        // how deep it navigated, instead of popping back one screen at a time.
+        .onChange(of: draftRouter.pendingSharedFile) { _, newValue in
+            guard let newValue else { return }
+            draftRouter.pendingSharedFile = nil
+            importSheetContent = .sharedFile(newValue)
+        }
+        // Delivered when the user taps Hazel's "Copy to Hazel" action on a
+        // CSV/QIF file in the Share Sheet (see CFBundleDocumentTypes in
+        // Info.plist) — iOS copies the file into our sandbox's Documents/Inbox
+        // and hands us its URL here.
+        .onOpenURL { url in
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else { return }
+            draftRouter.pendingSharedFile = SharedStatementFile(
+                filename: url.lastPathComponent,
+                data: data,
+                type: UTType(filenameExtension: url.pathExtension)
+            )
+            // Apple's guidance: don't let Documents/Inbox accumulate once
+            // we've read the file's contents into memory — but only ever
+            // delete our own Inbox copy, never a URL pointing anywhere else.
+            let inboxURL = FileManager.default
+                .urls(for: .documentDirectory, in: .userDomainMask)
+                .first?
+                .appendingPathComponent("Inbox", isDirectory: true)
+                .standardizedFileURL
+            if url.deletingLastPathComponent().standardizedFileURL == inboxURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        .sheet(item: $importSheetContent) { content in
+            NavigationStack {
+                switch content {
+                case .sharedFile(let source):
+                    SharedFileImportView(source: source) {
+                        importSheetContent = nil
+                        withAnimation { fileImportCount = Self.loadFileImportCount() }
+                    }
+                case .review:
+                    SharedFileImportView(source: nil) {
+                        importSheetContent = nil
+                        withAnimation { fileImportCount = Self.loadFileImportCount() }
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()

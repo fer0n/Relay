@@ -52,21 +52,31 @@ struct SplitwiseFriendPickerRow: View {
     var isIncomplete: Bool = false
 
     var body: some View {
-        DraftDetailRow(icon: "person.2.fill", title: "Split With", isIncomplete: isIncomplete) {
+        DraftDetailRow(
+            icon: "person.2.fill",
+            title: "Split With",
+            isIncomplete: isIncomplete
+        ) {
             if let resolvedFriendName {
                 Text(resolvedFriendName)
             } else if isLoading {
                 ProgressView()
             } else {
-                MenuPickerField(
-                    selection: $selectedFriendId,
-                    label: friends.first { $0.id == selectedFriendId }?.fullName ?? noneLabel
-                ) {
-                    Text(noneLabel).tag(Int?.none)
-                    splitwiseFriendRows(friends) { friend in
-                        Text(friend.fullName).tag(Optional(friend.id))
-                    }
+                // Not MenuPickerField here on purpose: a Picker's Section
+                // content doesn't reliably show as an inline "Outstanding
+                // Balance" header once the Picker itself is wrapped in a
+                // Menu — SwiftUI tends to fold it into a submenu instead.
+                // Plain Buttons in the Menu (splitwiseFriendMenuButtons,
+                // shared with DefaultSplitwiseFriendRow) render Section
+                // headers correctly.
+                Menu {
+                    Button(noneLabel) { selectedFriendId = nil }
+                    splitwiseFriendMenuButtons(friends) { selectedFriendId = $0.id }
+                } label: {
+                    Text(friends.first { $0.id == selectedFriendId }?.fullName ?? noneLabel)
+                        .lineLimit(1)
                 }
+                .tint(Color.foregroundColor)
             }
         }
         .cardRowBackground()
@@ -80,8 +90,15 @@ struct SplitwiseAskRow: View {
     var isIncomplete: Bool = false
 
     var body: some View {
-        DraftDetailRow(icon: "questionmark.circle.fill", title: "Split Transaction?", isIncomplete: isIncomplete) {
-            MenuPickerField(selection: $runtimeChoice, label: runtimeChoice?.label ?? "Choose") {
+        DraftDetailRow(
+            icon: "questionmark.circle.fill",
+            title: "Split Transaction?",
+            isIncomplete: isIncomplete
+        ) {
+            MenuPickerField(
+                selection: $runtimeChoice,
+                label: runtimeChoice?.label ?? "Choose"
+            ) {
                 Text("Choose").tag(SplitwiseSplitOption?.none)
                 ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
                     Text(option.label).tag(SplitwiseSplitOption?.some(option))

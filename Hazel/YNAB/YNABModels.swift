@@ -98,6 +98,39 @@ nonisolated struct YNABBulkImportResult: Codable {
     let transactionIds: [String]
     let transactions: [YNABCreatedTransaction]
     let duplicateImportIds: [String]
+
+    /// Mirrors the original "YNAB Toolkit" Shortcut's `handle_response`: the
+    /// single transaction's amount/payee if exactly one was created,
+    /// otherwise a count. The primary half of the result summary — see
+    /// `duplicatesLine` for the rest.
+    var summaryLine: String {
+        if transactions.count == 1, let transaction = transactions.first {
+            let amount = Double(transaction.amount) / 1000
+            let formattedAmount = amount.asMoneyString
+            if let payeeName = transaction.payeeName, !payeeName.isEmpty {
+                return "\(formattedAmount), \(payeeName)"
+            }
+            return formattedAmount
+        } else if transactions.count > 1 {
+            return "\(transactions.count) transactions created"
+        }
+        return "No new transactions created"
+    }
+
+    /// YNAB's own `import_id` dedup count, if any — the secondary half of
+    /// the result summary, kept separate from `summaryLine` so callers can
+    /// render it on its own line instead of crammed into one sentence.
+    var duplicatesLine: String? {
+        guard !duplicateImportIds.isEmpty else { return nil }
+        return "\(duplicateImportIds.count) duplicates found"
+    }
+
+    /// `summaryLine` + `duplicatesLine` joined into one string, for
+    /// ImportYNABFileIntent's Shortcuts dialog, which has no separate
+    /// "info text" concept.
+    var summaryText: String {
+        [summaryLine, duplicatesLine].compactMap { $0 }.joined(separator: ". ")
+    }
 }
 
 nonisolated struct YNABBulkImportResponse: Codable {

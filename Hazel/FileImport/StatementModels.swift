@@ -9,9 +9,10 @@
 
 import Foundation
 
-/// One transaction parsed from a statement file, before YNAB-specific
-/// filtering (age/zero-amount) or `import_id` assignment.
-struct ImportedStatementRow {
+/// One transaction parsed from a statement file, before any destination-
+/// specific shaping. FileImportRowBuilder turns these into the reviewable,
+/// destination-independent FileImportRow list.
+struct ImportedStatementRow: Codable {
     let date: Date
     let payeeName: String
     let memo: String?
@@ -26,7 +27,7 @@ nonisolated enum StatementFileKind {
 
     init?(filename: String) {
         switch (filename as NSString).pathExtension.lowercased() {
-        case "csv": self = .csv
+        case "csv", "txt": self = .csv
         case "qif": self = .qif
         default: return nil
         }

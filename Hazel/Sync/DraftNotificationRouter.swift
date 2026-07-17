@@ -38,6 +38,12 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     /// — ContentView observes this and clears it once it's acted on.
     var pendingSplitwiseImport = false
 
+    /// Set by ContentView's `.onOpenURL` when a bank statement file arrives
+    /// via the Share Sheet's "Copy to Hazel" action — same one-shot signal
+    /// shape as `pendingDraftID`, but carries the file itself since there's
+    /// no separate staging store for it until a destination is picked.
+    var pendingSharedFile: SharedStatementFile?
+
     private override init() {
         super.init()
     }
