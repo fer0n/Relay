@@ -9,11 +9,7 @@ import os
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "PendingOperationQueueStore")
 
 enum PendingOperationQueueStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("pending-operations.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("pending-operations.json")
 
     private static var decoder: JSONDecoder {
         let decoder = JSONDecoder()

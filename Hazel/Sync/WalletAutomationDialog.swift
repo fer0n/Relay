@@ -15,17 +15,15 @@
 //  only has to happen once instead of drifting apart between call sites.
 //
 
+import AppIntents
 import Foundation
 
 extension SplitwiseSplitOption {
-    /// Plain-text label for Hazel's own SwiftUI screens — mirrors
-    /// SplitwiseTemplateOption.label in TemplatesView.swift.
+    /// Plain-text label for Hazel's own SwiftUI screens, derived from
+    /// `caseDisplayRepresentations` — mirrors SplitwiseTemplateOption.label
+    /// in TemplatesView.swift.
     var label: String {
-        switch self {
-        case .always: "Split Equally"
-        case .manual: "Split Manually"
-        case .never: "Don't Split"
-        }
+        String(localized: Self.caseDisplayRepresentations[self]?.title ?? "")
     }
 }
 

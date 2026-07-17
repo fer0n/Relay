@@ -16,11 +16,7 @@ struct SplitwiseFriendUsage: Codable {
 }
 
 nonisolated enum SplitwiseFriendUsageStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("splitwise-friend-usage.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("splitwise-friend-usage.json")
 
     static func load() -> SplitwiseFriendUsage {
         guard let data = try? Data(contentsOf: fileURL) else { return SplitwiseFriendUsage() }
@@ -34,21 +30,7 @@ nonisolated enum SplitwiseFriendUsageStore {
         try? data.write(to: fileURL, options: .atomic)
     }
 
-    /// Most-recently-used first; friends with no recorded usage keep their
-    /// original (Splitwise API) relative order, appended after all used ones.
     static func sorted(_ friends: [SplitwiseFriend]) -> [SplitwiseFriend] {
-        let lastUsed = load().lastUsedByFriendId
-        return friends.enumerated()
-            .sorted { lhs, rhs in
-                let lhsDate = lastUsed[String(lhs.element.id)]
-                let rhsDate = lastUsed[String(rhs.element.id)]
-                switch (lhsDate, rhsDate) {
-                case let (l?, r?): return l > r
-                case (.some, nil): return true
-                case (nil, .some): return false
-                case (nil, nil): return lhs.offset < rhs.offset
-                }
-            }
-            .map(\.element)
+        UsageStore.sorted(friends, lastUsed: load().lastUsedByFriendId, key: { String($0.id) })
     }
 }

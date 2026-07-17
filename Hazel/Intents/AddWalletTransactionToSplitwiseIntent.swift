@@ -32,8 +32,6 @@ import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "WalletTransactionSplitwise")
 
-private let createNewTemplateOption = "Create New Template"
-
 nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to Splitwise"
     static let description = IntentDescription(
@@ -304,7 +302,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             var resolvedOwnShare: Double? = splitwiseOwnShare
             if splitwiseAction == .manual, resolvedOwnShare == nil {
                 logger.log("splitwiseAction=manual — requesting own share")
-                let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+                let formattedAmount = amount.asMoneyString
                 resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(expenseDescription), split with \(friendFirstName)?")
                 touchDraft()
             }
@@ -312,7 +310,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 try SplitwiseExpenseHelper.validateOwnShare(resolvedOwnShare, amount: amount)
             }
 
-            let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+            let formattedAmount = amount.asMoneyString
             do {
                 let outcome = try await SplitwiseExpenseHelper.addExpense(
                     amount: amount,

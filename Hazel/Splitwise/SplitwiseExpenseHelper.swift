@@ -11,13 +11,6 @@
 
 import Foundation
 
-private let splitwiseDateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM-dd"
-    formatter.timeZone = .current
-    return formatter
-}()
-
 enum SplitwiseExpenseOutcome {
     case created(shareSummary: String)
     /// Offline — the expense was handed to PendingOperationQueue and will
@@ -88,10 +81,10 @@ nonisolated enum SplitwiseExpenseHelper {
             payerOwedCents: ownShareCents,
             friendUserId: friend.id,
             friendOwedCents: friendShareCents,
-            date: date.map { splitwiseDateFormatter.string(from: $0) }
+            date: date.map { DateFormatter.yyyyMMdd.string(from: $0) }
         )
 
-        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let formattedAmount = amount.asMoneyString
         let outcome = try await PendingSync.createSplitwiseExpense(
             expense,
             token: token,
@@ -101,8 +94,8 @@ nonisolated enum SplitwiseExpenseHelper {
         switch outcome {
         case .created:
             SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
-            let ownAmount = (Double(ownShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
-            let friendAmount = (Double(friendShareCents) / 100).formatted(.number.precision(.fractionLength(2)))
+            let ownAmount = (Double(ownShareCents) / 100).asMoneyString
+            let friendAmount = (Double(friendShareCents) / 100).asMoneyString
             return .created(shareSummary: "you: \(ownAmount), \(friend.firstName): \(friendAmount)")
         case .queued:
             return .queued

@@ -21,11 +21,7 @@ struct SplitwiseFileImportStaging: Codable {
 }
 
 nonisolated enum SplitwiseFileImportStagingStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("splitwise-file-import-staging.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("splitwise-file-import-staging.json")
 
     static func load() -> SplitwiseFileImportStaging? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }

@@ -210,69 +210,27 @@ struct ContinueYNABWalletTransactionView: View {
 
             if splitwiseAuth.isAuthenticated {
                 Section("Split") {
-                    DraftDetailRow(icon: "divide.circle.fill", title: "Split With Splitwise") {
-                        if templateResolved {
-                            Text(resolvedTemplateSplitwiseOption.label)
-                        } else {
-                            Picker(selection: $newTemplateSplitwiseOption) {
-                                ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
-                                    Text(option.label).tag(option)
-                                }
-                            } label: {
-                                EmptyView()
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
-                            .tint(Color.foregroundColor)
-                        }
-                    }
-                    .cardRowBackground()
+                    SplitwiseOptionRow(
+                        title: "Split With Splitwise",
+                        isResolved: templateResolved,
+                        resolvedOption: resolvedTemplateSplitwiseOption,
+                        newOption: $newTemplateSplitwiseOption
+                    )
 
                     if effectiveSplitwiseOption == .ask {
-                        DraftDetailRow(icon: "questionmark.circle.fill", title: "Split Transaction?") {
-                            Picker(selection: $splitwiseRuntimeChoice) {
-                                Text("Choose").tag(SplitwiseSplitOption?.none)
-                                ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
-                                    Text(option.label).tag(SplitwiseSplitOption?.some(option))
-                                }
-                            } label: {
-                                EmptyView()
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
-                            .tint(Color.foregroundColor)
-                        }
-                        .cardRowBackground()
+                        SplitwiseAskRow(runtimeChoice: $splitwiseRuntimeChoice)
                     }
 
                     if resolvedSplitwiseAction != .never {
-                        DraftDetailRow(icon: "person.2.fill", title: "Split With") {
-                            if isLoadingFriends {
-                                ProgressView()
-                            } else {
-                                Picker(selection: $selectedFriendId) {
-                                    Text("None").tag(Int?.none)
-                                    splitwiseFriendRows(friends) { friend in
-                                        Text(friend.fullName).tag(Optional(friend.id))
-                                    }
-                                } label: {
-                                    EmptyView()
-                                }
-                                .pickerStyle(.menu)
-                                .labelsHidden()
-                                .tint(Color.foregroundColor)
-                            }
-                        }
-                        .cardRowBackground()
+                        SplitwiseFriendPickerRow(
+                            isLoading: isLoadingFriends,
+                            friends: friends,
+                            selectedFriendId: $selectedFriendId
+                        )
                     }
 
                     if resolvedSplitwiseAction == .manual {
-                        DraftDetailRow(icon: "eurosign.circle.fill", title: "Your Share") {
-                            TextField("Your Share", text: $ownShareText)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                        }
-                        .cardRowBackground()
+                        SplitwiseOwnShareRow(ownShareText: $ownShareText)
                     }
                 }
             }
@@ -472,7 +430,7 @@ struct ContinueYNABWalletTransactionView: View {
             cleared: "uncleared",
             approved: true
         )
-        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let formattedAmount = amount.asMoneyString
 
         async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(finalPayeeName)")
         async let splitDialogFragment = createSplitIfNeeded(friend: friend, description: finalPayeeName, amount: amount, action: action, ownShare: ownShare)

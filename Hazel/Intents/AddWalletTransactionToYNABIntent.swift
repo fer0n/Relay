@@ -28,15 +28,6 @@ import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "WalletTransaction")
 
-private let createNewTemplateOption = "Create New Template"
-
-nonisolated struct TemplateOptionsProvider: DynamicOptionsProvider {
-    func results() async throws -> [String] {
-        let config = WalletTransactionConfigStore.load()
-        return [createNewTemplateOption] + config.templates.keys.sorted()
-    }
-}
-
 nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to YNAB"
     static let description = IntentDescription(
@@ -363,7 +354,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             var resolvedOwnShare: Double? = splitwiseOwnShare
             if splitwiseAction == .manual, resolvedOwnShare == nil {
                 logger.log("splitwiseAction=manual — requesting own share")
-                let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+                let formattedAmount = amount.asMoneyString
                 let friendName = resolvedFriend?.firstName ?? "your friend"
                 resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(payeeName), split with \(friendName)?")
                 touchDraft()
@@ -394,7 +385,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 approved: true
             )
             logger.log("creating YNAB transaction: accountId=\(accountId, privacy: .public) amountMilliunits=\(milliunits, privacy: .public) payee=\(payeeName, privacy: .public) categoryId=\(categoryId ?? "nil", privacy: .public)")
-            let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+            let formattedAmount = amount.asMoneyString
 
             // Never depends on the YNAB call's outcome, so it runs concurrently
             // with it instead of paying for both round-trips back to back.

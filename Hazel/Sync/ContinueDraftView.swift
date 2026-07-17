@@ -44,17 +44,17 @@ struct ContinueDraftView: View {
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
                     } label: {
-                        Image(systemName: "trash")
+                        Image(systemName: "trash.fill")
+                    }
+                    .confirmationDialog(
+                        "Delete this draft?",
+                        isPresented: $showDeleteConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Delete", role: .destructive, action: delete)
                     }
                 }
             }
-        }
-        .confirmationDialog(
-            "Delete this draft?",
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive, action: delete)
         }
         .task {
             draft = TransactionDraftStore.load().first { $0.id == draftId }

@@ -20,13 +20,6 @@ nonisolated enum StatementTransactionBuilder {
         let skippedCount: Int
     }
 
-    private static let ynabDateFormat: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = .current
-        return formatter
-    }()
-
     static func build(
         from rows: [ImportedStatementRow],
         accountId: String,
@@ -60,7 +53,7 @@ nonisolated enum StatementTransactionBuilder {
             }
             let memo = importMemos ? row.memo.map { String($0.prefix(200)) } : nil
             drafts.append(Draft(
-                dateString: ynabDateFormat.string(from: row.date),
+                dateString: DateFormatter.yyyyMMdd.string(from: row.date),
                 milliunits: milliunits,
                 payeeName: row.payeeName,
                 memo: memo

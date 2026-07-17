@@ -19,11 +19,7 @@ struct SplitwiseDefaultFriend: Codable {
 }
 
 nonisolated enum SplitwiseDefaultFriendStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("splitwise-default-friend.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("splitwise-default-friend.json")
 
     static func load() -> SplitwiseDefaultFriend? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }

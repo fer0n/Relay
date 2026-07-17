@@ -76,6 +76,60 @@ struct EmptyListBackground: View {
     }
 }
 
+/// Visually mimics a system `.alert()` — title/message over a button row —
+/// while staying a plain view that lays out inline wherever it's placed,
+/// rather than presenting as a floating modal. Styled after iOS 26's Liquid
+/// Glass alerts: the buttons are their own inset glass pills rather than
+/// full-bleed rows split by hairline dividers, with their corner radius kept
+/// concentric with the card's (inner radius = outer radius − the inset).
+struct InlineAlertCard: View {
+    let title: String
+    var message: String?
+    let buttons: [(title: String, action: () -> Void)]
+
+    private let cornerRadius: CGFloat = 32
+    private let inset: CGFloat = 10
+
+    var body: some View {
+        GlassEffectContainer(spacing: inset) {
+            VStack(spacing: inset) {
+                VStack(spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .multilineTextAlignment(.leading)
+                    if let message {
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 15)
+
+                HStack {
+                    ForEach(Array(buttons.enumerated()), id: \.offset) { _, button in
+                        Button {
+                            button.action()
+                        } label: {
+                            Text(button.title)
+                                .padding(7)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .tint(.white)
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding(inset)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
+        .frame(maxWidth: 270)
+    }
+}
+
 extension View {
     /// The card-style row background used throughout themed Lists.
     func cardRowBackground() -> some View {

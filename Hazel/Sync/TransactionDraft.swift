@@ -44,13 +44,13 @@ struct TransactionDraft: Codable, Identifiable {
     }
 
     var summary: String {
-        "\(amount.formatted(.number.precision(.fractionLength(2)))) at \(merchant)"
+        "\(amount.asMoneyString) at \(merchant)"
     }
 
     /// Formatted for TransactionSummaryRow — negated to match the
     /// negative-for-money-out convention the final YNAB/Splitwise rows use
     /// (wallet automations only ever add expenses).
     var formattedAmount: String {
-        (-amount).formatted(.number.precision(.fractionLength(2)))
+        (-amount).asMoneyString
     }
 }

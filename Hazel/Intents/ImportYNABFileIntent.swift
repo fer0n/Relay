@@ -116,7 +116,7 @@ nonisolated struct ImportYNABFileIntent: AppIntent {
         var parts: [String] = []
         if result.transactions.count == 1, let transaction = result.transactions.first {
             let amount = Double(transaction.amount) / 1000
-            let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+            let formattedAmount = amount.asMoneyString
             parts.append("\(formattedAmount), \(transaction.payeeName ?? "")")
         } else if result.transactions.count > 1 {
             parts.append("\(result.transactions.count) transactions created")

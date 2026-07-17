@@ -80,7 +80,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
             throw $splitwiseFriend.requestValue("Split with which Splitwise friend?")
         }
         if effectiveSplitwiseOption == .manual, splitwiseOwnShare == nil {
-            let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+            let formattedAmount = amount.asMoneyString
             let friendName = splitwiseFriend?.firstName ?? "your friend"
             throw $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(payee), split with \(friendName)?")
         }
@@ -100,7 +100,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
             cleared: cleared ? "cleared" : "uncleared",
             approved: true
         )
-        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let formattedAmount = amount.asMoneyString
 
         // Never depends on the YNAB call's outcome, so it runs concurrently
         // with it instead of paying for both round-trips back to back.

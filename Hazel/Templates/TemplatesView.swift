@@ -10,6 +10,7 @@
 //  option/friend, so the same bucket works for either automation.
 //
 
+import AppIntents
 import SwiftUI
 import os
 
@@ -110,15 +111,11 @@ private struct TemplateRow: View {
 }
 
 extension SplitwiseTemplateOption {
-    /// Plain-text label for use in Hazel's own SwiftUI screens — distinct
-    /// from `caseDisplayRepresentations`, which is Shortcuts/Siri-only.
+    /// Plain-text label for use in Hazel's own SwiftUI screens, derived
+    /// from `caseDisplayRepresentations` (the Shortcuts/Siri-facing
+    /// strings) so the wording is only defined in one place.
     var label: String {
-        switch self {
-        case .always: "Split Equally"
-        case .manual: "Split Manually"
-        case .ask: "Ask Each Time"
-        case .never: "Don't Split"
-        }
+        String(localized: Self.caseDisplayRepresentations[self]?.title ?? "")
     }
 }
 

@@ -84,10 +84,7 @@ nonisolated enum YNABService {
     }
 
     static func todayDateString() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = .current
-        return formatter.string(from: Date())
+        DateFormatter.yyyyMMdd.string(from: Date())
     }
 
     private static func get(_ path: String, token: String) async throws -> Data {

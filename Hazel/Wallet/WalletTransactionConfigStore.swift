@@ -9,11 +9,7 @@ import os
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "WalletTransactionConfigStore")
 
 enum WalletTransactionConfigStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("wallet-transaction-config.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("wallet-transaction-config.json")
 
     static func load() -> WalletTransactionConfig {
         logger.log("loading config from \(fileURL.path, privacy: .public)")

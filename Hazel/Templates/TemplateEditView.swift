@@ -16,12 +16,6 @@ import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TemplateEditView")
 
-private struct LinkedMerchant: Identifiable {
-    let merchant: String
-    var payeeName: String
-    var id: String { merchant }
-}
-
 struct TemplateEditView: View {
     /// nil means "creating a new template".
     let templateName: String?
@@ -122,66 +116,14 @@ struct TemplateEditView: View {
                 }
             }
 
-            Section {
-                if !autoMatchRules.isEmpty {
-                    HStack {
-                        Text("Payee Name")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Pattern")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                ForEach(autoMatchRules.indices, id: \.self) { index in
-                    HStack {
-                        TextField("Payee Name", text: $autoMatchRules[index].payeeName)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Divider()
-                        TextField("Text or regex", text: $autoMatchRules[index].pattern)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .onDelete { autoMatchRules.remove(atOffsets: $0) }
-                Button("Add Rule") {
-                    autoMatchRules.append(.init(pattern: "", payeeName: ""))
-                }
-            } header: {
-                Text("Auto-Match Rules")
-            } footer: {
-                Text("Pattern can be plain text or a regex, and is matched case-insensitively.")
-            }
+            AutoMatchRulesSection(rules: $autoMatchRules)
 
             if templateName != nil, !linkedMerchants.isEmpty {
-                Section {
-                    ForEach(linkedMerchants.indices, id: \.self) { index in
-                        let linked = linkedMerchants[index]
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(linked.merchant)
-                                TextField("Payee Name", text: $linkedMerchants[index].payeeName)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if !otherTemplateNames.isEmpty {
-                                Menu {
-                                    ForEach(otherTemplateNames, id: \.self) { destination in
-                                        Button(destination) { move(linked, to: destination) }
-                                    }
-                                } label: {
-                                    Image(systemName: "arrow.turn.up.right")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                    .onDelete { linkedMerchants.remove(atOffsets: $0) }
-                } header: {
-                    Text("Linked Merchants")
-                } footer: {
-                    Text("Wallet transactions from these exact merchant names go straight to this template. Edit the payee name, swipe to unlink one, or use the arrow to move one to a different template.")
-                }
+                LinkedMerchantsSection(
+                    linkedMerchants: $linkedMerchants,
+                    otherTemplateNames: otherTemplateNames,
+                    onMove: move
+                )
             }
 
             if templateName != nil {

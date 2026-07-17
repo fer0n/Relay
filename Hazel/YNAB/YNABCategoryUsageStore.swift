@@ -17,11 +17,7 @@ struct YNABCategoryUsage: Codable {
 }
 
 nonisolated enum YNABCategoryUsageStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("ynab-category-usage.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("ynab-category-usage.json")
 
     static func load() -> YNABCategoryUsage {
         guard let data = try? Data(contentsOf: fileURL) else { return YNABCategoryUsage() }
@@ -35,21 +31,7 @@ nonisolated enum YNABCategoryUsageStore {
         try? data.write(to: fileURL, options: .atomic)
     }
 
-    /// Most-recently-used first; categories with no recorded usage keep
-    /// their original (YNAB API) relative order, appended after all used ones.
     static func sorted(_ categories: [YNABCategory]) -> [YNABCategory] {
-        let lastUsed = load().lastUsedByCategoryId
-        return categories.enumerated()
-            .sorted { lhs, rhs in
-                let lhsDate = lastUsed[lhs.element.id]
-                let rhsDate = lastUsed[rhs.element.id]
-                switch (lhsDate, rhsDate) {
-                case let (l?, r?): return l > r
-                case (.some, nil): return true
-                case (nil, .some): return false
-                case (nil, nil): return lhs.offset < rhs.offset
-                }
-            }
-            .map(\.element)
+        UsageStore.sorted(categories, lastUsed: load().lastUsedByCategoryId, key: \.id)
     }
 }

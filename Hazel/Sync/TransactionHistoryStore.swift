@@ -15,11 +15,7 @@ private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "Tra
 enum TransactionHistoryStore {
     private static let historyLimit = 10
 
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("transaction-history.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("transaction-history.json")
 
     private static var decoder: JSONDecoder {
         let decoder = JSONDecoder()

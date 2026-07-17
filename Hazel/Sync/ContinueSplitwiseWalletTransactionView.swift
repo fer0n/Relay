@@ -151,69 +151,26 @@ struct ContinueSplitwiseWalletTransactionView: View {
             }
 
             Section("Split") {
-                DraftDetailRow(icon: "person.2.fill", title: "Split With") {
-                    if templateHasFriend {
-                        Text(friends.first { $0.id == selectedFriendId }?.fullName ?? "Unknown")
-                    } else if isLoadingFriends {
-                        ProgressView()
-                    } else {
-                        Picker(selection: $selectedFriendId) {
-                            Text("None").tag(Int?.none)
-                            splitwiseFriendRows(friends) { friend in
-                                Text(friend.fullName).tag(Optional(friend.id))
-                            }
-                        } label: {
-                            EmptyView()
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.foregroundColor)
-                    }
-                }
-                .cardRowBackground()
+                SplitwiseFriendPickerRow(
+                    resolvedFriendName: templateHasFriend ? (friends.first { $0.id == selectedFriendId }?.fullName ?? "Unknown") : nil,
+                    isLoading: isLoadingFriends,
+                    friends: friends,
+                    selectedFriendId: $selectedFriendId
+                )
 
-                DraftDetailRow(icon: "divide.circle.fill", title: "Split") {
-                    if templateResolved {
-                        Text(resolvedTemplateSplitOption.label)
-                    } else {
-                        Picker(selection: $newTemplateSplitOption) {
-                            ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
-                                Text(option.label).tag(option)
-                            }
-                        } label: {
-                            EmptyView()
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.foregroundColor)
-                    }
-                }
-                .cardRowBackground()
+                SplitwiseOptionRow(
+                    title: "Split",
+                    isResolved: templateResolved,
+                    resolvedOption: resolvedTemplateSplitOption,
+                    newOption: $newTemplateSplitOption
+                )
 
                 if effectiveSplitOption == .ask {
-                    DraftDetailRow(icon: "questionmark.circle.fill", title: "Split Transaction?") {
-                        Picker(selection: $splitwiseRuntimeChoice) {
-                            Text("Choose").tag(SplitwiseSplitOption?.none)
-                            ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
-                                Text(option.label).tag(SplitwiseSplitOption?.some(option))
-                            }
-                        } label: {
-                            EmptyView()
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.foregroundColor)
-                    }
-                    .cardRowBackground()
+                    SplitwiseAskRow(runtimeChoice: $splitwiseRuntimeChoice)
                 }
 
                 if resolvedSplitwiseAction == .manual {
-                    DraftDetailRow(icon: "eurosign.circle.fill", title: "Your Share") {
-                        TextField("Your Share", text: $ownShareText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    .cardRowBackground()
+                    SplitwiseOwnShareRow(ownShareText: $ownShareText)
                 }
             }
 
@@ -358,7 +315,7 @@ struct ContinueSplitwiseWalletTransactionView: View {
             ownShare = parsed
         }
 
-        let formattedAmount = amount.formatted(.number.precision(.fractionLength(2)))
+        let formattedAmount = amount.asMoneyString
         do {
             let outcome = try await SplitwiseExpenseHelper.addExpense(
                 amount: amount,

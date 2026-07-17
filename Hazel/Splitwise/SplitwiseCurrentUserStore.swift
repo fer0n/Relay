@@ -11,11 +11,7 @@
 import Foundation
 
 nonisolated enum SplitwiseCurrentUserStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("splitwise-current-user.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("splitwise-current-user.json")
 
     static func load() -> SplitwiseUser? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }

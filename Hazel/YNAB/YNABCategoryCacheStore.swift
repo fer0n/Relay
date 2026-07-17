@@ -11,11 +11,7 @@
 import Foundation
 
 nonisolated enum YNABCategoryCacheStore {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("ynab-category-cache.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("ynab-category-cache.json")
 
     static func load() -> [YNABCategory]? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
@@ -27,16 +23,9 @@ nonisolated enum YNABCategoryCacheStore {
         try? data.write(to: fileURL, options: .atomic)
     }
 
-    /// Live fetch, updating the cache on success; falls back to the cache
-    /// on failure, only rethrowing when the cache is also empty.
     static func fetch(token: String) async throws -> [YNABCategory] {
-        do {
-            let fresh = try await YNABService.fetchCategories(token: token)
-            save(fresh)
-            return fresh
-        } catch {
-            if let cached = load() { return cached }
-            throw error
+        try await CacheStore.fetch(load: load, save: save) {
+            try await YNABService.fetchCategories(token: token)
         }
     }
 }

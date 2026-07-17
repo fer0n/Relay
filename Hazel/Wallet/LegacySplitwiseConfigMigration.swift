@@ -15,10 +15,7 @@ import os
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "LegacySplitwiseConfigMigration")
 
 enum LegacySplitwiseConfigMigration {
-    private static let fileURL: URL = {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("splitwise-wallet-transaction-config.json")
-    }()
+    private static let fileURL = ApplicationSupportFile.url("splitwise-wallet-transaction-config.json")
 
     private struct LegacyConfig: Codable {
         struct MerchantInfo: Codable {

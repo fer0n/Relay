@@ -25,13 +25,6 @@ struct SplitwiseImportRow: Codable, Identifiable {
 }
 
 nonisolated enum SplitwiseImportRowBuilder {
-    private static let keyDateFormat: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = .current
-        return formatter
-    }()
-
     /// Drops zero-amount rows (nothing to split), then assigns each
     /// remaining row an incrementing occurrence suffix within its
     /// amount+date group — mirrors StatementTransactionBuilder's import_id
@@ -47,7 +40,7 @@ nonisolated enum SplitwiseImportRowBuilder {
         let drafts: [Draft] = rows.compactMap { row in
             let cents = Int((abs(row.amount) * 100).rounded())
             guard cents != 0 else { return nil }
-            return Draft(dateString: keyDateFormat.string(from: row.date), cents: cents, row: row)
+            return Draft(dateString: DateFormatter.yyyyMMdd.string(from: row.date), cents: cents, row: row)
         }.sorted { "\($0.cents):\($0.dateString)" < "\($1.cents):\($1.dateString)" }
 
         var result: [SplitwiseImportRow] = []
