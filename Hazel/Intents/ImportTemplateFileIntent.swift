@@ -2,12 +2,17 @@
 //  ImportTemplateFileIntent.swift
 //  Hazel
 //
-//  Siri/Shortcuts equivalent of Settings' "Import Templates" button — lets a
-//  Shortcut hand Hazel a templates JSON file directly, e.g. one pulled
+//  Exists solely for the "YNAB Toolkit → Hazel" migration Shortcut, which
+//  hands Hazel the old "Transaction → YNAB" Shortcut's DataJar buckets/
+//  merchants/cards through this "Import Template File" action — pulled
 //  straight out of Data Jar via "Get Value for Key", without an intermediate
 //  Save File step: Shortcuts coerces non-file output (text, dictionaries)
 //  into an ephemeral IntentFile automatically when a parameter is typed as
-//  File. Reuses the exact same TemplateImportService as the in-app button.
+//  File. Deliberately kept out of HazelShortcuts' promoted App Shortcuts
+//  (see the note there) now that the in-app feature is a full backup, not a
+//  template file — but the action must stay defined or the installed
+//  migration Shortcut can't find it. Routes through TemplateImportService,
+//  whose legacy-bucket fallback path does the actual DataJar import.
 //
 
 import AppIntents

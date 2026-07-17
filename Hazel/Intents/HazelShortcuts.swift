@@ -44,13 +44,12 @@ struct HazelShortcuts: AppShortcutsProvider {
             shortTitle: "Import File to Splitwise",
             systemImageName: "doc.badge.plus"
         )
-        AppShortcut(
-            intent: ImportTemplateFileIntent(),
-            phrases: [
-                "Import templates to \(.applicationName)",
-            ],
-            shortTitle: "Import Templates",
-            systemImageName: "doc.on.doc"
-        )
+        // ImportTemplateFileIntent is intentionally *not* promoted as an App
+        // Shortcut: it's no longer a user-facing feature (Settings exports a
+        // full backup now, not a template file), but the intent itself stays
+        // defined because the "YNAB Toolkit → Hazel" migration Shortcut
+        // invokes its "Import Template File" action. Dropping it from here
+        // hides the suggestion without removing the action that migration
+        // depends on.
     }
 }
