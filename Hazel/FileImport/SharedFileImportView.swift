@@ -82,8 +82,6 @@ struct SharedFileImportView: View {
     /// Splitwise: queued-offline count. YNAB: duplicate-import count.
     @State private var totalSecondary = 0
     @State private var totalFailed = 0
-    @State private var showDeleteConfirmation = false
-    @State private var showDiscardConfirmation = false
     #if !os(macOS)
     @State private var editMode: EditMode = .active
     #endif
@@ -362,41 +360,19 @@ struct SharedFileImportView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Menu {
                         Button(role: .destructive) {
-                            showDeleteConfirmation = true
+                            deleteSelected()
                         } label: {
                             Label("Delete Selected", systemImage: "trash")
                         }
                         .disabled(selectedIDs.wrappedValue.isEmpty)
 
                         Button(role: .destructive) {
-                            showDiscardConfirmation = true
+                            discardActive()
                         } label: {
-                            Label("Discard Import", systemImage: "xmark.circle")
+                            Label("Close Import", systemImage: "xmark")
                         }
                     } label: {
                         Label("More", systemImage: "ellipsis")
-                    }
-                    .confirmationDialog(
-                        "Delete \(selectedIDs.wrappedValue.count) selected transaction\(selectedIDs.wrappedValue.count == 1 ? "" : "s")?",
-                        isPresented: $showDeleteConfirmation,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Delete", role: .destructive) {
-                            deleteSelected()
-                        }
-                    } message: {
-                        Text("They'll be removed from this import without being submitted.")
-                    }
-                    .confirmationDialog(
-                        "Discard this import?",
-                        isPresented: $showDiscardConfirmation,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Discard", role: .destructive) {
-                            discardActive()
-                        }
-                    } message: {
-                        Text("The parsed rows will be removed without being \(destination == .splitwise ? "split" : "imported").")
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -469,7 +445,8 @@ struct SharedFileImportView: View {
             }
             Spacer()
             if handled {
-                Image(systemName: "checkmark.seal.fill")
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 6))
                     .foregroundStyle(.orange)
             }
             Text(row.amount, format: .currency(code: "EUR"))

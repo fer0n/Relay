@@ -48,6 +48,7 @@ struct TransactionSummaryRow: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
@@ -63,8 +64,9 @@ struct TransactionSummaryRow: View {
                 .monospacedDigit()
                 .fontWeight(.semibold)
 
-            ListChevron()
-                .opacity(showChevron ? 1 : 0)
+            if (showChevron) {
+                ListChevron()
+            }
         }
         .padding(.vertical, 4)
     }
