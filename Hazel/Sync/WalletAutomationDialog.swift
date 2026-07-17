@@ -66,14 +66,14 @@ nonisolated enum WalletAutomationDialog {
             )
             switch outcome {
             case .created(let shareSummary):
-                return ", split with Splitwise — \(shareSummary)"
+                return " – \(shareSummary)"
             case .queued:
-                return ". Splitwise is offline — the split will sync automatically"
+                return " – split queued for sync"
             }
         } catch {
             let message = (error as? SplitwiseIntentError)?.localizedStringResource
                 ?? "Couldn't add the Splitwise expense."
-            return ". \(String(localized: message))"
+            return " – \(String(localized: message))"
         }
     }
 
@@ -91,9 +91,9 @@ nonisolated enum WalletAutomationDialog {
             if let categoryId {
                 YNABCategoryUsageStore.recordUsage(categoryId: categoryId)
             }
-            return "Added \(formattedAmount) at \(payeeName)"
+            return "\(formattedAmount) at \(payeeName)"
         case .queued:
-            return "You're offline — queued \(formattedAmount) at \(payeeName) to add to YNAB once you're back online"
+            return "No connection – \(formattedAmount) at \(payeeName) – queued for sync"
         }
     }
 
@@ -109,13 +109,13 @@ nonisolated enum WalletAutomationDialog {
     ) -> String {
         switch outcome {
         case .created(let shareSummary):
-            "Added \(formattedAmount) at \(description) — \(shareSummary)"
+            "\(formattedAmount) at \(description) – \(shareSummary)"
         case .queued:
-            "You're offline — queued \(formattedAmount) at \(description) to add to Splitwise once you're back online"
+            "No connection – \(formattedAmount) at \(description) – queued for sync"
         }
     }
 
     static func splitwiseSkippedDialog(description: String) -> String {
-        "Skipping Splitwise for \(description) — this merchant is set to not split."
+        "Skipping \(description) — merchant is set to not split."
     }
 }

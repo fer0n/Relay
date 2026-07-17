@@ -96,7 +96,7 @@ nonisolated enum SplitwiseExpenseHelper {
             SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
             let ownAmount = (Double(ownShareCents) / 100).asMoneyString
             let friendAmount = (Double(friendShareCents) / 100).asMoneyString
-            return .created(shareSummary: "you: \(ownAmount), \(friend.firstName): \(friendAmount)")
+            return .created(shareSummary: "You: \(ownAmount), \(friend.firstName): \(friendAmount)")
         case .queued:
             return .queued
         }

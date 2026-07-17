@@ -44,9 +44,9 @@ nonisolated struct AddSplitwiseExpenseIntent: AppIntent {
         )
         switch outcome {
         case .created(let shareSummary):
-            return .result(dialog: "Added \(expenseDescription) — \(shareSummary)")
+            return .result(dialog: "\(expenseDescription) – \(shareSummary)")
         case .queued:
-            return .result(dialog: "You're offline — queued \(expenseDescription) to add to Splitwise once you're back online")
+            return .result(dialog: "No connection – \(expenseDescription) – queued for sync")
         }
     }
 }

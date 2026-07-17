@@ -395,7 +395,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 guard splitwiseAction != .never else { return nil }
                 guard let friend = resolvedFriend else {
                     logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) but no friend available — skipping split")
-                    return ". No default Splitwise friend set — pick one in Hazel, or set \"Split With\" for this automation."
+                    return " – no default Splitwise friend set, pick one in Hazel or set \"Split With\" for this automation."
                 }
                 let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
                 let fragment = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare)
