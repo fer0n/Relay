@@ -6,6 +6,9 @@
     {
       "layers" : [
         {
+          "fill" : {
+            "solid" : "srgb:0.36078,0.79608,0.00392,1.00000"
+          },
           "image-name" : "Inner.svg",
           "name" : "Inner"
         }
@@ -23,6 +26,9 @@
     {
       "layers" : [
         {
+          "fill" : {
+            "solid" : "srgb:0.07059,0.48235,0.14510,1.00000"
+          },
           "image-name" : "Outer.svg",
           "name" : "Outer"
         }
