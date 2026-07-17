@@ -10,12 +10,16 @@ struct SettingsView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var notificationsEnabled = NotificationsPreferenceStore.isEnabled
-    #if DEBUG
-    @State private var showOnboardingPreview = false
-    #endif
     @State private var migration = LegacyMigrationCallbackHandler()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+
+    /// Dismisses Settings and asks ContentView to present onboarding once
+    /// Settings has actually dismissed.
+    var onRequestShowTutorial: () -> Void = {}
+    /// Dismisses Settings and asks ContentView to present the automation
+    /// tutorial once Settings has actually dismissed.
+    var onRequestAutomationSetup: () -> Void = {}
 
     var body: some View {
         NavigationStack {
@@ -71,14 +75,18 @@ struct SettingsView: View {
                 }
                 .cardRowBackground()
 
-                #if DEBUG
-                Section("Debug") {
+                Section {
                     Button("Show Onboarding") {
-                        showOnboardingPreview = true
+                        onRequestShowTutorial()
+                        dismiss()
+                    }
+
+                    Button("Automation Setup") {
+                        onRequestAutomationSetup()
+                        dismiss()
                     }
                 }
                 .cardRowBackground()
-                #endif
             }
             .themedList(background: .sheetBackgroundColor)
             .navigationTitle("Settings")
@@ -89,11 +97,6 @@ struct SettingsView: View {
                     HowHazelWorksView()
                 }
             }
-            #if DEBUG
-            .sheet(isPresented: $showOnboardingPreview) {
-                OnboardingView()
-            }
-            #endif
             .legacyMigrationCallback(migration, openURL: openURL)
         }
     }

@@ -24,18 +24,26 @@ import UserNotifications
 /// scroll-position-driven pager gives you when the change is wrapped in
 /// `withAnimation`.
 ///
-/// The bottom button doubles as each page's primary action (not just
-/// "Continue") — it enables notifications on that page, and finishes on the
-/// last. Swiping past a page without tapping it is always still allowed;
-/// only the button itself is ever disabled (welcome, until an account is
-/// connected).
+/// Two bottom buttons provide page-specific actions. The lower primary button
+/// performs the main action for each step, while the upper secondary button
+/// offers skip/close alternatives where relevant.
 struct OnboardingView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var scrollPosition: OnboardingPage? = .welcome
     @State private var usesLegacyShortcut: Bool?
+    @State private var didPrepareMigration = false
     @State private var migration = LegacyMigrationCallbackHandler()
+    @State private var isRequestingNotificationPermission = false
+    @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
+
+    /// Called instead of dismissing outright on the last page — ContentView
+    /// sets its own state here and presents the automation tutorial sheet
+    /// once this sheet has actually finished dismissing (via `onDismiss`),
+    /// rather than trying to present a second sheet while this one is still
+    /// on screen.
+    var onRequestAutomationTutorial: () -> Void = {}
 
     private var page: OnboardingPage { scrollPosition ?? .welcome }
 
@@ -44,25 +52,52 @@ struct OnboardingView: View {
         case .welcome:
             return !ynabAuth.isAuthenticated && !splitwiseAuth.isAuthenticated
         case .notifications:
-            return false
+            return isRequestingNotificationPermission
         case .importTemplate:
-            return usesLegacyShortcut == nil
+            return false
+        case .automation:
+            return false
         }
     }
 
-    // Still tappable (Done just dismisses either way) but visually
-    // de-emphasized until the user either declines the shortcut or actually
-    // runs the migration — otherwise it's too easy to tap Done having only
-    // installed the shortcut without running it.
-    private var isContinueDeemphasized: Bool {
-        page == .importTemplate && usesLegacyShortcut == true && migration.resultMessage == nil
+    private var isSecondaryDisabled: Bool {
+        switch page {
+        case .welcome:
+            return true
+        case .notifications:
+            return isRequestingNotificationPermission
+        case .importTemplate:
+            return false
+        case .automation:
+            return false
+        }
     }
 
     private var continueTitle: String {
         switch page {
         case .welcome: return "Continue"
         case .notifications: return "Enable Notifications"
-        case .importTemplate: return "Done"
+        case .importTemplate:
+            if usesLegacyShortcut != true {
+                return "Yes, Migrate data"
+            }
+            if !didPrepareMigration {
+                return "Install Migration Shortcut"
+            }
+            if migration.resultMessage == nil {
+                return "Run Migration"
+            }
+            return "Continue"
+        case .automation: return "Setup Automation"
+        }
+    }
+
+    private var secondaryTitle: String {
+        switch page {
+        case .welcome: return "Skip"
+        case .notifications: return "Skip"
+        case .importTemplate: return "Skip"
+        case .automation: return "Close"
         }
     }
 
@@ -70,23 +105,27 @@ struct OnboardingView: View {
         case welcome
         case notifications
         case importTemplate
+        case automation
 
         var title: String {
             switch self {
             case .welcome: return "Welcome to Hazel"
             case .notifications: return "Enable Reminders"
-            case .importTemplate: return "Migrate Data"
+            case .importTemplate: return "Using YNAB Toolkit?"
+            case .automation: return "Setup Wallet Automation"
             }
         }
 
         var description: LocalizedStringKey {
             switch self {
             case .welcome:
-                return "Connect YNAB and/or Splitwise to get started — Hazel isn't much use without at least one."
+                return "Connect YNAB and/or Splitwise to get started."
             case .notifications:
                 return "Reminds you about an incomplete wallet transaction or offline transactions that are waiting to sync. Nothing else."
             case .importTemplate:
-                return "Using the \"YNAB Toolkit Shortcut\"? Install the \"Transaction → YNAB Shortcut\" below, then tap Run Migration to migrate your automation data to Hazel."
+                return "If you already use the YNAB Toolkit Shortcut, you can migrate its automation data into Hazel."
+            case .automation:
+                return "Add a Shortcuts automation that opens Hazel to add a transaction whenever you tap to pay with Apple Wallet."
             }
         }
     }
@@ -107,6 +146,7 @@ struct OnboardingView: View {
                     .fontWeight(.bold)
                     .id(page)
                     .transition(.opacity)
+                    .minimumScaleFactor(0.5)
             }
             .frame(height: 34)
             .animation(.easeInOut(duration: 0.2), value: page)
@@ -146,9 +186,17 @@ struct OnboardingView: View {
                         .containerRelativeFrame(.horizontal)
                         .id(OnboardingPage.notifications)
 
-                    OnboardingImportPage(usesLegacyShortcut: $usesLegacyShortcut, migration: migration)
+                    OnboardingImportPage(
+                        usesLegacyShortcut: $usesLegacyShortcut,
+                        didPrepareMigration: $didPrepareMigration,
+                        migration: migration
+                    )
                         .containerRelativeFrame(.horizontal)
                         .id(OnboardingPage.importTemplate)
+
+                    OnboardingAutomationPage()
+                        .containerRelativeFrame(.horizontal)
+                        .id(OnboardingPage.automation)
                 }
                 .scrollTargetLayout()
             }
@@ -168,40 +216,85 @@ struct OnboardingView: View {
             .animation(.easeInOut(duration: 0.2), value: page)
             .padding(.bottom, 16)
 
-            Button {
-                switch page {
-                case .welcome:
-                    withAnimation { scrollPosition = .notifications }
-                case .notifications:
-                    NotificationsPreferenceStore.isEnabled = true
-                    requestNotificationPermission()
-                    withAnimation { scrollPosition = .importTemplate }
-                case .importTemplate:
-                    dismiss()
+            VStack(spacing: 10) {
+                Button {
+                    switch page {
+                    case .welcome:
+                        break
+                    case .notifications:
+                        withAnimation { scrollPosition = .importTemplate }
+                    case .importTemplate:
+                        usesLegacyShortcut = false
+                        withAnimation { scrollPosition = .automation }
+                    case .automation:
+                        dismiss()
+                    }
+                } label: {
+                    Text(secondaryTitle)
+                        .frame(maxWidth: .infinity)
                 }
-            } label: {
-                Text(continueTitle)
-                    .frame(maxWidth: .infinity)
+                .disabled(isSecondaryDisabled)
+                .padding(.horizontal, 30)
+                .buttonStyle(.bordered)
+                .tint(Color.foregroundColor)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+
+                Button {
+                    switch page {
+                    case .welcome:
+                        withAnimation { scrollPosition = .notifications }
+                    case .notifications:
+                        NotificationsPreferenceStore.isEnabled = true
+                        isRequestingNotificationPermission = true
+                        Task {
+                            await requestNotificationPermission()
+                            await MainActor.run {
+                                isRequestingNotificationPermission = false
+                                withAnimation { scrollPosition = .importTemplate }
+                            }
+                        }
+                    case .importTemplate:
+                        if usesLegacyShortcut != true {
+                            usesLegacyShortcut = true
+                        } else if !didPrepareMigration {
+                            openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+                            didPrepareMigration = true
+                        } else if migration.resultMessage == nil {
+                            migration.reset()
+                            openURL(LegacyBucketMigrationShortcut.runURL)
+                        } else {
+                            withAnimation { scrollPosition = .automation }
+                        }
+                    case .automation:
+                        onRequestAutomationTutorial()
+                        dismiss()
+                    }
+                } label: {
+                    Text(continueTitle)
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(isContinueDisabled)
+                .padding(.horizontal, 30)
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
             }
-            .disabled(isContinueDisabled)
-            .tint(isContinueDeemphasized ? Color.secondary : Color.accentColor)
-            .animation(.easeInOut(duration: 0.2), value: isContinueDeemphasized)
-            .padding(.horizontal, 30)
-            .buttonStyle(.glassProminent)
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
             .padding(.bottom, 10)
+            .fontWeight(.semibold)
         }
         .background(Color.sheetBackgroundColor)
         .sensoryFeedback(.selection, trigger: page)
+        .onChange(of: usesLegacyShortcut) { _, newValue in
+            guard page == .importTemplate, newValue == false else { return }
+            withAnimation { scrollPosition = .automation }
+        }
     }
 
     // Requesting more than once is a no-op once the user has already
     // answered the system prompt, matching SettingsView's toggle behavior.
-    private func requestNotificationPermission() {
-        Task {
-            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
-        }
+    private func requestNotificationPermission() async {
+        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
 }
 

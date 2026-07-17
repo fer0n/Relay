@@ -57,7 +57,10 @@ extension View {
             presenting: handler.errorMessage
         ) { _ in
             Button("Install Shortcut") {
-                openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+                handler.showErrorAlert = false
+                Task { @MainActor in
+                    openURL(LegacyBucketMigrationShortcut.installURL)
+                }
             }
             Button("OK", role: .cancel) { }
         } message: { message in

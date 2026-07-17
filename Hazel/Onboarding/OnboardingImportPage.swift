@@ -6,15 +6,11 @@
 import SwiftUI
 
 struct OnboardingImportPage: View {
-    /// Owned by `OnboardingView` so it can gate the sheet's Done button —
-    /// `nil` until the user answers the inline "have you been using the
-    /// shortcut" prompt below.
+    /// Owned by `OnboardingView`; `true` shows migration actions.
     @Binding var usesLegacyShortcut: Bool?
-    /// Owned by `OnboardingView` so it can de-emphasize the Done button
-    /// until the migration actually runs.
+    @Binding var didPrepareMigration: Bool
     let migration: LegacyMigrationCallbackHandler
 
-    @State private var didPrepareMigration = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -23,25 +19,12 @@ struct OnboardingImportPage: View {
                 switch usesLegacyShortcut {
                 case true:
                     migrationSteps
-                case false:
+                case false, nil:
                     // Same placeholder style as OnboardingNotificationsPage —
                     // a plain large secondary SF Symbol, no text.
-                    Image(systemName: "checkmark.circle")
+                    Image(systemName: "yensign")
                         .font(.system(size: 100))
                         .foregroundStyle(.secondary)
-                case nil:
-                    // A real .alert() would pop up as a floating system modal —
-                    // this instead mimics the alert's look (title/message over a
-                    // divider, then a button row) but stays laid out inline in
-                    // the page like any other content.
-                    InlineAlertCard(
-                        title: "Have you been using the YNAB Toolkit Shortcut?",
-                        buttons: [
-                            ("Yes", { usesLegacyShortcut = true }),
-                            ("No", { usesLegacyShortcut = false }),
-                        ]
-                    )
-                    .padding(.horizontal, 40)
                 }
             }
             .id(usesLegacyShortcut)
@@ -60,10 +43,11 @@ struct OnboardingImportPage: View {
                     openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
                     didPrepareMigration = true
                 } label: {
-                    Label("Get Shortcut", systemImage: didPrepareMigration ? "checkmark" : "circle")
+                    Label("Migration Shortcut", systemImage: didPrepareMigration ? "checkmark" : "circle")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
+                .tint(Color.foregroundColor)
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(didPrepareMigration)
@@ -75,7 +59,8 @@ struct OnboardingImportPage: View {
                     Label("Start Migration", systemImage: migration.resultMessage != nil ? "checkmark" : "circle")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
+                .tint(Color.foregroundColor)
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(migration.resultMessage != nil)
@@ -94,5 +79,9 @@ struct OnboardingImportPage: View {
 }
 
 #Preview {
-    OnboardingImportPage(usesLegacyShortcut: .constant(nil), migration: LegacyMigrationCallbackHandler())
+    OnboardingImportPage(
+        usesLegacyShortcut: .constant(nil),
+        didPrepareMigration: .constant(false),
+        migration: LegacyMigrationCallbackHandler()
+    )
 }
