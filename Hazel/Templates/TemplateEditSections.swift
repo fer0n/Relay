@@ -9,7 +9,7 @@
 
 import SwiftUI
 
-struct LinkedMerchant: Identifiable {
+struct LinkedMerchant: Identifiable, Equatable {
     let merchant: String
     var payeeName: String
     var id: String { merchant }

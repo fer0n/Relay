@@ -55,7 +55,7 @@ struct WalletTransactionConfig: Codable {
         }
     }
 
-    struct AutoMatchRule: Codable {
+    struct AutoMatchRule: Codable, Equatable {
         var pattern: String
         var payeeName: String
     }

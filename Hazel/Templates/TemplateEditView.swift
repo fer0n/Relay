@@ -16,6 +16,18 @@ import os
 
 private let logger = Logger(subsystem: "com.pentlandFirth.Hazel", category: "TemplateEditView")
 
+/// Everything Save actually persists, in one place, so "has anything
+/// changed?" is a single Equatable comparison instead of a field-by-field
+/// list that has to be kept in sync by hand as fields are added.
+private struct TemplateDraft: Equatable {
+    var name: String
+    var categoryId: String?
+    var splitwiseOption: SplitwiseTemplateOption
+    var friendId: Int?
+    var autoMatchRules: [WalletTransactionConfig.AutoMatchRule]
+    var linkedMerchants: [LinkedMerchant]
+}
+
 struct TemplateEditView: View {
     /// nil means "creating a new template".
     let templateName: String?
@@ -57,6 +69,11 @@ struct TemplateEditView: View {
     /// instead of showing a bare "None".
     private let defaultFriend: SplitwiseDefaultFriend?
 
+    /// Snapshot of the loaded state, compared against `currentDraft` in
+    /// `hasChanges` so the Save bar only appears once something's actually
+    /// been edited.
+    private let originalDraft: TemplateDraft
+
     init(templateName: String?, onSave: @escaping () -> Void, onDelete: @escaping () -> Void) {
         self.templateName = templateName
         self.onSave = onSave
@@ -70,13 +87,44 @@ struct TemplateEditView: View {
         existingFriend = existing?.splitwiseFriend
         defaultFriend = SplitwiseDefaultFriendStore.load()
         _autoMatchRules = State(initialValue: existing?.autoMatch ?? [])
-        _linkedMerchants = State(initialValue: config.merchants
+        let linkedMerchants = config.merchants
             .filter { $0.value.templateName == templateName }
             .map { LinkedMerchant(merchant: $0.key, payeeName: $0.value.payeeName) }
-            .sorted { $0.merchant < $1.merchant })
+            .sorted { $0.merchant < $1.merchant }
+        _linkedMerchants = State(initialValue: linkedMerchants)
         _otherTemplateNames = State(initialValue: config.templates.keys
             .filter { $0 != templateName }
             .sorted())
+
+        originalDraft = TemplateDraft(
+            name: templateName ?? "",
+            categoryId: existing?.categoryId,
+            splitwiseOption: existing?.splitwiseOption ?? .never,
+            friendId: existing?.splitwiseFriendId,
+            autoMatchRules: existing?.autoMatch ?? [],
+            linkedMerchants: linkedMerchants
+        )
+    }
+
+    /// Mirrors what `save()` would actually write, cleaned/trimmed the same
+    /// way, so it can be compared directly against `originalDraft`.
+    private var currentDraft: TemplateDraft {
+        TemplateDraft(
+            name: name.trimmingCharacters(in: .whitespaces),
+            categoryId: selectedCategoryId,
+            splitwiseOption: splitwiseOption,
+            friendId: selectedFriendId,
+            autoMatchRules: autoMatchRules.filter { !$0.pattern.isEmpty && !$0.payeeName.isEmpty },
+            linkedMerchants: linkedMerchants.map {
+                LinkedMerchant(merchant: $0.merchant, payeeName: $0.payeeName.trimmingCharacters(in: .whitespaces))
+            }
+        )
+    }
+
+    /// Whether anything differs from what was loaded, i.e. whether Save has
+    /// anything to persist.
+    private var hasChanges: Bool {
+        currentDraft != originalDraft
     }
 
     var body: some View {
@@ -165,14 +213,16 @@ struct TemplateEditView: View {
             }
         }
         .safeAreaBar(edge: .bottom) {
-            Button(action: save) {
-                Text("Save")
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .themedText()
+            if hasChanges {
+                Button(action: save) {
+                    Text("Save")
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .themedText()
+                }
+                .glassProminentActionButton()
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .glassProminentActionButton()
-            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .task {
             await loadCategories()
@@ -343,6 +393,14 @@ extension TemplateEditView {
         _autoMatchRules = State(initialValue: previewAutoMatchRules)
         _linkedMerchants = State(initialValue: [])
         _otherTemplateNames = State(initialValue: [])
+        originalDraft = TemplateDraft(
+            name: "Groceries",
+            categoryId: nil,
+            splitwiseOption: .never,
+            friendId: nil,
+            autoMatchRules: previewAutoMatchRules,
+            linkedMerchants: []
+        )
     }
 }
 #endif
