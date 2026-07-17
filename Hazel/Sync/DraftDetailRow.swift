@@ -15,17 +15,22 @@ struct DraftDetailRow<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 0) {
             Image(systemName: icon)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .frame(width: 24)
+                .padding(.trailing, 12)
+            
             Text(title)
-            Spacer()
+                .lineLimit(1)
+            
+            Spacer(minLength: 10)
             content()
+                .lineLimit(1)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 3)
     }
 }
 

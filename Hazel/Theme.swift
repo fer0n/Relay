@@ -60,6 +60,34 @@ struct RowLabel: View {
     }
 }
 
+/// A menu-style `Picker` whose collapsed button shows a caller-supplied
+/// label instead of the system-derived one. A plain `Picker(...)
+/// .pickerStyle(.menu).labelsHidden()` has a longstanding SwiftUI bug where
+/// its auto-derived collapsed label ignores `.lineLimit` applied from
+/// outside, so a longer option's text can wrap to two lines instead of
+/// truncating (https://stackoverflow.com/q/75423473). Wrapping the Picker
+/// in a `Menu` with an explicit label sidesteps that, since the label is
+/// then just a `Text` we control directly.
+struct MenuPickerField<Selection: Hashable, Content: View>: View {
+    @Binding var selection: Selection
+    let label: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        Menu {
+            Picker(selection: $selection) {
+                content()
+            } label: {
+                EmptyView()
+            }
+        } label: {
+            Text(label)
+                .lineLimit(1)
+        }
+        .tint(Color.foregroundColor)
+    }
+}
+
 /// Faint, oversized icon watermark shown behind an empty themed `List` —
 /// pairs with `.background { if isEmpty { EmptyListBackground(...) } }`
 /// on the List, in place of a titled `ContentUnavailableView`.

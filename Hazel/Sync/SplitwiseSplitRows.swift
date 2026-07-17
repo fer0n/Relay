@@ -26,16 +26,11 @@ struct SplitwiseOptionRow: View {
             if isResolved {
                 Text(resolvedOption.label)
             } else {
-                Picker(selection: $newOption) {
+                MenuPickerField(selection: $newOption, label: newOption.label) {
                     ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
                         Text(option.label).tag(option)
                     }
-                } label: {
-                    EmptyView()
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .tint(Color.foregroundColor)
             }
         }
         .cardRowBackground()
@@ -50,6 +45,10 @@ struct SplitwiseFriendPickerRow: View {
     let isLoading: Bool
     let friends: [SplitwiseFriend]
     @Binding var selectedFriendId: Int?
+    /// Label for the unset ("no friend selected") option — defaults to
+    /// "None", but e.g. TemplateEditView passes "Default (…)" when an
+    /// app-wide default Splitwise friend applies instead.
+    var noneLabel: String = "None"
 
     var body: some View {
         DraftDetailRow(icon: "person.2.fill", title: "Split With") {
@@ -58,17 +57,15 @@ struct SplitwiseFriendPickerRow: View {
             } else if isLoading {
                 ProgressView()
             } else {
-                Picker(selection: $selectedFriendId) {
-                    Text("None").tag(Int?.none)
+                MenuPickerField(
+                    selection: $selectedFriendId,
+                    label: friends.first { $0.id == selectedFriendId }?.fullName ?? noneLabel
+                ) {
+                    Text(noneLabel).tag(Int?.none)
                     splitwiseFriendRows(friends) { friend in
                         Text(friend.fullName).tag(Optional(friend.id))
                     }
-                } label: {
-                    EmptyView()
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .tint(Color.foregroundColor)
             }
         }
         .cardRowBackground()
@@ -82,17 +79,12 @@ struct SplitwiseAskRow: View {
 
     var body: some View {
         DraftDetailRow(icon: "questionmark.circle.fill", title: "Split Transaction?") {
-            Picker(selection: $runtimeChoice) {
+            MenuPickerField(selection: $runtimeChoice, label: runtimeChoice?.label ?? "Choose") {
                 Text("Choose").tag(SplitwiseSplitOption?.none)
                 ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
                     Text(option.label).tag(SplitwiseSplitOption?.some(option))
                 }
-            } label: {
-                EmptyView()
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .tint(Color.foregroundColor)
         }
         .cardRowBackground()
     }

@@ -80,54 +80,56 @@ struct TemplateEditView: View {
     }
 
     var body: some View {
-        Form {
-            Section("Name") {
-                TextField("Template Name", text: $name)
-            }
+        List {
+            Section {
+                DraftDetailRow(icon: "textformat", title: "Name") {
+                    TextField("Template Name", text: $name)
+                        .multilineTextAlignment(.trailing)
+                }
 
-            if ynabAuth.isAuthenticated {
-                Section("Category") {
-                    if isLoadingCategories {
-                        ProgressView()
-                    } else {
-                        Picker("Category", selection: $selectedCategoryId) {
-                            Text("None").tag(String?.none)
-                            ForEach(categories, id: \.id) { category in
-                                Text(category.name).tag(Optional(category.id))
+                if ynabAuth.isAuthenticated {
+                    DraftDetailRow(icon: "tag.fill", title: "Category") {
+                        if isLoadingCategories {
+                            ProgressView()
+                        } else {
+                            MenuPickerField(
+                                selection: $selectedCategoryId,
+                                label: categories.first { $0.id == selectedCategoryId }?.name ?? "None"
+                            ) {
+                                Text("None").tag(String?.none)
+                                ForEach(categories, id: \.id) { category in
+                                    Text(category.name).tag(Optional(category.id))
+                                }
                             }
                         }
                     }
                 }
             }
+            .cardRowBackground()
 
             if splitwiseAuth.isAuthenticated {
                 Section {
-                    Picker("Split Option", selection: $splitwiseOption) {
-                        ForEach([SplitwiseTemplateOption.ask, .always, .manual, .never], id: \.self) { option in
-                            Text(option.label).tag(option)
-                        }
-                    }
-                    if isLoadingFriends {
-                        ProgressView()
-                    } else {
-                        Picker("Split With", selection: $selectedFriendId) {
-                            if let defaultFriend {
-                                Text("Default (\(defaultFriend.fullName))").tag(Int?.none)
-                            } else {
-                                Text("None").tag(Int?.none)
-                            }
-                            splitwiseFriendRows(friends) { friend in
-                                Text(friend.fullName).tag(Optional(friend.id))
-                            }
-                        }
-                    }
+                    SplitwiseOptionRow(
+                        title: "Split Option",
+                        isResolved: false,
+                        resolvedOption: .never,
+                        newOption: $splitwiseOption
+                    )
+                    SplitwiseFriendPickerRow(
+                        isLoading: isLoadingFriends,
+                        friends: friends,
+                        selectedFriendId: $selectedFriendId,
+                        noneLabel: defaultFriend.map { "Default (\($0.fullName))" } ?? "None"
+                    )
                 } header: {
                     Text("Splitwise")
                 } footer: {
                     if defaultFriend != nil {
                         Text("\"Split With\" is optional — if it's left as Default, the app-wide default Splitwise friend (set in Settings) is used when a matching transaction needs to split.")
+                            .footerText()
                     } else {
                         Text("\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split.")
+                            .footerText()
                     }
                 }
             }
@@ -142,24 +144,36 @@ struct TemplateEditView: View {
                 )
             }
 
-            if templateName != nil {
+            if let errorMessage {
                 Section {
-                    Button("Delete Template", role: .destructive) {
+                    Text(errorMessage).foregroundStyle(.red)
+                }
+                .listRowBackground(Color.backgroundColor)
+            }
+        }
+        .themedList(background: .backgroundColor)
+        .navigationTitle(templateName ?? "New Template")
+        .toolbar {
+            if templateName != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(role: .destructive) {
                         showDeleteConfirmation = true
+                    } label: {
+                        Image(systemName: "trash.fill")
                     }
                 }
             }
-
-            if let errorMessage {
-                Text(errorMessage).foregroundStyle(.red)
-            }
         }
-        .navigationTitle(templateName ?? "New Template")
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save", action: save)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+        .safeAreaBar(edge: .bottom) {
+            Button(action: save) {
+                Text("Save")
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .themedText()
             }
+            .buttonStyle(.glassProminent)
+            .foregroundStyle(Color.accentColor)
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .task {
             await loadCategories()

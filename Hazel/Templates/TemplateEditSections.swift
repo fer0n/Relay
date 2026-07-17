@@ -47,7 +47,9 @@ struct AutoMatchRulesSection: View {
             Text("Auto-Match Rules")
         } footer: {
             Text("Pattern can be plain text or a regex, and is matched case-insensitively.")
+                .footerText()
         }
+        .cardRowBackground()
     }
 }
 
@@ -90,6 +92,8 @@ struct LinkedMerchantsSection: View {
             Text("Linked Merchants")
         } footer: {
             Text("Wallet transactions from these exact merchant names go straight to this template. Edit the payee name, swipe to unlink one, or use the arrow to move one to a different template.")
+                .footerText()
         }
+        .cardRowBackground()
     }
 }

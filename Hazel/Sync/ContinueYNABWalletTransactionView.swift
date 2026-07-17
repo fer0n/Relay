@@ -177,17 +177,15 @@ struct ContinueYNABWalletTransactionView: View {
                     } else if isLoadingCategories {
                         ProgressView()
                     } else {
-                        Picker(selection: $selectedCategoryId) {
+                        MenuPickerField(
+                            selection: $selectedCategoryId,
+                            label: categories.first { $0.id == selectedCategoryId }?.name ?? "None"
+                        ) {
                             Text("None").tag(String?.none)
                             ForEach(categories, id: \.id) { category in
                                 Text(category.name).tag(Optional(category.id))
                             }
-                        } label: {
-                            EmptyView()
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.foregroundColor)
                     }
                 }
                 .cardRowBackground()
@@ -198,17 +196,15 @@ struct ContinueYNABWalletTransactionView: View {
                     } else if isLoadingAccounts {
                         ProgressView()
                     } else {
-                        Picker(selection: $selectedAccountId) {
+                        MenuPickerField(
+                            selection: $selectedAccountId,
+                            label: accounts.first { $0.id == selectedAccountId }?.name ?? "None"
+                        ) {
                             Text("None").tag(String?.none)
                             ForEach(accounts, id: \.id) { account in
                                 Text(account.name).tag(Optional(account.id))
                             }
-                        } label: {
-                            EmptyView()
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.foregroundColor)
                     }
                 }
                 .cardRowBackground()
