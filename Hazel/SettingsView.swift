@@ -56,7 +56,9 @@ struct SettingsView: View {
                 .tint(.accentColor)
                 .cardRowBackground()
 
-                TemplateImportExportSection(migration: migration)
+                TemplateImportExportSection()
+
+                LegacyMigrationShortcutSection(migration: migration)
 
                 Section {
                     NavigationLink(value: SettingsRoute.howHazelWorks) {

@@ -2,19 +2,14 @@
 //  TemplateImportExportSections.swift
 //  Hazel
 //
-//  Settings' template import/export plus the legacy "YNAB Toolkit → Hazel"
-//  Shortcut migration, combined into one section since they're all variations
-//  on getting existing template data into Hazel.
+//  Settings' template import/export section, plus the legacy "YNAB Toolkit →
+//  Hazel" Shortcut migration section.
 //
 
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct TemplateImportExportSection: View {
-    var migration: LegacyMigrationCallbackHandler
-
-    @Environment(\.openURL) private var openURL
-
     @State private var showFileImporter = false
     @State private var isImporting = false
     @State private var importResultMessage: String?
@@ -59,21 +54,8 @@ struct TemplateImportExportSection: View {
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
-
-            Button("Install Shortcut") {
-                openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
-            }
-            Button("Run Migration") {
-                migration.reset()
-                openURL(LegacyBucketMigrationShortcut.runURL)
-            }
-            if let resultMessage = migration.resultMessage {
-                Text(resultMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
         } footer: {
-            Text("Export your templates, auto-match rules, merchants, and cards as a JSON backup, or import one back in. \"Run Migration\" instead pulls data from the old \"YNAB Toolkit\" Shortcut.")
+            Text("Export your templates, auto-match rules, merchants, and cards as a JSON backup, or import one back in.")
                 .footerText()
         }
         .cardRowBackground()
@@ -132,5 +114,32 @@ struct TemplateImportExportSection: View {
         }
         document = JSONFileDocument(data: data)
         showExporter = true
+    }
+}
+
+struct LegacyMigrationShortcutSection: View {
+    var migration: LegacyMigrationCallbackHandler
+
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Section {
+            Button("Install Migration Shortcut") {
+                openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+            }
+            Button("Run Migration") {
+                migration.reset()
+                openURL(LegacyBucketMigrationShortcut.runURL)
+            }
+            if let resultMessage = migration.resultMessage {
+                Text(resultMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } footer: {
+            Text("Pulls buckets and merchants straight out of the old \"YNAB Toolkit\" Shortcut's DataJar storage.")
+                .footerText()
+        }
+        .cardRowBackground()
     }
 }
