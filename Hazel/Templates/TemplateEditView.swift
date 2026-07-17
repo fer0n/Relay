@@ -50,6 +50,13 @@ struct TemplateEditView: View {
     /// hasn't changed from what was already saved.
     private let existingFriend: (id: Int, firstName: String, fullName: String)?
 
+    /// The app-wide default (Settings' DefaultSplitwiseFriendRow) — leaving
+    /// this template's own friend unset doesn't mean "split with no one",
+    /// it means "use this" (see AddWalletTransactionToYNABIntent's
+    /// splitwiseFriendFallback), so the picker/footer below should say so
+    /// instead of showing a bare "None".
+    private let defaultFriend: SplitwiseDefaultFriend?
+
     init(templateName: String?, onSave: @escaping () -> Void, onDelete: @escaping () -> Void) {
         self.templateName = templateName
         self.onSave = onSave
@@ -61,6 +68,7 @@ struct TemplateEditView: View {
         _splitwiseOption = State(initialValue: existing?.splitwiseOption ?? .never)
         _selectedFriendId = State(initialValue: existing?.splitwiseFriendId)
         existingFriend = existing?.splitwiseFriend
+        defaultFriend = SplitwiseDefaultFriendStore.load()
         _autoMatchRules = State(initialValue: existing?.autoMatch ?? [])
         _linkedMerchants = State(initialValue: config.merchants
             .filter { $0.value.templateName == templateName }
@@ -103,7 +111,11 @@ struct TemplateEditView: View {
                         ProgressView()
                     } else {
                         Picker("Split With", selection: $selectedFriendId) {
-                            Text("None").tag(Int?.none)
+                            if let defaultFriend {
+                                Text("Default (\(defaultFriend.fullName))").tag(Int?.none)
+                            } else {
+                                Text("None").tag(Int?.none)
+                            }
                             splitwiseFriendRows(friends) { friend in
                                 Text(friend.fullName).tag(Optional(friend.id))
                             }
@@ -112,7 +124,11 @@ struct TemplateEditView: View {
                 } header: {
                     Text("Splitwise")
                 } footer: {
-                    Text("\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split.")
+                    if defaultFriend != nil {
+                        Text("\"Split With\" is optional — if it's left as Default, the app-wide default Splitwise friend (set in Settings) is used when a matching transaction needs to split.")
+                    } else {
+                        Text("\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split.")
+                    }
                 }
             }
 
@@ -306,6 +322,7 @@ extension TemplateEditView {
         self.onSave = {}
         self.onDelete = {}
         existingFriend = nil
+        defaultFriend = nil
         _name = State(initialValue: "Groceries")
         _selectedCategoryId = State(initialValue: nil)
         _splitwiseOption = State(initialValue: .never)
