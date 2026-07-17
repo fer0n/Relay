@@ -64,7 +64,11 @@ struct ContinueSplitwiseWalletTransactionView: View {
         // render. `currentAccessToken` is a plain Keychain read here (no
         // network), unlike YNAB's token check, so even the auth gate can
         // be settled up front instead of behind a `.task`.
-        guard case .splitwiseWallet(let merchant, _) = draft.payload else { return }
+        guard case .splitwiseWallet(let merchant, _, _) = draft.payload else { return }
+
+        if let ownShare = draft.ownShare {
+            _ownShareText = State(initialValue: String(ownShare))
+        }
 
         let isAuthenticated = isAuthenticatedOverride ?? (SplitwiseAuthService.currentAccessToken != nil)
         guard isAuthenticated else {
@@ -223,7 +227,7 @@ struct ContinueSplitwiseWalletTransactionView: View {
     }
 
     private func submit() async {
-        guard case .splitwiseWallet(let merchant, let amount) = draft.payload else { return }
+        guard case .splitwiseWallet(let merchant, let amount, _) = draft.payload else { return }
         guard SplitwiseAuthService.currentAccessToken != nil else {
             notAuthenticated = true
             return

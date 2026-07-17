@@ -19,7 +19,11 @@ struct TransactionDraft: Codable, Identifiable {
 
     enum Payload: Codable {
         case ynabWallet(merchant: String, amount: Double, card: String)
-        case splitwiseWallet(merchant: String, amount: Double)
+        /// `ownShare` carries forward an already-resolved manual split
+        /// amount (e.g. from AddWalletTransactionToYNABIntent's Splitwise
+        /// half) so ContinueSplitwiseWalletTransactionView can prefill it
+        /// instead of asking again. nil when the share isn't known yet.
+        case splitwiseWallet(merchant: String, amount: Double, ownShare: Double? = nil)
     }
 
     var service: TransactionService {
@@ -32,15 +36,24 @@ struct TransactionDraft: Codable, Identifiable {
     var merchant: String {
         switch payload {
         case .ynabWallet(let merchant, _, _): merchant
-        case .splitwiseWallet(let merchant, _): merchant
+        case .splitwiseWallet(let merchant, _, _): merchant
         }
     }
 
     var amount: Double {
         switch payload {
         case .ynabWallet(_, let amount, _): amount
-        case .splitwiseWallet(_, let amount): amount
+        case .splitwiseWallet(_, let amount, _): amount
         }
+    }
+
+    /// Only ever set on `.splitwiseWallet` — an already-known manual split
+    /// amount carried forward from the run that created this draft.
+    var ownShare: Double? {
+        if case .splitwiseWallet(_, _, let ownShare) = payload {
+            return ownShare
+        }
+        return nil
     }
 
     var summary: String {

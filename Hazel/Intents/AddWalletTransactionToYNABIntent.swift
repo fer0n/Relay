@@ -394,8 +394,23 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             func createSplitIfNeeded() async -> String? {
                 guard splitwiseAction != .never else { return nil }
                 guard let friend = resolvedFriend else {
-                    logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) but no friend available — skipping split")
-                    return " – no default Splitwise friend set, pick one in Hazel or set \"Split With\" for this automation."
+                    logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) but no friend available — queuing a draft to finish the split later")
+                    // Same treatment as an interrupted run: register a
+                    // (Splitwise-only) draft and fire its reminder right
+                    // away, since we already know for certain this run
+                    // won't complete the split on its own.
+                    // ContinueSplitwiseWalletTransactionView resolves the
+                    // merchant back to this same template/split-option — the
+                    // friend is the only missing piece — and writes the
+                    // picked friend back onto the template so future runs
+                    // don't hit this again.
+                    guard ensureCompletion else {
+                        return " – no default Splitwise friend set, pick one in Hazel or set \"Split With\" for this automation."
+                    }
+                    let draftOwnShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
+                    let splitDraftId = TransactionDraftGuard.begin(.splitwiseWallet(merchant: merchant, amount: amount, ownShare: draftOwnShare))
+                    TransactionDraftGuard.fail(splitDraftId)
+                    return " – no default Splitwise friend set, sent a reminder to finish the split in Hazel."
                 }
                 let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
                 let fragment = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare)
