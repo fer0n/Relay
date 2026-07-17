@@ -30,20 +30,26 @@ struct ContentView: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.backgroundColor)
 
-                NavigationLink(value: ContentRoute.pendingQueue) {
-                    RowLabel(title: "Pending Queue", systemImage: "arrow.triangle.2.circlepath", badge: pendingQueue.operations.count)
+                if pendingQueue.operations.count > 0 {
+                    NavigationLink(value: ContentRoute.pendingQueue) {
+                        RowLabel(title: "Pending Queue", systemImage: "arrow.triangle.2.circlepath", badge: pendingQueue.operations.count)
+                    }
+                    .cardRowBackground()
                 }
-                .cardRowBackground()
 
-                NavigationLink(value: ContentRoute.transactionDrafts) {
-                    RowLabel(title: "Transaction Drafts", systemImage: "square.and.pencil", badge: draftCount)
+                if draftCount > 0 {
+                    NavigationLink(value: ContentRoute.transactionDrafts) {
+                        RowLabel(title: "Transaction Drafts", systemImage: "square.and.pencil", badge: draftCount)
+                    }
+                    .cardRowBackground()
                 }
-                .cardRowBackground()
 
-                NavigationLink(value: ContentRoute.splitwiseFileImport) {
-                    RowLabel(title: "Splitwise Import", systemImage: "person.2.badge.plus", badge: splitwiseImportCount)
+                if splitwiseImportCount > 0 {
+                    NavigationLink(value: ContentRoute.splitwiseFileImport) {
+                        RowLabel(title: "Splitwise Import", systemImage: "person.2.badge.plus", badge: splitwiseImportCount)
+                    }
+                    .cardRowBackground()
                 }
-                .cardRowBackground()
 
                 Section {
                     NavigationLink(value: ContentRoute.templates) {
