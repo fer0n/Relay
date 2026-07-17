@@ -2,18 +2,28 @@
 //  TemplateImportExportSections.swift
 //  Hazel
 //
-//  Settings' "Import Templates" and "Export Templates" sections, each owning
-//  its own file-picker state independent of the rest of the screen.
+//  Settings' template import/export plus the legacy "YNAB Toolkit → Hazel"
+//  Shortcut migration, combined into one section since they're all variations
+//  on getting existing template data into Hazel.
 //
 
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct TemplateImportSection: View {
+struct TemplateImportExportSection: View {
+    var migration: LegacyMigrationCallbackHandler
+
+    @Environment(\.openURL) private var openURL
+
     @State private var showFileImporter = false
     @State private var isImporting = false
-    @State private var resultMessage: String?
-    @State private var errorMessage: String?
+    @State private var importResultMessage: String?
+    @State private var importErrorMessage: String?
+
+    @State private var showExporter = false
+    @State private var document: JSONFileDocument?
+    @State private var exportResultMessage: String?
+    @State private var exportErrorMessage: String?
 
     var body: some View {
         Section {
@@ -21,76 +31,61 @@ struct TemplateImportSection: View {
                 showFileImporter = true
             }
             .disabled(isImporting)
+
+            Button("Export Templates") {
+                export()
+            }
+
             if isImporting {
                 ProgressView()
             }
-            if let resultMessage {
+            if let importResultMessage {
+                Text(importResultMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let importErrorMessage {
+                Text(importErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+            if let exportResultMessage {
+                Text(exportResultMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if let exportErrorMessage {
+                Text(exportErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+
+            Button("Install Shortcut") {
+                openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+            }
+            Button("Run Migration") {
+                migration.reset()
+                openURL(LegacyBucketMigrationShortcut.runURL)
+            }
+            if let resultMessage = migration.resultMessage {
                 Text(resultMessage)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
         } footer: {
-            Text("Imports a JSON file exported from here, or the legacy shape the \"YNAB Toolkit\" Shortcut's DataJar config used.")
+            Text("Export your templates, auto-match rules, merchants, and cards as a JSON backup, or import one back in. \"Run Migration\" instead pulls data from the old \"YNAB Toolkit\" Shortcut.")
                 .footerText()
         }
         .cardRowBackground()
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.json]) { result in
             switch result {
             case .failure(let error):
-                resultMessage = nil
-                errorMessage = "Failed to import: \(error.localizedDescription)"
+                importResultMessage = nil
+                importErrorMessage = "Failed to import: \(error.localizedDescription)"
             case .success(let url):
                 Task { await importBuckets(from: url) }
             }
         }
-    }
-
-    private func importBuckets(from url: URL) async {
-        resultMessage = nil
-        errorMessage = nil
-        isImporting = true
-        defer { isImporting = false }
-
-        switch await TemplateImportService.importBuckets(from: url) {
-        case .success(let message):
-            resultMessage = message
-        case .failure(let error):
-            errorMessage = error.message
-        }
-    }
-}
-
-struct TemplateExportSection: View {
-    @State private var showExporter = false
-    @State private var document: JSONFileDocument?
-    @State private var resultMessage: String?
-    @State private var errorMessage: String?
-
-    var body: some View {
-        Section {
-            Button("Export Templates") {
-                export()
-            }
-            if let resultMessage {
-                Text(resultMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
-        } footer: {
-            Text("Saves your templates, auto-match rules, merchants, and cards as a JSON file — a full backup you can re-import here later, including into a different device.")
-                .footerText()
-        }
-        .cardRowBackground()
         .fileExporter(
             isPresented: $showExporter,
             document: document,
@@ -99,18 +94,32 @@ struct TemplateExportSection: View {
         ) { result in
             switch result {
             case .success:
-                errorMessage = nil
-                resultMessage = "Exported."
+                exportErrorMessage = nil
+                exportResultMessage = "Exported."
             case .failure(let error):
-                resultMessage = nil
-                errorMessage = "Failed to export: \(error.localizedDescription)"
+                exportResultMessage = nil
+                exportErrorMessage = "Failed to export: \(error.localizedDescription)"
             }
         }
     }
 
+    private func importBuckets(from url: URL) async {
+        importResultMessage = nil
+        importErrorMessage = nil
+        isImporting = true
+        defer { isImporting = false }
+
+        switch await TemplateImportService.importBuckets(from: url) {
+        case .success(let message):
+            importResultMessage = message
+        case .failure(let error):
+            importErrorMessage = error.message
+        }
+    }
+
     private func export() {
-        resultMessage = nil
-        errorMessage = nil
+        exportResultMessage = nil
+        exportErrorMessage = nil
         let config = WalletTransactionConfigStore.load()
         let encoder = JSONEncoder()
         // Human-readable and byte-stable across exports of unchanged data —
@@ -118,7 +127,7 @@ struct TemplateExportSection: View {
         // format, so there's no cost to spending the extra whitespace.
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(config) else {
-            errorMessage = "Failed to export: couldn't encode templates."
+            exportErrorMessage = "Failed to export: couldn't encode templates."
             return
         }
         document = JSONFileDocument(data: data)

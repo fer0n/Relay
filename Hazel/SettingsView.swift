@@ -56,28 +56,7 @@ struct SettingsView: View {
                 .tint(.accentColor)
                 .cardRowBackground()
 
-                TemplateImportSection()
-
-                Section {
-                    Button("Install Shortcut") {
-                        openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
-                    }
-                    Button("Run Migration") {
-                        migration.reset()
-                        openURL(LegacyBucketMigrationShortcut.runURL)
-                    }
-                    if let resultMessage = migration.resultMessage {
-                        Text(resultMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                } footer: {
-                    Text("Install the \"\(LegacyBucketMigrationShortcut.name)\" Shortcut once, then run it here to pull buckets and merchants straight out of the old \"Transaction → YNAB\" Shortcut's DataJar storage.")
-                        .footerText()
-                }
-                .cardRowBackground()
-
-                TemplateExportSection()
+                TemplateImportExportSection(migration: migration)
 
                 Section {
                     NavigationLink(value: SettingsRoute.howHazelWorks) {
