@@ -19,7 +19,8 @@ struct BackupImportExportSection: View {
 
     @State private var showExporter = false
     @State private var document: JSONFileDocument?
-    @State private var exportResultMessage: String?
+    @State private var didExport = false
+    @State private var exportFlashTask: Task<Void, Never>?
     @State private var exportErrorMessage: String?
 
     var body: some View {
@@ -29,8 +30,21 @@ struct BackupImportExportSection: View {
             }
             .disabled(isImporting)
 
-            Button("Export Backup") {
+            Button {
                 export()
+            } label: {
+                HStack {
+                    Text("Export Backup")
+                    Spacer()
+                    // Flashes up on the row itself instead of pushing a new
+                    // "Exported." line into the section — a self-clearing
+                    // success tick.
+                    if didExport {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(.green)
+                            .transition(.opacity.combined(with: .scale))
+                    }
+                }
             }
 
             if isImporting {
@@ -45,11 +59,6 @@ struct BackupImportExportSection: View {
                 Text(importErrorMessage)
                     .font(.footnote)
                     .foregroundStyle(.red)
-            }
-            if let exportResultMessage {
-                Text(exportResultMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
             if let exportErrorMessage {
                 Text(exportErrorMessage)
@@ -79,11 +88,23 @@ struct BackupImportExportSection: View {
             switch result {
             case .success:
                 exportErrorMessage = nil
-                exportResultMessage = "Exported."
+                flashExportSuccess()
             case .failure(let error):
-                exportResultMessage = nil
                 exportErrorMessage = "Failed to export: \(error.localizedDescription)"
             }
+        }
+    }
+
+    /// Shows the inline checkmark, then clears it after a beat. Cancels any
+    /// in-flight flash first so a second export restarts the timer rather
+    /// than letting the earlier one hide the fresh tick early.
+    private func flashExportSuccess() {
+        exportFlashTask?.cancel()
+        withAnimation { didExport = true }
+        exportFlashTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            withAnimation { didExport = false }
         }
     }
 
@@ -102,7 +123,6 @@ struct BackupImportExportSection: View {
     }
 
     private func export() {
-        exportResultMessage = nil
         exportErrorMessage = nil
         guard let data = try? BackupService.exportData() else {
             exportErrorMessage = "Failed to export: couldn't encode backup."
