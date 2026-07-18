@@ -141,7 +141,7 @@ struct LegacyMigrationShortcutSection: View {
     var body: some View {
         Section {
             Button("Install Migration Shortcut") {
-                openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+                openURL(LegacyBucketMigrationShortcut.installURL)
             }
             Button("Run Migration") {
                 migration.reset()

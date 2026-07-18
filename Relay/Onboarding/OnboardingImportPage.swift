@@ -40,7 +40,7 @@ struct OnboardingImportPage: View {
         VStack(spacing: 12) {
             VStack(spacing: 12) {
                 Button {
-                    openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+                    openURL(LegacyBucketMigrationShortcut.installURL)
                     didPrepareMigration = true
                 } label: {
                     Label("Migration Shortcut", systemImage: didPrepareMigration ? "checkmark" : "circle")
@@ -56,7 +56,7 @@ struct OnboardingImportPage: View {
                     migration.reset()
                     openURL(LegacyBucketMigrationShortcut.runURL)
                 } label: {
-                    Label("Start Migration", systemImage: migration.resultMessage != nil ? "checkmark" : "circle")
+                    Label("Run Migration", systemImage: migration.resultMessage != nil ? "checkmark" : "circle")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)

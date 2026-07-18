@@ -258,7 +258,7 @@ struct OnboardingView: View {
                         if usesLegacyShortcut != true {
                             usesLegacyShortcut = true
                         } else if !didPrepareMigration {
-                            openURL(LegacyBucketMigrationShortcut.installURL, prefersInApp: true)
+                            openURL(LegacyBucketMigrationShortcut.installURL)
                             didPrepareMigration = true
                         } else if migration.resultMessage == nil {
                             migration.reset()
