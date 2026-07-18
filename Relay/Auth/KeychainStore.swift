@@ -9,6 +9,16 @@ import Security
 enum KeychainStore {
     private static let service = "com.pentlandFirth.Relay"
 
+    /// `AfterFirstUnlock` rather than the default `WhenUnlocked`: the wallet
+    /// App Intents run in the background (no `openAppWhenRun`), so they can
+    /// fire while the device is locked. `WhenUnlocked` would make the token
+    /// unreadable then, and the intent would throw `.notAuthenticated`
+    /// despite a connected account. `AfterFirstUnlock` keeps the token
+    /// device-only and encrypted at rest, but readable once the device has
+    /// been unlocked at least once since boot — the standard class for
+    /// credentials a background task needs.
+    private static let accessibility = kSecAttrAccessibleAfterFirstUnlock
+
     static func save(_ value: String, for key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -19,6 +29,7 @@ enum KeychainStore {
 
         var attributes = query
         attributes[kSecValueData as String] = Data(value.utf8)
+        attributes[kSecAttrAccessible as String] = accessibility
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
