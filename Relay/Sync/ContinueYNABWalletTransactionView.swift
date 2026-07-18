@@ -19,7 +19,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "ContinueYNABWalletTransactionView")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "ContinueYNABWalletTransactionView")
 
 struct ContinueYNABWalletTransactionView: View {
     let draft: TransactionDraft

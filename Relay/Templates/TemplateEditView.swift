@@ -14,7 +14,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "TemplateEditView")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "TemplateEditView")
 
 /// Everything Save actually persists, in one place, so "has anything
 /// changed?" is a single Equatable comparison instead of a field-by-field

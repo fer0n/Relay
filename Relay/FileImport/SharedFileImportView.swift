@@ -26,7 +26,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "SharedFileImportView")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "SharedFileImportView")
 
 struct SharedFileImportView: View {
     /// Set when reached fresh from the Share Sheet; nil when reopening an

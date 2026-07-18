@@ -13,7 +13,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "BackupService")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "BackupService")
 
 enum BackupService {
     /// Human-readable and byte-stable across exports of unchanged data — this

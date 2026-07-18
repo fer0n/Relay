@@ -6,7 +6,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "TemplateImportService")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "TemplateImportService")
 
 /// Shared template-import logic used by both `SettingsView`'s "Import
 /// Templates" button and the onboarding wizard's import page — parsing and

@@ -6,7 +6,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "PendingOperationQueueStore")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "PendingOperationQueueStore")
 
 enum PendingOperationQueueStore {
     private static let fileURL = ApplicationSupportFile.url("pending-operations.json")

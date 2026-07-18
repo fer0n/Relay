@@ -6,7 +6,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "WalletTransactionConfigStore")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "WalletTransactionConfigStore")
 
 enum WalletTransactionConfigStore {
     private static let fileURL = ApplicationSupportFile.url("wallet-transaction-config.json")

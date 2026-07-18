@@ -14,7 +14,7 @@ import AppIntents
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "TemplatesView")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "TemplatesView")
 
 struct TemplatesView: View {
     @State private var splitwiseAuth = SplitwiseAuthService()

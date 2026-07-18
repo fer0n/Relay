@@ -10,7 +10,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "TransactionHistoryStore")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "TransactionHistoryStore")
 
 enum TransactionHistoryStore {
     private static let historyLimit = 10

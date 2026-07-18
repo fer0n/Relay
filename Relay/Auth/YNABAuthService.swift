@@ -29,7 +29,7 @@ import Observation
 import Security
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "YNABAuthService")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "YNABAuthService")
 
 @MainActor
 @Observable

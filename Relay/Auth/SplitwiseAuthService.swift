@@ -17,7 +17,7 @@ import Foundation
 import Observation
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "SplitwiseAuthService")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "SplitwiseAuthService")
 
 @MainActor
 @Observable

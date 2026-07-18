@@ -28,7 +28,7 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.pentlandFirth.Relay.qif</string>
+				<string>com.octabits.relay.qif</string>
 			</array>
 		</dict>
 	</array>
@@ -38,7 +38,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.pentlandFirth.Relay.oauth</string>
+			<string>com.octabits.relay.oauth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>relay</string>
@@ -55,7 +55,7 @@
 			<key>UTTypeDescription</key>
 			<string>Quicken Interchange Format</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.pentlandFirth.Relay.qif</string>
+			<string>com.octabits.relay.qif</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

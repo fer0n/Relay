@@ -26,7 +26,7 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "WalletTransaction")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "WalletTransaction")
 
 nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to YNAB"

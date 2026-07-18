@@ -10,7 +10,7 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: "com.pentlandFirth.Relay", category: "YNABEntities")
+private let logger = Logger(subsystem: "com.octabits.relay", category: "YNABEntities")
 
 nonisolated struct YNABAccountEntity: AppEntity {
     let id: String
