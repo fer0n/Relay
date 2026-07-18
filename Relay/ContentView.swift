@@ -324,6 +324,12 @@ struct ContentView: View {
                 )
             }
             .sheet(isPresented: $showOnboarding, onDismiss: {
+                // Only reached via the last page's button (interactive
+                // dismissal is disabled below), so this only fires once
+                // onboarding has actually been completed — quitting the app
+                // mid-onboarding leaves the flag unset, so it's shown again
+                // in full on the next launch instead of silently skipped.
+                UserDefaults.standard.set(true, forKey: Self.hasCompletedOnboardingKey)
                 if opensAutomationTutorialAfterOnboarding {
                     opensAutomationTutorialAfterOnboarding = false
                     showAutomationTutorial = true
@@ -338,8 +344,7 @@ struct ContentView: View {
                 AutomationTutorialView()
             }
             .onAppear {
-                if !UserDefaults.standard.bool(forKey: Self.hasLaunchedBeforeKey) {
-                    UserDefaults.standard.set(true, forKey: Self.hasLaunchedBeforeKey)
+                if !UserDefaults.standard.bool(forKey: Self.hasCompletedOnboardingKey) {
                     showOnboarding = true
                 }
                 // Reappearing here also covers popping back from a pushed
@@ -362,7 +367,7 @@ struct ContentView: View {
             }
     }
 
-    private static let hasLaunchedBeforeKey = "hasLaunchedBefore"
+    private static let hasCompletedOnboardingKey = "hasLaunchedBefore"
 
     private func readd(_ entry: TransactionHistoryEntry) {
         Task {
