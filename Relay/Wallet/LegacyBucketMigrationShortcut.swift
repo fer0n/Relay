@@ -13,7 +13,7 @@ import Foundation
 
 enum LegacyBucketMigrationShortcut {
     static let name = "YNAB Toolkit → Relay Migration"
-    static let installURL = URL(string: "https://www.icloud.com/shortcuts/e453df325e7e432a911405e091e44e5f")!
+    static let installURL = URL(string: "https://www.icloud.com/shortcuts/27dc84275c23474ca3f08984361a08eb")!
 
     /// Hosts used on the "relay://" scheme already registered for OAuth — a
     /// Shortcut run via x-callback-url opens x-success on completion or
