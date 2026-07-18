@@ -1,4 +1,4 @@
-# Hazel
+# Relay
 
 Personal app replacing an Apple Shortcuts workflow: authenticate with YNAB
 and Splitwise, add transactions to both, and import bank/CSV statement
@@ -11,7 +11,7 @@ seems out of date before relying on it.
 
 - **Token handling**: access tokens must never be logged, exposed to a
   third party, or sent anywhere except YNAB's own API. Store only in
-  Keychain (see `Hazel/Auth/KeychainStore.swift`). Never request or store
+  Keychain (see `Relay/Auth/KeychainStore.swift`). Never request or store
   the user's actual YNAB/bank login credentials — only OAuth tokens.
 - **Rate limit**: each access token is capped at **200 requests/hour**
   (rolling window); exceeding it returns HTTP 429. Any code that calls the
@@ -41,7 +41,7 @@ seems out of date before relying on it.
 
 - **Token handling**: same rule as YNAB — access tokens only ever go in the
   Authorization header to Splitwise's own API, stored only in Keychain (see
-  `Hazel/Auth/KeychainStore.swift`), never logged, never sent to a third
+  `Relay/Auth/KeychainStore.swift`), never logged, never sent to a third
   party. Never request or store the user's actual Splitwise login
   credentials — only OAuth tokens.
 - **Rate limit**: no fixed number is published; Splitwise says usage is

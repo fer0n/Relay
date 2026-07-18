@@ -1,7 +1,7 @@
 /**
- * OAuth token-exchange relay for Hazel (see ../../CLAUDE.md).
+ * OAuth token-exchange relay for Relay (see ../../CLAUDE.md).
  *
- * Hazel is a distributed iOS app, so it can't hold YNAB's/Splitwise's
+ * Relay is a distributed iOS app, so it can't hold YNAB's/Splitwise's
  * client_secret the way a personal-only build could — anything compiled
  * into the app binary is extractable from any install. This Worker is the
  * only thing that holds either secret (via `wrangler secret put`, never in

@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "hazel-auth",
+  "name": "relay-auth",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-15",
   "observability": {
@@ -10,16 +10,16 @@
   // Requires octabits.net to already be an active zone on this Cloudflare
   // account — Cloudflare manages the DNS record and TLS cert automatically.
   "routes": [
-    { "pattern": "hazel-auth.octabits.net", "custom_domain": true }
+    { "pattern": "relay-auth.octabits.net", "custom_domain": true }
   ],
   // Non-secret OAuth app config. The Worker enforces these redirect URIs
   // itself (rather than trusting whatever a caller sends) so a client can't
   // redirect a token exchange anywhere else.
   "vars": {
     "YNAB_CLIENT_ID": "H9rs04UxQwwoNYSvQ7iey_sHKeJycm-ulLqPvEoRf4Y",
-    "YNAB_REDIRECT_URI": "hazel://oauth/ynab",
+    "YNAB_REDIRECT_URI": "relay://oauth/ynab",
     "SPLITWISE_CLIENT_ID": "HxoenkRXpGHl5imUcv3ajZU9safLo6ZlmTADfKlX",
-    "SPLITWISE_REDIRECT_URI": "hazel://oauth/splitwise"
+    "SPLITWISE_REDIRECT_URI": "relay://oauth/splitwise"
   },
   // YNAB_CLIENT_SECRET / SPLITWISE_CLIENT_SECRET are set via
   // `wrangler secret put` — never committed here. See README.md.

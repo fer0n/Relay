@@ -1,10 +1,10 @@
-# Hazel — Project Goals
+# Relay — Project Goals
 
 ## Why
 
 Today, adding transactions to YNAB and Splitwise, and importing bank statement
 files into YNAB, happens through a set of Apple Shortcuts. That setup works
-but is cumbersome to maintain and edit. Hazel is a native SwiftUI app
+but is cumbersome to maintain and edit. Relay is a native SwiftUI app
 (iOS/macOS/visionOS) meant to replace that Shortcuts-based workflow with a
 proper app while keeping it triggerable the same way (Shortcuts/Siri/widgets)
 via App Intents.

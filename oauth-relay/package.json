@@ -1,5 +1,5 @@
 {
-  "name": "hazel-auth",
+  "name": "relay-auth",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",

@@ -1,7 +1,7 @@
-# hazel-auth
+# relay-auth
 
 A Cloudflare Worker that holds YNAB's and Splitwise's OAuth `client_secret`
-so the Hazel app itself doesn't have to. See the comment at the top of
+so the Relay app itself doesn't have to. See the comment at the top of
 [src/index.ts](src/index.ts) for why this exists.
 
 The app still runs the whole browser-based sign-in step itself
@@ -34,10 +34,10 @@ npx wrangler secret put SPLITWISE_CLIENT_SECRET
 npx wrangler deploy
 ```
 
-Deployed at `https://hazel-auth.octabits.net` (a Custom Domain, configured
+Deployed at `https://relay-auth.octabits.net` (a Custom Domain, configured
 via `routes` in [wrangler.jsonc](wrangler.jsonc) — requires `octabits.net`
 to already be an active zone on this Cloudflare account). That URL is
-already set in `Hazel/Auth/OAuthConfig.swift`'s `oauthRelayBaseURL`; update
+already set in `Relay/Auth/OAuthConfig.swift`'s `oauthRelayBaseURL`; update
 it there if you ever change the domain.
 
 ### Setting the secrets
@@ -57,7 +57,7 @@ committed anywhere:
 ```sh
 npx wrangler secret put YNAB_CLIENT_SECRET
 # ✔ Enter a secret value: › (paste the YNAB client secret, then Enter)
-# 🌀 Creating the secret for the Worker "hazel-auth"
+# 🌀 Creating the secret for the Worker "relay-auth"
 # ✨ Success! Uploaded secret YNAB_CLIENT_SECRET
 
 npx wrangler secret put SPLITWISE_CLIENT_SECRET
