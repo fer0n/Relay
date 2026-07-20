@@ -40,16 +40,20 @@ struct TemplatesView: View {
                         }
                     }
                 }
-                NavigationLink {
-                    TemplateEditView(templateName: nil, onSave: reload, onDelete: reload)
-                } label: {
-                    RowLabel(title: "Add Template")
-                }
             }
             .cardRowBackground()
         }
         .themedList(background: .backgroundColor)
         .navigationTitle("Templates")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink {
+                    TemplateEditView(templateName: nil, onSave: reload, onDelete: reload)
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
         .onAppear(perform: reload)
         .confirmationDialog(
             "Delete \"\(pendingDeletion ?? "")\"?",
