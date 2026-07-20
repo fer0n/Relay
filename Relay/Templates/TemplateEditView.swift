@@ -133,6 +133,7 @@ struct TemplateEditView: View {
                 DraftDetailRow(icon: "textformat", title: "Name") {
                     TextField("Template Name", text: $name)
                         .multilineTextAlignment(.trailing)
+                        .submitLabel(.done)
                 }
 
                 if ynabAuth.isAuthenticated {

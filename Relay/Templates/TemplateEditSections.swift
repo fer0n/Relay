@@ -34,9 +34,11 @@ struct AutoMatchRulesSection: View {
                 HStack {
                     TextField("Payee Name", text: $rules[index].payeeName)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .submitLabel(.done)
                     Divider()
                     TextField("Text or regex", text: $rules[index].pattern)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .submitLabel(.done)
                 }
             }
             .onDelete { rules.remove(atOffsets: $0) }
@@ -73,6 +75,7 @@ struct LinkedMerchantsSection: View {
                         TextField("Payee Name", text: $linkedMerchants[index].payeeName)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                            .submitLabel(.done)
                     }
                     Spacer()
                     if !otherTemplateNames.isEmpty {
