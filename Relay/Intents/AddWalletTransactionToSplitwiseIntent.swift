@@ -109,12 +109,16 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
 
         // Resolves a friend to split with: uses `existing` (a template's
         // already-cached friend) if there is one, otherwise a manual
-        // override, otherwise asks live.
+        // override via the shortcut parameter, otherwise the app-wide
+        // default friend, otherwise asks live.
         func resolveFriend(existing: (id: Int, firstName: String, fullName: String)?, dialog: IntentDialog) async throws -> (id: Int, firstName: String, fullName: String) {
             if let existing { return existing }
             let friend: SplitwiseFriendEntity
             if let friendOverride {
                 friend = friendOverride
+            } else if let defaultFriend = SplitwiseDefaultFriendStore.load() {
+                logger.log("using app-wide default Splitwise friend")
+                friend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
             } else {
                 logger.log("requesting Splitwise friend")
                 let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
