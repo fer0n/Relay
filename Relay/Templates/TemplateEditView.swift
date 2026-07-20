@@ -12,6 +12,7 @@
 //
 
 import SwiftUI
+import UIKit
 import os
 
 private let logger = Logger(subsystem: "com.octabits.relay", category: "TemplateEditView")
@@ -55,6 +56,7 @@ struct TemplateEditView: View {
     @State private var otherTemplateNames: [String]
     @State private var errorMessage: String?
     @State private var showDeleteConfirmation = false
+    @State private var isKeyboardVisible = false
 
     /// Fallback used at save time if the existing template's friend no
     /// longer appears in a fresh fetchFriends() (e.g. fetch still in
@@ -214,13 +216,25 @@ struct TemplateEditView: View {
             }
         }
         .safeAreaBar(edge: .bottom) {
-            if hasChanges {
+            // Hidden while the keyboard is up: `safeAreaBar` docks its
+            // content right above the keyboard, which reads as the button
+            // chasing the keyboard up the screen. Hiding it for that
+            // duration keeps it pinned to the actual bottom the rest of
+            // the time, at the cost of it not being reachable while typing
+            // (tapping Done/dismissing the keyboard brings it right back).
+            if hasChanges, !isKeyboardVisible {
                 BottomBarActionButton(
                     title: "Save",
                     isDisabled: name.trimmingCharacters(in: .whitespaces).isEmpty,
                     action: save
                 )
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
         }
         .task {
             await loadCategories()
