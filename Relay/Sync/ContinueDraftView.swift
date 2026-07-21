@@ -68,3 +68,18 @@ struct ContinueDraftView: View {
         dismiss()
     }
 }
+
+#Preview {
+    let draft = TransactionDraft(
+        id: UUID(),
+        startedAt: Date().addingTimeInterval(-3600),
+        payload: .ynabWallet(merchant: "Coffee Shop", amount: 4.50, card: "Visa")
+    )
+    Color.clear
+        .onAppear { try? TransactionDraftStore.save([draft]) }
+        .sheet(isPresented: .constant(true)) {
+            NavigationStack {
+                ContinueDraftView(draftId: draft.id)
+            }
+        }
+}

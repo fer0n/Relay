@@ -83,21 +83,22 @@ struct SplitwiseFriendPickerRow: View {
     }
 }
 
-/// The live "ask each time" prompt — only shown while a template's split
-/// setting is `.ask` and no runtime choice has been made yet this run.
-struct SplitwiseAskRow: View {
-    @Binding var runtimeChoice: SplitwiseSplitOption?
+/// A single unified "Split" picker for draft views — always shown, pre-filled
+/// from the template's split setting. `nil` means the template uses "Ask Each
+/// Time" and the user still needs to choose for this transaction.
+struct SplitwiseSplitPickerRow: View {
+    @Binding var choice: SplitwiseSplitOption?
     var isIncomplete: Bool = false
 
     var body: some View {
         DraftDetailRow(
-            icon: "questionmark.circle.fill",
-            title: "Split Transaction?",
+            icon: "divide.circle.fill",
+            title: "Split",
             isIncomplete: isIncomplete
         ) {
             MenuPickerField(
-                selection: $runtimeChoice,
-                label: runtimeChoice?.label ?? "Choose"
+                selection: $choice,
+                label: choice?.label ?? "Choose"
             ) {
                 Text("Choose").tag(SplitwiseSplitOption?.none)
                 ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
@@ -115,7 +116,11 @@ struct SplitwiseOwnShareRow: View {
     var isIncomplete: Bool = false
 
     var body: some View {
-        DraftDetailRow(icon: "eurosign.circle.fill", title: "Your Share", isIncomplete: isIncomplete) {
+        DraftDetailRow(
+            icon: "eurosign.circle.fill",
+            title: "Your Share",
+            isIncomplete: isIncomplete
+        ) {
             TextField("Your Share", text: $ownShareText)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)

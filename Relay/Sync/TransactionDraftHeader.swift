@@ -16,8 +16,9 @@ struct TransactionDraftHeader: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(amount)
-                .font(.system(size: 45, weight: .heavy))
                 .foregroundStyle(Color.foregroundColor)
+                .fontWeight(.heavy)
+                .font(.system(size: 50))
                 .minimumScaleFactor(0.5)
             Text(merchant)
                 .font(.subheadline)
@@ -27,14 +28,13 @@ struct TransactionDraftHeader: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
     }
 }
 
 #Preview {
     List {
         Section {
-            TransactionDraftHeader(amount: "-32.10", merchant: "Grocery Store", startedAt: Date().addingTimeInterval(-3600))
+            TransactionDraftHeader(amount: "32.10", merchant: "Grocery Store", startedAt: Date().addingTimeInterval(-3600))
         }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.backgroundColor)

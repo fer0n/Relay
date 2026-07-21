@@ -98,10 +98,7 @@ struct TransactionDraft: Codable, Identifiable {
         String(localized: "\(amount.asMoneyString) at \(merchant)")
     }
 
-    /// Formatted for TransactionSummaryRow — negated to match the
-    /// negative-for-money-out convention the final YNAB/Splitwise rows use
-    /// (wallet automations only ever add expenses).
     var formattedAmount: String {
-        (-amount).asMoneyString
+        amount.asMoneyString
     }
 }

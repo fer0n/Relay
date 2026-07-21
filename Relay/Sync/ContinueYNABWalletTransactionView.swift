@@ -29,13 +29,13 @@ struct ContinueYNABWalletTransactionView: View {
     @State private var notAuthenticated = false
     @State private var errorMessage: String?
     @State private var isSubmitting = false
+    @State private var showTemplateEditor = false
+    @State private var editingTemplateName: String? = nil
     @Environment(\.dismiss) private var dismiss
 
-    /// True once a merchant→template match is found — payee/category/split
-    /// setting are then fixed (read-only here) instead of asked again.
-    @State private var templateResolved = false
-    @State private var resolvedTemplateName: String?
     @State private var payeeName = ""
+    @State private var templateChoice: String?
+    @State private var availableTemplates: [String] = []
     @State private var categories: [YNABCategory] = []
     @State private var selectedCategoryId: String?
     @State private var isLoadingCategories = false
@@ -45,14 +45,7 @@ struct ContinueYNABWalletTransactionView: View {
     @State private var selectedAccountId: String?
     @State private var isLoadingAccounts = false
 
-    /// Only used/shown when `!templateResolved` — the split setting to save
-    /// on the new template.
-    @State private var newTemplateSplitwiseOption: SplitwiseTemplateOption = .never
-    /// Only meaningful when `templateResolved` — the existing template's
-    /// fixed split setting, shown read-only.
-    @State private var resolvedTemplateSplitwiseOption: SplitwiseTemplateOption = .never
-
-    @State private var splitwiseRuntimeChoice: SplitwiseSplitOption?
+    @State private var splitwiseRuntimeChoice: SplitwiseSplitOption? = .never
     @State private var friends: [SplitwiseFriend] = []
     @State private var selectedFriendId: Int?
     @State private var isLoadingFriends = false
@@ -68,6 +61,8 @@ struct ContinueYNABWalletTransactionView: View {
     @State private var templateHasFriend = false
     @State private var templateFriend: SplitwiseFriendEntity?
 
+    private let defaultFriend: SplitwiseDefaultFriend?
+
     /// Preview/testing seam only — nil (the default) always falls through
     /// to the real Keychain check. Lets `#Preview` render the form itself
     /// instead of racing the async "Not Connected" gate.
@@ -76,6 +71,7 @@ struct ContinueYNABWalletTransactionView: View {
     init(draft: TransactionDraft, isAuthenticatedOverride: Bool? = nil) {
         self.draft = draft
         self.isAuthenticatedOverride = isAuthenticatedOverride
+        defaultFriend = SplitwiseDefaultFriendStore.load()
 
         // Resolved synchronously (local disk reads only) so the form's
         // payee/category/account defaults are in place on the very first
@@ -83,14 +79,15 @@ struct ContinueYNABWalletTransactionView: View {
         guard case .ynabWallet(let merchant, _, let card) = draft.payload else { return }
 
         let config = WalletTransactionConfigStore.load()
+        _availableTemplates = State(initialValue: Array(config.templates.keys))
+        
         var resolvedTemplateFriend: (id: Int, firstName: String, fullName: String)?
         if let info = config.resolvedMerchantInfo(for: merchant) {
-            _templateResolved = State(initialValue: true)
-            _resolvedTemplateName = State(initialValue: info.templateName)
+            _templateChoice = State(initialValue: info.templateName)
             _payeeName = State(initialValue: info.payeeName)
             let template = config.templates[info.templateName]
             _selectedCategoryId = State(initialValue: template?.categoryId)
-            _resolvedTemplateSplitwiseOption = State(initialValue: template?.splitwiseOption ?? .never)
+            _splitwiseRuntimeChoice = State(initialValue: Self.runtimeChoice(for: template?.splitwiseOption ?? .never))
             resolvedTemplateFriend = template?.splitwiseFriend
         } else {
             _payeeName = State(initialValue: merchant)
@@ -110,23 +107,33 @@ struct ContinueYNABWalletTransactionView: View {
         }
     }
 
-    // A template can carry a non-.never split setting from before Splitwise
-    // was disconnected — treat as "never split" for this run rather than
-    // showing a Splitwise picker/friend field with nothing behind it.
-    private var effectiveSplitwiseOption: SplitwiseTemplateOption {
-        guard splitwiseAuth.isAuthenticated else { return .never }
-        return templateResolved ? resolvedTemplateSplitwiseOption : newTemplateSplitwiseOption
+    private var cardName: String {
+        if case .ynabWallet(_, _, let card) = draft.payload { return card }
+        return "Account"
     }
 
     private var resolvedSplitwiseAction: SplitwiseSplitOption {
-        WalletAutomationDialog.resolvedSplitwiseAction(for: effectiveSplitwiseOption, runtimeChoice: splitwiseRuntimeChoice)
+        // A template can carry a non-.never split setting from before Splitwise
+        // was disconnected — treat as "never split" for this run rather than
+        // showing a Splitwise picker/friend field with nothing behind it.
+        guard splitwiseAuth.isAuthenticated else { return .never }
+        return splitwiseRuntimeChoice ?? .never
+    }
+
+    private static func runtimeChoice(for option: SplitwiseTemplateOption) -> SplitwiseSplitOption? {
+        switch option {
+        case .always: .always
+        case .manual: .manual
+        case .never: .never
+        case .ask: nil
+        }
     }
 
     private var canSubmit: Bool {
-        if !templateResolved, payeeName.trimmingCharacters(in: .whitespaces).isEmpty { return false }
+        if payeeName.trimmingCharacters(in: .whitespaces).isEmpty { return false }
         if selectedAccountId == nil { return false }
-        if effectiveSplitwiseOption == .ask, splitwiseRuntimeChoice == nil { return false }
-        if resolvedSplitwiseAction != .never, selectedFriendId == nil { return false }
+        if splitwiseAuth.isAuthenticated, splitwiseRuntimeChoice == nil { return false }
+        if resolvedSplitwiseAction != .never, selectedFriendId == nil && defaultFriend == nil { return false }
         if resolvedSplitwiseAction == .manual, Double(ownShareText) == nil { return false }
         return true
     }
@@ -139,7 +146,7 @@ struct ContinueYNABWalletTransactionView: View {
                 content
             }
         }
-        .navigationTitle("Transaction draft")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .onAuthenticated(ynabAuth.isAuthenticated) {
             notAuthenticated = false
@@ -153,43 +160,40 @@ struct ContinueYNABWalletTransactionView: View {
                 TransactionDraftHeader(amount: draft.formattedAmount, merchant: draft.merchant, startedAt: draft.startedAt)
             }
             .listRowSeparator(.hidden)
-            .listRowBackground(Color.backgroundColor)
+            .listRowBackground(Color.sheetBackgroundColor)
 
             Section {
+                DraftDetailRow(icon: "doc.on.doc", title: "Template") {
+                    Menu {
+                        Button("Create New") { editingTemplateName = nil; showTemplateEditor = true }
+                        if !availableTemplates.isEmpty { Divider() }
+                        ForEach(availableTemplates.sorted(), id: \.self) { name in
+                            Button(name) { templateChoice = name }
+                        }
+                    } label: {
+                        Text(templateChoice ?? "Select")
+                            .foregroundStyle(templateChoice == nil ? Color.accentColor : Color.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .cardRowBackground()
+
                 DraftDetailRow(
                     icon: "text.alignleft",
                     title: "Payee",
-                    isIncomplete: !templateResolved && payeeName.trimmingCharacters(in: .whitespaces).isEmpty
+                    isIncomplete: payeeName.trimmingCharacters(in: .whitespaces).isEmpty
                 ) {
-                    if templateResolved {
-                        Text(payeeName)
-                    } else {
-                        TextField("Payee Name", text: $payeeName)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    TextField("Payee Name", text: $payeeName)
+                        .multilineTextAlignment(.trailing)
+                        .submitLabel(.done)
                 }
                 .cardRowBackground()
 
-                DraftDetailRow(icon: "tag.fill", title: "Category") {
-                    if templateResolved {
-                        Text(categories.first { $0.id == selectedCategoryId }?.name ?? "None")
-                    } else if isLoadingCategories {
-                        ProgressView()
-                    } else {
-                        MenuPickerField(
-                            selection: $selectedCategoryId,
-                            label: categories.first { $0.id == selectedCategoryId }?.name ?? "None"
-                        ) {
-                            Text("None").tag(String?.none)
-                            ForEach(categories, id: \.id) { category in
-                                Text(category.name).tag(Optional(category.id))
-                            }
-                        }
-                    }
-                }
-                .cardRowBackground()
-
-                DraftDetailRow(icon: "creditcard.fill", title: "Account", isIncomplete: selectedAccountId == nil) {
+                DraftDetailRow(
+                    icon: "creditcard.fill",
+                    title: "\(cardName)",
+                    isIncomplete: selectedAccountId == nil
+                ) {
                     if accountResolved {
                         Text(accounts.first { $0.id == selectedAccountId }?.name ?? "Unknown")
                     } else if isLoadingAccounts {
@@ -197,7 +201,7 @@ struct ContinueYNABWalletTransactionView: View {
                     } else {
                         MenuPickerField(
                             selection: $selectedAccountId,
-                            label: accounts.first { $0.id == selectedAccountId }?.name ?? "None"
+                            label: accounts.first { $0.id == selectedAccountId }?.name ?? "Select account"
                         ) {
                             Text("None").tag(String?.none)
                             ForEach(accounts, id: \.id) { account in
@@ -208,29 +212,30 @@ struct ContinueYNABWalletTransactionView: View {
                 }
                 .cardRowBackground()
 
-                DraftDetailRow(icon: "doc.on.doc", title: "Template") {
-                    Text(templateResolved ? (resolvedTemplateName ?? "Unknown") : "New")
-                }
-                .cardRowBackground()
-
-                DraftDetailRow(icon: draft.service.systemImage, title: "Provider") {
-                    Text(draft.service.displayName)
+                DraftDetailRow(icon: "tag.fill", title: "Category") {
+                    if isLoadingCategories {
+                        ProgressView()
+                    } else {
+                        MenuPickerField(
+                            selection: $selectedCategoryId,
+                            label: categories.first { $0.id == selectedCategoryId }?.name ?? "Optional"
+                        ) {
+                            Text("None").tag(String?.none)
+                            ForEach(categories, id: \.id) { category in
+                                Text(category.name).tag(Optional(category.id))
+                            }
+                        }
+                    }
                 }
                 .cardRowBackground()
             }
 
             if splitwiseAuth.isAuthenticated {
                 Section("Split") {
-                    SplitwiseOptionRow(
-                        title: "Split With Splitwise",
-                        isResolved: templateResolved,
-                        resolvedOption: resolvedTemplateSplitwiseOption,
-                        newOption: $newTemplateSplitwiseOption
+                    SplitwiseSplitPickerRow(
+                        choice: $splitwiseRuntimeChoice,
+                        isIncomplete: splitwiseRuntimeChoice == nil
                     )
-
-                    if effectiveSplitwiseOption == .ask {
-                        SplitwiseAskRow(runtimeChoice: $splitwiseRuntimeChoice, isIncomplete: splitwiseRuntimeChoice == nil)
-                    }
 
                     if resolvedSplitwiseAction != .never {
                         SplitwiseFriendPickerRow(
@@ -238,7 +243,8 @@ struct ContinueYNABWalletTransactionView: View {
                             isLoading: isLoadingFriends,
                             friends: friends,
                             selectedFriendId: $selectedFriendId,
-                            isIncomplete: !templateHasFriend && selectedFriendId == nil
+                            noneLabel: defaultFriend.map { "Default (\($0.firstName))" } ?? "None",
+                            isIncomplete: !templateHasFriend && selectedFriendId == nil && defaultFriend == nil
                         )
                     }
 
@@ -252,10 +258,32 @@ struct ContinueYNABWalletTransactionView: View {
                 Section {
                     Text(errorMessage).foregroundStyle(.red)
                 }
-                .listRowBackground(Color.backgroundColor)
+                .listRowBackground(Color.sheetBackgroundColor)
             }
         }
-        .themedList(background: .backgroundColor)
+        .themedList(background: .sheetBackgroundColor)
+        .animation(.default, value: resolvedSplitwiseAction)
+        .onChange(of: templateChoice) { _, newTemplate in
+            applyTemplate(newTemplate)
+        }
+        .sheet(isPresented: $showTemplateEditor) {
+            NavigationStack {
+                TemplateEditView(
+                    templateName: editingTemplateName,
+                    onSave: { savedName in
+                        let config = WalletTransactionConfigStore.load()
+                        availableTemplates = Array(config.templates.keys)
+                        templateChoice = savedName
+                        applyTemplate(savedName)
+                        showTemplateEditor = false
+                    },
+                    onDelete: {
+                        showTemplateEditor = false
+                    }
+                )
+                .navigationBarTitleDisplayMode(.inline)
+            }
+        }
         .safeAreaBar(edge: .bottom) {
             BottomBarActionButton(
                 title: "Add Transaction",
@@ -349,25 +377,26 @@ struct ContinueYNABWalletTransactionView: View {
 
         var config = WalletTransactionConfigStore.load()
         var configChanged = false
-        let finalPayeeName: String
-        let finalCategoryId: String?
 
-        if templateResolved {
-            finalPayeeName = payeeName
-            finalCategoryId = selectedCategoryId
-        } else {
-            let trimmed = payeeName.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else {
-                errorMessage = "Payee name can't be empty."
-                return
-            }
-            var template = config.templates[trimmed] ?? WalletTransactionConfig.Template(categoryId: nil)
+        let trimmedPayee = payeeName.trimmingCharacters(in: .whitespaces)
+        guard !trimmedPayee.isEmpty else {
+            errorMessage = "Payee name can't be empty."
+            return
+        }
+        let finalPayeeName = trimmedPayee
+        let finalCategoryId = selectedCategoryId
+
+        if templateChoice == nil {
+            // Creating a new template from payee name
+            var template = config.templates[trimmedPayee] ?? WalletTransactionConfig.Template(categoryId: nil)
             template.categoryId = selectedCategoryId
-            template.splitwiseOption = newTemplateSplitwiseOption
-            config.templates[trimmed] = template
-            config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: trimmed, templateName: trimmed)
-            finalPayeeName = trimmed
-            finalCategoryId = selectedCategoryId
+            template.splitwiseOption = switch splitwiseRuntimeChoice {
+            case .always: .always
+            case .manual: .manual
+            case .never, nil: .never
+            }
+            config.templates[trimmedPayee] = template
+            config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: trimmedPayee, templateName: trimmedPayee)
             configChanged = true
         }
 
@@ -447,6 +476,35 @@ struct ContinueYNABWalletTransactionView: View {
         }
     }
 
+    private func applyTemplate(_ name: String?) {
+        let config = WalletTransactionConfigStore.load()
+        guard let name else {
+            withAnimation {
+                selectedCategoryId = nil
+                splitwiseRuntimeChoice = .never
+                templateHasFriend = false
+                templateFriend = nil
+                selectedFriendId = SplitwiseDefaultFriendStore.load()?.id
+            }
+            return
+        }
+        let template = config.templates[name]
+        let newFriend = template?.splitwiseFriend
+        withAnimation {
+            selectedCategoryId = template?.categoryId
+            splitwiseRuntimeChoice = Self.runtimeChoice(for: template?.splitwiseOption ?? .never)
+            if let newFriend {
+                templateHasFriend = true
+                templateFriend = SplitwiseFriendEntity(id: newFriend.id, firstName: newFriend.firstName, fullName: newFriend.fullName)
+                selectedFriendId = newFriend.id
+            } else {
+                templateHasFriend = false
+                templateFriend = nil
+                selectedFriendId = SplitwiseDefaultFriendStore.load()?.id
+            }
+        }
+    }
+
     private func createSplitIfNeeded(
         friend: SplitwiseFriendEntity?,
         description: String,
@@ -460,14 +518,17 @@ struct ContinueYNABWalletTransactionView: View {
 }
 
 #Preview {
-    NavigationStack {
-        ContinueYNABWalletTransactionView(
-            draft: TransactionDraft(
-                id: UUID(),
-                startedAt: Date().addingTimeInterval(-3600),
-                payload: .ynabWallet(merchant: "Coffee Shop", amount: 4.50, card: "Visa")
-            ),
-            isAuthenticatedOverride: true
-        )
-    }
+    Color.clear
+        .sheet(isPresented: .constant(true)) {
+            NavigationStack {
+                ContinueYNABWalletTransactionView(
+                    draft: TransactionDraft(
+                        id: UUID(),
+                        startedAt: Date().addingTimeInterval(-3600),
+                        payload: .ynabWallet(merchant: "Coffee Shop", amount: 4.50, card: "Visa")
+                    ),
+                    isAuthenticatedOverride: true
+                )
+            }
+        }
 }

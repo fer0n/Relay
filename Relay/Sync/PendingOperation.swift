@@ -41,18 +41,12 @@ extension PendingOperation.Payload {
         }
     }
 
-    /// YNAB's real signed amount, or Splitwise's total expense cost (not the
-    /// signed-in user's own share) — formatted for TransactionSummaryRow.
     var formattedAmount: String {
         switch self {
         case .ynabTransaction(let transaction):
-            (Double(transaction.amount) / 1000).asMoneyString
+            abs(Double(transaction.amount) / 1000).asMoneyString
         case .splitwiseExpense(let expense):
-            // Splitwise's cost has no sign of its own (it's just "how much
-            // did this cost"), but the signed-in user always pays the full
-            // amount upfront — same outflow as a YNAB expense — so negate
-            // it to match YNAB's negative-for-money-out convention.
-            (-Double(expense.costCents) / 100).asMoneyString
+            (Double(expense.costCents) / 100).asMoneyString
         }
     }
 

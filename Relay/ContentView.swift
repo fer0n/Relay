@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var history = TransactionHistoryStore.load()
     @State private var readdAlert: ReaddAlert?
     @State private var path: [ContentRoute] = []
+    @State private var continueDraft: TransactionDraft?
     @State private var showSettings = false
     @State private var showOnboarding = false
     @State private var showAutomationTutorial = false
@@ -87,8 +88,6 @@ struct ContentView: View {
                         PendingQueueView()
                     case .transactionDrafts:
                         TransactionDraftsView()
-                    case .continueDraft(let draftId):
-                        ContinueDraftView(draftId: draftId)
                     }
                 }
                 .safeAreaBar(edge: .bottom) {
@@ -162,7 +161,9 @@ struct ContentView: View {
             if !drafts.isEmpty {
                 Section("Drafts") {
                     ForEach(topDrafts) { draft in
-                        NavigationLink(value: ContentRoute.continueDraft(draft.id)) {
+                        Button {
+                            continueDraft = draft
+                        } label: {
                             TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount, showChevron: true)
                         }
                         .cardRowBackground()
@@ -236,13 +237,12 @@ struct ContentView: View {
                     reloadMainListState()
                 }
             }
-            // A tapped draft notification always jumps straight to that
-            // draft's continue flow, resetting whatever else was on the
-            // stack — it's a deliberate, deep-linked destination, not just
-            // "open the app".
+            // A tapped draft notification opens the draft as a sheet,
+            // resetting whatever else was on the stack first.
             .onChange(of: draftRouter.pendingDraftID) { _, newValue in
                 guard let newValue else { return }
-                path = [.continueDraft(newValue)]
+                path = []
+                continueDraft = TransactionDraftStore.load().first { $0.id == newValue }
                 draftRouter.pendingDraftID = nil
             }
             // Same deep-link pattern as the draft notification above.
@@ -305,6 +305,11 @@ struct ContentView: View {
     @ViewBuilder
     private func withSheetsAndAlerts<Content: View>(_ content: Content) -> some View {
         content
+            .sheet(item: $continueDraft, onDismiss: reloadMainListState) { draft in
+                NavigationStack {
+                    ContinueDraftView(draftId: draft.id)
+                }
+            }
             .sheet(item: $importSheetContent) { content in
                 NavigationStack {
                     switch content {

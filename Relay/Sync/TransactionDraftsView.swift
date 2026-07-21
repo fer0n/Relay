@@ -3,10 +3,10 @@
 //  Relay
 //
 //  Lists whatever TransactionDraftGuard still considers "started but not
-//  finished". Tapping one pushes ContinueDraftView to actually finish it —
-//  the same flow a tapped notification opens — since there's no way to
-//  resume the original suspended App Intent perform() call; dismissing one
-//  instead just clears the draft and cancels its notification without
+//  finished". Tapping one opens ContinueDraftView as a sheet to actually
+//  finish it — the same flow a tapped notification opens — since there's no
+//  way to resume the original suspended App Intent perform() call; dismissing
+//  one instead just clears the draft and cancels its notification without
 //  finishing anything.
 //
 
@@ -14,11 +14,14 @@ import SwiftUI
 
 struct TransactionDraftsView: View {
     @State private var drafts: [TransactionDraft] = TransactionDraftStore.load()
+    @State private var selectedDraft: TransactionDraft?
 
     var body: some View {
         List {
             ForEach(drafts) { draft in
-                NavigationLink(value: ContentRoute.continueDraft(draft.id)) {
+                Button {
+                    selectedDraft = draft
+                } label: {
                     TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount, showChevron: true)
                 }
                 .cardRowBackground()
@@ -39,16 +42,12 @@ struct TransactionDraftsView: View {
         }
         .navigationTitle("Transaction Drafts")
         .onAppear {
-            // Covers both the initial appearance and reappearing after
-            // popping back from a pushed ContinueDraftView that dismissed
-            // itself on completion.
             drafts = TransactionDraftStore.load()
         }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        TransactionDraftsView()
+        .sheet(item: $selectedDraft, onDismiss: { drafts = TransactionDraftStore.load() }) { draft in
+            NavigationStack {
+                ContinueDraftView(draftId: draft.id)
+            }
+        }
     }
 }

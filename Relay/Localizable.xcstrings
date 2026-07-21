@@ -342,17 +342,6 @@
         }
       }
     },
-    "Ask Each Time" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jedes Mal fragen"
-          }
-        }
-      }
-    },
     "Auto-Match Pattern" : {
       "localizations" : {
         "de" : {
@@ -619,6 +608,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Automatisierung erstellen"
+          }
+        }
+      }
+    },
+    "Create New" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue erstellen"
           }
         }
       }
@@ -1459,16 +1458,6 @@
         }
       }
     },
-    "Provider" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Provider"
-          }
-        }
-      }
-    },
     "Pulls buckets and merchants straight out of the old \"YNAB Toolkit\" Shortcut's DataJar storage." : {
       "localizations" : {
         "de" : {
@@ -1819,17 +1808,6 @@
         }
       }
     },
-    "Split Manually" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manuell aufteilen"
-          }
-        }
-      }
-    },
     "Split Manually…" : {
       "localizations" : {
         "de" : {
@@ -1850,34 +1828,12 @@
         }
       }
     },
-    "Split this %@ transaction with Splitwise?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese %@-Transaktion mit Splitwise aufteilen?"
-          }
-        }
-      }
-    },
     "Split this expense?" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Ausgabe aufteilen?"
-          }
-        }
-      }
-    },
-    "Split this transaction with Splitwise?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Transaktion mit Splitwise aufteilen?"
           }
         }
       }
@@ -1942,16 +1898,6 @@
         }
       }
     },
-    "Split With Splitwise" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Splitwise aufteilen"
-          }
-        }
-      }
-    },
     "Split with which Splitwise friend?" : {
       "localizations" : {
         "de" : {
@@ -1982,45 +1928,12 @@
         }
       }
     },
-    "Splitwise Friend Fallback" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Freund-Fallback"
-          }
-        }
-      }
-    },
     "Splitwise is rate-limiting requests right now. Try again in a few minutes." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Splitwise begrenzt momentan die Anfragen. Bitte in ein paar Minuten erneut versuchen."
-          }
-        }
-      }
-    },
-    "Splitwise Split Option" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Teilungsoption"
-          }
-        }
-      }
-    },
-    "Splitwise Template Option" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Vorlageneinstellung"
           }
         }
       }
@@ -2046,7 +1959,14 @@
       }
     },
     "Success Notification" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfolg Benachrichtigung"
+          }
+        }
+      }
     },
     "Tap on \"Shortcut Input\" on top, then select \"Amount\"." : {
       "localizations" : {
@@ -2139,14 +2059,11 @@
       }
     },
     "Transaction Added" : {
-
-    },
-    "Transaction draft" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transaktionsentwurf"
+            "value" : "Transaktion hinzugefügt"
           }
         }
       }
@@ -2167,17 +2084,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transaktion unvollständig"
-          }
-        }
-      }
-    },
-    "Use Default Friend" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Standardfreund verwenden"
           }
         }
       }
@@ -2233,7 +2139,14 @@
       }
     },
     "When this action finishes successfully, send a confirmation notification." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn diese Aktion erfolgreich abgeschlossen wird, eine Bestätigungsbenachrichtigung senden."
+          }
+        }
+      }
     },
     "When you connect an account, Relay opens YNAB's or Splitwise's own sign-in page in a secure browser window. Your username and password go directly to them — Relay never sees or stores your credentials." : {
       "localizations" : {

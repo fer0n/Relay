@@ -26,7 +26,7 @@ struct TemplatesView: View {
             Section {
                 ForEach(config.templates.keys.sorted(), id: \.self) { name in
                     NavigationLink {
-                        TemplateEditView(templateName: name, onSave: reload, onDelete: reload)
+                        TemplateEditView(templateName: name, onSave: { _ in reload() }, onDelete: reload)
                     } label: {
                         TemplateRow(
                             name: name,
@@ -48,7 +48,7 @@ struct TemplatesView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {
-                    TemplateEditView(templateName: nil, onSave: reload, onDelete: reload)
+                    TemplateEditView(templateName: nil, onSave: { _ in reload() }, onDelete: reload)
                 } label: {
                     Image(systemName: "plus")
                 }

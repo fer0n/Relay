@@ -28,37 +28,36 @@ struct ContinueSplitwiseWalletTransactionView: View {
     @State private var notAuthenticated = false
     @State private var errorMessage: String?
     @State private var isSubmitting = false
+    @State private var showTemplateEditor = false
+    @State private var editingTemplateName: String? = nil
     @Environment(\.dismiss) private var dismiss
 
-    /// True once a merchant→template match is found — description/split
-    /// setting are then fixed (read-only here) instead of asked again.
-    @State private var templateResolved = false
-    @State private var resolvedTemplateName: String?
     @State private var expenseDescription = ""
+    @State private var templateChoice: String?
+    @State private var availableTemplates: [String] = []
 
     /// True once the resolved (or matched) template already has a cached
     /// Splitwise friend — false also covers "no template yet", so the
     /// friend picker below is shown whenever this is false, regardless of
     /// `templateResolved`.
     @State private var templateHasFriend = false
-    @State private var resolvedTemplateSplitOption: SplitwiseTemplateOption = .never
+    @State private var templateFriendName: String?
 
     @State private var friends: [SplitwiseFriend] = []
     @State private var selectedFriendId: Int?
     @State private var isLoadingFriends = false
 
-    /// Only used/shown when `!templateResolved` — the split setting to save
-    /// on the new template.
-    @State private var newTemplateSplitOption: SplitwiseTemplateOption = .never
-
-    @State private var splitwiseRuntimeChoice: SplitwiseSplitOption?
+    @State private var splitwiseRuntimeChoice: SplitwiseSplitOption? = .always
     @State private var ownShareText = ""
+
+    private let defaultFriend: SplitwiseDefaultFriend?
 
     /// Preview/testing seam only — nil (the default) always falls through
     /// to the real Keychain check. Lets `#Preview` render the form itself
     /// instead of the "Not Connected" gate.
     init(draft: TransactionDraft, isAuthenticatedOverride: Bool? = nil) {
         self.draft = draft
+        defaultFriend = SplitwiseDefaultFriendStore.load()
 
         // Resolved synchronously so the form is ready on the very first
         // render. `currentAccessToken` is a plain Keychain read here (no
@@ -77,14 +76,16 @@ struct ContinueSplitwiseWalletTransactionView: View {
         }
 
         let config = WalletTransactionConfigStore.load()
+        _availableTemplates = State(initialValue: Array(config.templates.keys))
+        
         if let info = config.resolvedMerchantInfo(for: merchant) {
-            _templateResolved = State(initialValue: true)
-            _resolvedTemplateName = State(initialValue: info.templateName)
+            _templateChoice = State(initialValue: info.templateName)
             _expenseDescription = State(initialValue: info.payeeName)
             let template = config.templates[info.templateName]
-            _resolvedTemplateSplitOption = State(initialValue: template?.splitwiseOption ?? .never)
+            _splitwiseRuntimeChoice = State(initialValue: Self.runtimeChoice(for: template?.splitwiseOption ?? .never))
             if let friend = template?.splitwiseFriend {
                 _templateHasFriend = State(initialValue: true)
+                _templateFriendName = State(initialValue: friend.fullName)
                 _selectedFriendId = State(initialValue: friend.id)
             }
         } else {
@@ -92,18 +93,23 @@ struct ContinueSplitwiseWalletTransactionView: View {
         }
     }
 
-    private var effectiveSplitOption: SplitwiseTemplateOption {
-        templateResolved ? resolvedTemplateSplitOption : newTemplateSplitOption
+    private var resolvedSplitwiseAction: SplitwiseSplitOption {
+        splitwiseRuntimeChoice ?? .never
     }
 
-    private var resolvedSplitwiseAction: SplitwiseSplitOption {
-        WalletAutomationDialog.resolvedSplitwiseAction(for: effectiveSplitOption, runtimeChoice: splitwiseRuntimeChoice)
+    private static func runtimeChoice(for option: SplitwiseTemplateOption) -> SplitwiseSplitOption? {
+        switch option {
+        case .always: .always
+        case .manual: .manual
+        case .never: .never
+        case .ask: nil
+        }
     }
 
     private var canSubmit: Bool {
-        if !templateResolved, expenseDescription.trimmingCharacters(in: .whitespaces).isEmpty { return false }
-        if !templateHasFriend, selectedFriendId == nil { return false }
-        if effectiveSplitOption == .ask, splitwiseRuntimeChoice == nil { return false }
+        if expenseDescription.trimmingCharacters(in: .whitespaces).isEmpty { return false }
+        if selectedFriendId == nil && defaultFriend == nil { return false }
+        if splitwiseRuntimeChoice == nil { return false }
         if resolvedSplitwiseAction == .manual, Double(ownShareText) == nil { return false }
         return true
     }
@@ -116,7 +122,7 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 content
             }
         }
-        .navigationTitle("Transaction draft")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .onAuthenticated(splitwiseAuth.isAuthenticated) {
             notAuthenticated = false
@@ -130,48 +136,48 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 TransactionDraftHeader(amount: draft.formattedAmount, merchant: draft.merchant, startedAt: draft.startedAt)
             }
             .listRowSeparator(.hidden)
-            .listRowBackground(Color.backgroundColor)
+            .listRowBackground(Color.sheetBackgroundColor)
 
             Section {
-                DraftDetailRow(
-                    icon: "text.alignleft",
-                    title: "Description",
-                    isIncomplete: !templateResolved && expenseDescription.trimmingCharacters(in: .whitespaces).isEmpty
-                ) {
-                    if templateResolved {
-                        Text(expenseDescription)
-                    } else {
-                        TextField("Description", text: $expenseDescription)
-                            .multilineTextAlignment(.trailing)
+                DraftDetailRow(icon: "doc.on.doc", title: "Template") {
+                    Menu {
+                        Button("Create New") { editingTemplateName = nil; showTemplateEditor = true }
+                        if !availableTemplates.isEmpty { Divider() }
+                        ForEach(availableTemplates.sorted(), id: \.self) { name in
+                            Button(name) { templateChoice = name }
+                        }
+                    } label: {
+                        Text(templateChoice ?? "Select")
+                            .foregroundStyle(templateChoice == nil ? Color.accentColor : Color.secondary)
+                            .lineLimit(1)
                     }
                 }
                 .cardRowBackground()
 
-                DraftDetailRow(icon: "doc.on.doc", title: "Template") {
-                    Text(templateResolved ? (resolvedTemplateName ?? "Unknown") : "New")
+                DraftDetailRow(
+                    icon: "text.alignleft",
+                    title: "Description",
+                    isIncomplete: expenseDescription.trimmingCharacters(in: .whitespaces).isEmpty
+                ) {
+                    TextField("Description", text: $expenseDescription)
+                        .multilineTextAlignment(.trailing)
+                        .submitLabel(.done)
                 }
                 .cardRowBackground()
-            }
 
-            Section("Split") {
                 SplitwiseFriendPickerRow(
-                    resolvedFriendName: templateHasFriend ? (friends.first { $0.id == selectedFriendId }?.fullName ?? "Unknown") : nil,
+                    resolvedFriendName: templateHasFriend ? templateFriendName : nil,
                     isLoading: isLoadingFriends,
                     friends: friends,
                     selectedFriendId: $selectedFriendId,
-                    isIncomplete: !templateHasFriend && selectedFriendId == nil
+                    noneLabel: defaultFriend.map { "Default (\($0.firstName))" } ?? "None",
+                    isIncomplete: selectedFriendId == nil && defaultFriend == nil
                 )
 
-                SplitwiseOptionRow(
-                    title: "Split",
-                    isResolved: templateResolved,
-                    resolvedOption: resolvedTemplateSplitOption,
-                    newOption: $newTemplateSplitOption
+                SplitwiseSplitPickerRow(
+                    choice: $splitwiseRuntimeChoice,
+                    isIncomplete: splitwiseRuntimeChoice == nil
                 )
-
-                if effectiveSplitOption == .ask {
-                    SplitwiseAskRow(runtimeChoice: $splitwiseRuntimeChoice, isIncomplete: splitwiseRuntimeChoice == nil)
-                }
 
                 if resolvedSplitwiseAction == .manual {
                     SplitwiseOwnShareRow(ownShareText: $ownShareText, isIncomplete: Double(ownShareText) == nil)
@@ -182,10 +188,32 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 Section {
                     Text(errorMessage).foregroundStyle(.red)
                 }
-                .listRowBackground(Color.backgroundColor)
+                .listRowBackground(Color.sheetBackgroundColor)
             }
         }
-        .themedList(background: .backgroundColor)
+        .themedList(background: .sheetBackgroundColor)
+        .animation(.default, value: resolvedSplitwiseAction)
+        .onChange(of: templateChoice) { _, newTemplate in
+            applyTemplate(newTemplate)
+        }
+        .sheet(isPresented: $showTemplateEditor) {
+            NavigationStack {
+                TemplateEditView(
+                    templateName: editingTemplateName,
+                    onSave: { savedName in
+                        let config = WalletTransactionConfigStore.load()
+                        availableTemplates = Array(config.templates.keys)
+                        templateChoice = savedName
+                        applyTemplate(savedName)
+                        showTemplateEditor = false
+                    },
+                    onDelete: {
+                        showTemplateEditor = false
+                    }
+                )
+                .navigationBarTitleDisplayMode(.inline)
+            }
+        }
         .safeAreaBar(edge: .bottom) {
             BottomBarActionButton(
                 title: "Add Expense",
@@ -193,6 +221,31 @@ struct ContinueSplitwiseWalletTransactionView: View {
                 isDisabled: !canSubmit || isSubmitting
             ) {
                 Task { await submit() }
+            }
+        }
+    }
+
+    private func applyTemplate(_ name: String?) {
+        let config = WalletTransactionConfigStore.load()
+        guard let name else {
+            withAnimation {
+                splitwiseRuntimeChoice = .always
+                templateHasFriend = false
+                templateFriendName = nil
+                selectedFriendId = SplitwiseDefaultFriendStore.load()?.id
+            }
+            return
+        }
+        let template = config.templates[name]
+        let newFriend = template?.splitwiseFriend
+        withAnimation {
+            splitwiseRuntimeChoice = Self.runtimeChoice(for: template?.splitwiseOption ?? .never)
+            if let newFriend {
+                templateHasFriend = true
+                selectedFriendId = newFriend.id
+            } else {
+                templateHasFriend = false
+                selectedFriendId = SplitwiseDefaultFriendStore.load()?.id
             }
         }
     }
@@ -230,22 +283,18 @@ struct ContinueSplitwiseWalletTransactionView: View {
         var config = WalletTransactionConfigStore.load()
         var configChanged = false
 
-        let finalDescription: String
-        if templateResolved {
-            finalDescription = expenseDescription
-        } else {
-            let trimmed = expenseDescription.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else {
-                errorMessage = "Description can't be empty."
-                return
-            }
-            finalDescription = trimmed
+        let trimmedDescription = expenseDescription.trimmingCharacters(in: .whitespaces)
+        guard !trimmedDescription.isEmpty else {
+            errorMessage = "Description can't be empty."
+            return
         }
+        let finalDescription = trimmedDescription
+        let finalTemplateName = templateChoice ?? trimmedDescription
 
         let finalFriendId: Int
         let finalFriendFirstName: String
         let finalFriendFullName: String
-        if templateHasFriend, let templateName = resolvedTemplateName, let existing = config.templates[templateName]?.splitwiseFriend {
+        if templateHasFriend, let existing = config.templates[finalTemplateName]?.splitwiseFriend {
             finalFriendId = existing.id
             finalFriendFirstName = existing.firstName
             finalFriendFullName = existing.fullName
@@ -259,23 +308,27 @@ struct ContinueSplitwiseWalletTransactionView: View {
             finalFriendFullName = match.fullName
         }
 
-        if templateResolved, let templateName = resolvedTemplateName {
-            if !templateHasFriend {
-                var template = config.templates[templateName] ?? WalletTransactionConfig.Template()
-                template.splitwiseFriendId = finalFriendId
-                template.splitwiseFriendFirstName = finalFriendFirstName
-                template.splitwiseFriendFullName = finalFriendFullName
-                config.templates[templateName] = template
-                configChanged = true
-            }
-        } else {
-            var template = config.templates[finalDescription] ?? WalletTransactionConfig.Template()
+        if templateChoice == nil {
+            // Creating new template
+            var template = config.templates[finalTemplateName] ?? WalletTransactionConfig.Template()
             template.splitwiseFriendId = finalFriendId
             template.splitwiseFriendFirstName = finalFriendFirstName
             template.splitwiseFriendFullName = finalFriendFullName
-            template.splitwiseOption = newTemplateSplitOption
-            config.templates[finalDescription] = template
-            config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: finalDescription, templateName: finalDescription)
+            template.splitwiseOption = switch splitwiseRuntimeChoice {
+            case .always: .always
+            case .manual: .manual
+            case .never, nil: .never
+            }
+            config.templates[finalTemplateName] = template
+            config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: finalDescription, templateName: finalTemplateName)
+            configChanged = true
+        } else if !templateHasFriend {
+            // Existing template but no cached friend — save the picked friend
+            var template = config.templates[finalTemplateName] ?? WalletTransactionConfig.Template()
+            template.splitwiseFriendId = finalFriendId
+            template.splitwiseFriendFirstName = finalFriendFirstName
+            template.splitwiseFriendFullName = finalFriendFullName
+            config.templates[finalTemplateName] = template
             configChanged = true
         }
 
@@ -320,14 +373,17 @@ struct ContinueSplitwiseWalletTransactionView: View {
 }
 
 #Preview {
-    NavigationStack {
-        ContinueSplitwiseWalletTransactionView(
-            draft: TransactionDraft(
-                id: UUID(),
-                startedAt: Date().addingTimeInterval(-3600),
-                payload: .splitwiseWallet(merchant: "Grocery Store", amount: 32.10)
-            ),
-            isAuthenticatedOverride: true
-        )
-    }
+    Color.clear
+        .sheet(isPresented: .constant(true)) {
+            NavigationStack {
+                ContinueSplitwiseWalletTransactionView(
+                    draft: TransactionDraft(
+                        id: UUID(),
+                        startedAt: Date().addingTimeInterval(-3600),
+                        payload: .splitwiseWallet(merchant: "Grocery Store", amount: 32.10)
+                    ),
+                    isAuthenticatedOverride: true
+                )
+            }
+        }
 }

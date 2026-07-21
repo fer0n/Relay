@@ -32,7 +32,7 @@ private struct TemplateDraft: Equatable {
 struct TemplateEditView: View {
     /// nil means "creating a new template".
     let templateName: String?
-    var onSave: () -> Void
+    var onSave: (String) -> Void
     var onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -76,7 +76,7 @@ struct TemplateEditView: View {
     /// been edited.
     private let originalDraft: TemplateDraft
 
-    init(templateName: String?, onSave: @escaping () -> Void, onDelete: @escaping () -> Void) {
+    init(templateName: String?, onSave: @escaping (String) -> Void, onDelete: @escaping () -> Void) {
         self.templateName = templateName
         self.onSave = onSave
         self.onDelete = onDelete
@@ -342,7 +342,7 @@ struct TemplateEditView: View {
         do {
             try WalletTransactionConfigStore.save(config)
             logger.log("saved template \(trimmedName, privacy: .public)")
-            onSave()
+            onSave(trimmedName)
             dismiss()
         } catch {
             logger.error("failed to save template: \(String(describing: error), privacy: .public)")
@@ -394,7 +394,7 @@ extension TemplateEditView {
     /// the real on-disk config.
     init(previewAutoMatchRules: [WalletTransactionConfig.AutoMatchRule]) {
         self.templateName = nil
-        self.onSave = {}
+        self.onSave = { _ in }
         self.onDelete = {}
         existingFriend = nil
         defaultFriend = nil
@@ -417,12 +417,34 @@ extension TemplateEditView {
 }
 #endif
 
-//#Preview {
-//    NavigationStack {
-//        TemplateEditView(previewAutoMatchRules: [
-//            .init(pattern: "STARBUCKS", payeeName: "Starbucks"),
-//            .init(pattern: "(?i)uber( eats)?", payeeName: "Uber Eats"),
-//            .init(pattern: "TRADER JOE'?S", payeeName: "Trader Joe's")
-//        ])
-//    }
-//}
+#Preview {
+    @Previewable @State var isPresented = true
+
+    // Seed a template with auto-match rules and linked merchants so the
+    // form shows real-looking content instead of empty placeholders.
+    var config = WalletTransactionConfigStore.load()
+    config.templates["Coffee Shop"] = {
+        var t = WalletTransactionConfig.Template()
+        t.autoMatch = [
+            .init(pattern: "STARBUCKS.*", payeeName: "Starbucks"),
+            .init(pattern: "coffee bean", payeeName: "Coffee Bean"),
+        ]
+        return t
+    }()
+    config.merchants["STARBUCKS #1234"] = .init(payeeName: "Starbucks", templateName: "Coffee Shop")
+    config.merchants["STARBUCKS DRIVE-THRU"] = .init(payeeName: "Starbucks", templateName: "Coffee Shop")
+    config.merchants["COFFEE BEAN & TEA"] = .init(payeeName: "Coffee Bean", templateName: "Coffee Shop")
+    try? WalletTransactionConfigStore.save(config)
+
+    return Color.backgroundColor
+        .ignoresSafeArea()
+        .sheet(isPresented: $isPresented) {
+            NavigationStack {
+                TemplateEditView(
+                    templateName: "Coffee Shop",
+                    onSave: { _ in },
+                    onDelete: {}
+                )
+            }
+        }
+}
