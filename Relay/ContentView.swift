@@ -139,10 +139,11 @@ struct ContentView: View {
                 Image("Logo")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 240, maxHeight: 180)
+                    .foregroundStyle(.secondary)
+                    .opacity(0.2)
+                    .frame(maxWidth: 100, maxHeight: 100)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 24)
-                    .opacity(0.8)
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.backgroundColor)

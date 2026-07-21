@@ -121,7 +121,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Image("Logo")
+            Image("OnboardingLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: 200, maxHeight: 180)
