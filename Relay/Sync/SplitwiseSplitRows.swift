@@ -16,7 +16,7 @@ import SwiftUI
 /// The per-template "how should this split" row — read-only once a
 /// template's setting is resolved, otherwise a live picker.
 struct SplitwiseOptionRow: View {
-    var title: String
+    var title: LocalizedStringKey
     let isResolved: Bool
     let resolvedOption: SplitwiseTemplateOption
     @Binding var newOption: SplitwiseTemplateOption

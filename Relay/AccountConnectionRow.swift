@@ -15,7 +15,7 @@ struct AccountConnectionRow: View {
     /// guide a new user toward connecting an account.
     var highlightWhenDisconnected: Bool = false
     /// Label shown on the button when the account is already connected.
-    var connectedLabel: String = "Disconnect"
+    var connectedLabel: LocalizedStringKey = "Disconnect"
 
     @State private var showDisconnectConfirm = false
 

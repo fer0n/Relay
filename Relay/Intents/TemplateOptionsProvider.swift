@@ -10,7 +10,7 @@
 
 import AppIntents
 
-let createNewTemplateOption = "Create New Template"
+let createNewTemplateOption = String(localized: "Create New Template")
 
 nonisolated struct TemplateOptionsProvider: DynamicOptionsProvider {
     func results() async throws -> [String] {

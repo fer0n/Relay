@@ -11,7 +11,7 @@ import SwiftUI
 
 struct DraftDetailRow<Content: View>: View {
     let icon: String
-    let title: String
+    let title: LocalizedStringKey
     /// Highlights the icon and value in the accent color — used to flag a
     /// field that still needs to be filled out before the draft can submit.
     var isIncomplete: Bool = false

@@ -131,7 +131,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         guard NotificationsPreferenceStore.isEnabled else { return }
         logger.log("posting split confirmation")
         let content = UNMutableNotificationContent()
-        content.title = "Split Added"
+        content.title = String(localized: "Split Added")
         content.body = dialog
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,

@@ -26,7 +26,7 @@ enum WalletSplitNotification {
     static var category: UNNotificationCategory {
         let equally = UNNotificationAction(
             identifier: equallyAction,
-            title: "Split Equally",
+            title: String(localized: "Split Equally"),
             options: []
         )
         // A text-input action so the one extra value manual splitting needs —
@@ -34,14 +34,14 @@ enum WalletSplitNotification {
         // SplitwiseExpenseHelper.parseOwnShare, same as the in-app form.
         let manual = UNTextInputNotificationAction(
             identifier: manualAction,
-            title: "Split Manually…",
+            title: String(localized: "Split Manually…"),
             options: [],
-            textInputButtonTitle: "Split",
-            textInputPlaceholder: "Your share, e.g. 12.50"
+            textInputButtonTitle: String(localized: "Split"),
+            textInputPlaceholder: String(localized: "Your share, e.g. 12.50")
         )
         let none = UNNotificationAction(
             identifier: noneAction,
-            title: "Don't Split",
+            title: String(localized: "Don't Split"),
             options: []
         )
         // No .foreground on any action: they complete in the background;

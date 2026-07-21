@@ -1,0 +1,2357 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "shouldTranslate" : false
+    },
+    "· %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· %@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "\"Split With\" is optional — if it's left as Default, the app-wide default Splitwise friend (set in Settings) is used when a matching transaction needs to split." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Aufteilen mit“ ist optional – wenn es als Standard belassen wird, wird beim Aufteilen einer passenden Transaktion der appweite Splitwise-Standardfreund (in Einstellungen festgelegt) verwendet."
+          }
+        }
+      }
+    },
+    "\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Aufteilen mit“ ist optional – wenn es als Keiner belassen wird, wirst du beim ersten Aufteilen einer passenden Transaktion gebeten, einen Freund auszuwählen."
+          }
+        }
+      }
+    },
+    "%@" : {
+      "shouldTranslate" : false
+    },
+    "%@ – %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "%@ – no default Splitwise friend set, pick one in Relay or set \"Split With\" for this automation." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ – kein Standard-Splitwise-Freund festgelegt, in Relay einen auswählen oder „Aufteilen mit“ für diese Automatisierung setzen."
+          }
+        }
+      }
+    },
+    "%@ – no Splitwise friend set, sent a reminder to finish the split in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ – kein Splitwise-Freund festgelegt, Erinnerung zum Fertigstellen der Aufteilung in Relay gesendet."
+          }
+        }
+      }
+    },
+    "%@ at %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ bei %@"
+          }
+        }
+      }
+    },
+    "%@. Couldn't finish automatically — tap to complete in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Konnte nicht automatisch abgeschlossen werden – in Relay tippen."
+          }
+        }
+      }
+    },
+    "%@. Tap to continue." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Zum Fortfahren tippen."
+          }
+        }
+      }
+    },
+    "%lld" : {
+      "shouldTranslate" : false
+    },
+    "Access Tokens" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugangs-Token"
+          }
+        }
+      }
+    },
+    "Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
+          }
+        }
+      }
+    },
+    "Add ${amount} at ${merchant} with ${card} to YNAB" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${amount} bei ${merchant} mit ${card} zu YNAB hinzufügen"
+          }
+        }
+      }
+    },
+    "Add ${amount} expense at ${payee} to ${account}" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgabe ${amount} bei ${payee} auf ${account} hinzufügen"
+          }
+        }
+      }
+    },
+    "Add ${amount} expense for ${expenseDescription} split with ${friend}" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgabe ${amount} für ${expenseDescription} mit ${friend} aufteilen"
+          }
+        }
+      }
+    },
+    "Add ${amount} Splitwise expense for ${merchant}" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${amount} Splitwise-Ausgabe für ${merchant} hinzufügen"
+          }
+        }
+      }
+    },
+    "Add a Shortcuts automation that adds a transaction via Relay whenever you tap to pay with Apple Wallet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge eine Kurzbefehl-Automatisierung hinzu die über Relay eine Transaktion hinzufügt, wenn du mit Apple Wallet bezahlst."
+          }
+        }
+      }
+    },
+    "Add Amount Parameter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parameter \"Betrag\" hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Expense" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgabe hinzufügen"
+          }
+        }
+      }
+    },
+    "Add friends in Splitwise and they'll appear here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge Freunde in Splitwise hinzu, dann erscheinen sie hier."
+          }
+        }
+      }
+    },
+    "Add Remaining Parameters" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbleibende Parameter hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Rule" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regel hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Splitwise Expense" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Ausgabe hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Transaction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktion hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Wallet Transaction to Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet-Transaktion zu Splitwise hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Wallet Transaction to YNAB" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet-Transaktion zu YNAB hinzufügen"
+          }
+        }
+      }
+    },
+    "Add YNAB Transaction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB-Transaktion hinzufügen"
+          }
+        }
+      }
+    },
+    "Adds a Splitwise expense from a Wallet transaction, remembering friend/split choices for next time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt eine Splitwise-Ausgabe aus einer Wallet-Transaktion hinzu und merkt sich Freund- und Teilungseinstellungen."
+          }
+        }
+      }
+    },
+    "Adds a YNAB transaction from a Wallet transaction, remembering payee/category/account choices for next time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt eine YNAB-Transaktion aus einer Wallet-Transaktion hinzu und merkt sich Empfänger-, Kategorie- und Kontoeinstellungen."
+          }
+        }
+      }
+    },
+    "Adds an expense split with a friend on Splitwise." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt eine Ausgabe hinzu, die mit einem Freund auf Splitwise aufgeteilt wird."
+          }
+        }
+      }
+    },
+    "Adds an expense transaction to your YNAB plan." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt eine Ausgabentransaktion zu deinem YNAB-Plan hinzu."
+          }
+        }
+      }
+    },
+    "Already Handled" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereits erledigt"
+          }
+        }
+      }
+    },
+    "Amount" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Betrag"
+          }
+        }
+      }
+    },
+    "Amount Column" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Betragsspalte"
+          }
+        }
+      }
+    },
+    "Ask Each Time" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jedes Mal fragen"
+          }
+        }
+      }
+    },
+    "Auto-Match Pattern" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Erkennungsmuster"
+          }
+        }
+      }
+    },
+    "Auto-Match Rules" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Erkennungsregeln"
+          }
+        }
+      }
+    },
+    "Automation Setup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisierung einrichten"
+          }
+        }
+      }
+    },
+    "Card" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karte"
+          }
+        }
+      }
+    },
+    "Category" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kategorie"
+          }
+        }
+      }
+    },
+    "Category for %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kategorie für „%@“?"
+          }
+        }
+      }
+    },
+    "Choose" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auswählen"
+          }
+        }
+      }
+    },
+    "Choose who to split expenses with by default" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle mit wem Kosten standardmäßig aufgeteilt werden sollen. Kann überschrieben und geändert werden."
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernen"
+          }
+        }
+      }
+    },
+    "Close" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließen"
+          }
+        }
+      }
+    },
+    "Close Import" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import schließen"
+          }
+        }
+      }
+    },
+    "Connect" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinden"
+          }
+        }
+      }
+    },
+    "Connect YNAB and/or Splitwise to get started" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB und/oder Splitwise verbinden, um loszulegen"
+          }
+        }
+      }
+    },
+    "Connect your %@ account in Relay first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinde zuerst dein %@-Konto in Relay."
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
+          }
+        }
+      }
+    },
+    "Couldn't add the expense. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgabe konnte nicht hinzugefügt werden. Bitte erneut versuchen."
+          }
+        }
+      }
+    },
+    "Couldn't add the Splitwise expense." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Ausgabe konnte nicht hinzugefügt werden."
+          }
+        }
+      }
+    },
+    "Couldn't add the transaction. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktion konnte nicht hinzugefügt werden. Bitte erneut versuchen."
+          }
+        }
+      }
+    },
+    "Couldn't Connect to Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung mit Splitwise fehlgeschlagen"
+          }
+        }
+      }
+    },
+    "Couldn't Connect to YNAB" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung mit YNAB fehlgeschlagen"
+          }
+        }
+      }
+    },
+    "Couldn't Re-add" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht erneut hinzugefügt werden"
+          }
+        }
+      }
+    },
+    "Couldn't re-add the transaction." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Transaktion konnte nicht erneut hinzugefügt werden."
+          }
+        }
+      }
+    },
+    "Couldn't read that file: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei konnte nicht gelesen werden: %@"
+          }
+        }
+      }
+    },
+    "Create a New Shortcut" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuen Kurzbefehl erstellen"
+          }
+        }
+      }
+    },
+    "Create a Wallet Automation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet-Automatisierung erstellen"
+          }
+        }
+      }
+    },
+    "Create Automation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisierung erstellen"
+          }
+        }
+      }
+    },
+    "Create New Template" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Vorlage erstellen"
+          }
+        }
+      }
+    },
+    "Date Column" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datumsspalte"
+          }
+        }
+      }
+    },
+    "Date Format" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datumsformat"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Löschen"
+          }
+        }
+      }
+    },
+    "Delete \"%@\"?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“ löschen?"
+          }
+        }
+      }
+    },
+    "Delete Selected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählte löschen"
+          }
+        }
+      }
+    },
+    "Delete this draft?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Entwurf löschen?"
+          }
+        }
+      }
+    },
+    "Delete this template?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Vorlage löschen?"
+          }
+        }
+      }
+    },
+    "Description" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschreibung"
+          }
+        }
+      }
+    },
+    "Description for \"%@\"?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschreibung für „%@“?"
+          }
+        }
+      }
+    },
+    "Deselect All" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle abwählen"
+          }
+        }
+      }
+    },
+    "Disconnect" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trennen"
+          }
+        }
+      }
+    },
+    "Disconnect from %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von %@ trennen?"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwerfen"
+          }
+        }
+      }
+    },
+    "Don't Split" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht aufteilen"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fertig"
+          }
+        }
+      }
+    },
+    "Drafts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entwürfe"
+          }
+        }
+      }
+    },
+    "Enable Notifications" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitteilungen aktivieren"
+          }
+        }
+      }
+    },
+    "Enable Reminders" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erinnerungen aktivieren"
+          }
+        }
+      }
+    },
+    "Ensure Completion" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abschluss sicherstellen"
+          }
+        }
+      }
+    },
+    "Everything's Ready" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles ist bereit"
+          }
+        }
+      }
+    },
+    "Export Backup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup exportieren"
+          }
+        }
+      }
+    },
+    "Export your templates, auto-match rules, merchants, cards, import settings, and preferences as a JSON backup, or restore one. Account logins aren't included — you'll reconnect YNAB and Splitwise after restoring." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportiere deine Vorlagen, Auto-Erkennungsregeln, Händler, Karten, Importeinstellungen und Einstellungen als JSON-Backup oder stelle eines wieder her. Kontoanmeldungen sind nicht enthalten – du verbindest YNAB und Splitwise nach der Wiederherstellung erneut."
+          }
+        }
+      }
+    },
+    "File" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei"
+          }
+        }
+      }
+    },
+    "File Import" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dateiimport"
+          }
+        }
+      }
+    },
+    "How Relay Works" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So funktioniert Relay"
+          }
+        }
+      }
+    },
+    "If Split With Isn't Set" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falls „Aufteilen mit“ nicht festgelegt"
+          }
+        }
+      }
+    },
+    "If this run is interrupted before finishing, send a notification to continue it later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falls diese Ausführung unterbrochen wird, eine Mitteilung senden, um sie später fortzusetzen."
+          }
+        }
+      }
+    },
+    "If you already use the YNAB Toolkit Shortcut, you can migrate its automation data into Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du bereits den YNAB Toolkit-Kurzbefehl verwendest, kannst du dessen Automatisierungsdaten in Relay übertragen."
+          }
+        }
+      }
+    },
+    "Import %lld Selected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ausgewählte importieren"
+          }
+        }
+      }
+    },
+    "Import ${file} as templates" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${file} als Vorlagen importieren"
+          }
+        }
+      }
+    },
+    "Import ${file} to ${account}" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${file} in ${account} importieren"
+          }
+        }
+      }
+    },
+    "Import ${file} to Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${file} zu Splitwise importieren"
+          }
+        }
+      }
+    },
+    "Import Backup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup importieren"
+          }
+        }
+      }
+    },
+    "Import File" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei importieren"
+          }
+        }
+      }
+    },
+    "Import File to Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei zu Splitwise importieren"
+          }
+        }
+      }
+    },
+    "Import File to YNAB" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei zu YNAB importieren"
+          }
+        }
+      }
+    },
+    "Import Memos" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memos importieren"
+          }
+        }
+      }
+    },
+    "Import Template File" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorlagendatei importieren"
+          }
+        }
+      }
+    },
+    "Import To" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importziel"
+          }
+        }
+      }
+    },
+    "Imports a Relay templates JSON file, or the legacy shape the \"YNAB Toolkit\" Shortcut's DataJar config used." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importiert eine Relay-Vorlagen-JSON-Datei oder das Legacyformat der DataJar-Konfiguration des „YNAB Toolkit“-Kurzbefehls."
+          }
+        }
+      }
+    },
+    "Imports transactions from a bank statement file (CSV or QIF) into YNAB." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importiert Transaktionen aus einer Kontoauszugsdatei (CSV oder QIF) in YNAB."
+          }
+        }
+      }
+    },
+    "In the Shortcuts app, create a personal automation and choose the Wallet trigger. Return here to continue." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstelle in der Kurzbefehle-App eine persönliche Automatisierung und wähle den Wallet-Auslöser. Kehre dann hierher zurück."
+          }
+        }
+      }
+    },
+    "Include Memos" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memos einbeziehen"
+          }
+        }
+      }
+    },
+    "Install Migration Shortcut" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Migrations-Kurzbefehl installieren"
+          }
+        }
+      }
+    },
+    "Install Shortcut" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzbefehl installieren"
+          }
+        }
+      }
+    },
+    "Invalid share amount." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungültiger Anteilsbetrag."
+          }
+        }
+      }
+    },
+    "Leave blank to split the cost equally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leer lassen für gleiche Aufteilung"
+          }
+        }
+      }
+    },
+    "Linked Merchants" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verknüpfte Händler"
+          }
+        }
+      }
+    },
+    "Mark as Cleared" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als gebucht markieren"
+          }
+        }
+      }
+    },
+    "Match other merchant names to %@ too? Enter text/regex, or leave blank to skip." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Händlernamen %@ ebenfalls zuordnen? Text/Regex eingeben oder leer lassen zum Überspringen."
+          }
+        }
+      }
+    },
+    "Memo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memo"
+          }
+        }
+      }
+    },
+    "Memo Column" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memo-Spalte"
+          }
+        }
+      }
+    },
+    "Merchant" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Händler"
+          }
+        }
+      }
+    },
+    "Migration Shortcut" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Migrations-Kurzbefehl"
+          }
+        }
+      }
+    },
+    "More" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
+    "Next" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
+          }
+        }
+      }
+    },
+    "Next time you pay with Apple Pay on your phone, Relay will run automatically and add the transaction or prompt you with any necessary actions." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du das nächste Mal mit Apple Pay bezahlst, wird Relay automatisch ausgeführt und die Transaktion hinzugefügt oder dich bei Bedarf um weitere Eingaben bitten."
+          }
+        }
+      }
+    },
+    "No" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nein"
+          }
+        }
+      }
+    },
+    "No connection – %@ – queued for sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Verbindung – %@ – zur Synchronisierung in Warteschlange"
+          }
+        }
+      }
+    },
+    "No default YNAB plan is set for this account. Reconnect YNAB in Relay and choose a default plan when prompted." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für dieses Konto ist kein Standard-YNAB-Plan festgelegt. Verbinde YNAB in Relay erneut und wähle einen Standardplan."
+          }
+        }
+      }
+    },
+    "No Friends Found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Freunde gefunden"
+          }
+        }
+      }
+    },
+    "No transactions found to import from %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Transaktionen zum Importieren aus %@ gefunden."
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keiner"
+          }
+        }
+      }
+    },
+    "Not Connected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht verbunden"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitteilungen"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "Once you sign in, YNAB or Splitwise gives Relay a secure access token, stored safely on your device. For YNAB, Relay renews this token automatically in the background, so you won't need to sign in again every couple of hours." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobald du dich angemeldet hast, gibt YNAB oder Splitwise Relay ein sicheres Zugriffstoken, das sicher auf deinem Gerät gespeichert wird. Für YNAB erneuert Relay dieses Token automatisch im Hintergrund, sodass du dich nicht alle paar Stunden erneut anmelden musst."
+          }
+        }
+      }
+    },
+    "Only used when Split is Manual" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird nur bei manueller Aufteilung verwendet"
+          }
+        }
+      }
+    },
+    "Open Relay and connect your Splitwise account first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Relay und verbinde zuerst dein Splitwise-Konto."
+          }
+        }
+      }
+    },
+    "Open Relay and connect your YNAB account first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Relay und verbinde zuerst dein YNAB-Konto."
+          }
+        }
+      }
+    },
+    "Parsed %lld transactions from %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld Transaktionen aus %2$@ verarbeitet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Parsed %1$lld transactions from %2$@."
+          }
+        }
+      }
+    },
+    "Parses a bank statement file (CSV or QIF) so you can pick which transactions to split equally with a Splitwise friend in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verarbeitet eine Kontoauszugsdatei (CSV oder QIF), damit du in Relay auswählen kannst, welche Transaktionen gleichmäßig mit einem Splitwise-Freund aufgeteilt werden."
+          }
+        }
+      }
+    },
+    "Part of the sign-in process briefly passes through a small relay service run by Relay's developer. It's only ever involved for a moment while you're signing in, and never sees your plan, transactions, or expenses." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Teil des Anmeldevorgangs wird kurz über einen kleinen Relay-Dienst des Entwicklers weitergeleitet. Dieser ist nur für einen Moment während der Anmeldung beteiligt und sieht niemals deinen Plan, Transaktionen oder Ausgaben."
+          }
+        }
+      }
+    },
+    "Pattern" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muster"
+          }
+        }
+      }
+    },
+    "Pattern can be plain text or a regex, and is matched case-insensitively." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Muster kann einfacher Text oder ein regulärer Ausdruck sein und wird ohne Berücksichtigung der Groß-/Kleinschreibung abgeglichen."
+          }
+        }
+      }
+    },
+    "Payee" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfänger"
+          }
+        }
+      }
+    },
+    "Payee Column" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfänger-Spalte"
+          }
+        }
+      }
+    },
+    "Payee Name" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfängername"
+          }
+        }
+      }
+    },
+    "Payee name for \"%@\"?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfängername für „%@“?"
+          }
+        }
+      }
+    },
+    "Pending Queue" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausstehende Vorgänge"
+          }
+        }
+      }
+    },
+    "Pending Transactions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausstehende Transaktionen"
+          }
+        }
+      }
+    },
+    "Provider" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider"
+          }
+        }
+      }
+    },
+    "Pulls buckets and merchants straight out of the old \"YNAB Toolkit\" Shortcut's DataJar storage." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Holt Kategorien und Händler direkt aus dem DataJar-Speicher des alten „YNAB Toolkit“-Kurzbefehls."
+          }
+        }
+      }
+    },
+    "Re-add" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut hinzufügen"
+          }
+        }
+      }
+    },
+    "Recent" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kürzlich"
+          }
+        }
+      }
+    },
+    "Relay can only import .csv or .qif files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay kann nur .csv- oder .qif-Dateien importieren."
+          }
+        }
+      }
+    },
+    "Relay connects to YNAB and Splitwise using their official APIs to add transactions and expenses on your behalf, and to import bank statement files into YNAB." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay verbindet sich über die offiziellen APIs mit YNAB und Splitwise, um Transaktionen und Ausgaben hinzuzufügen und Kontoauszugsdateien in YNAB zu importieren."
+          }
+        }
+      }
+    },
+    "Relay creates the transactions and expenses you ask for in YNAB and Splitwise. Any bank or CSV statement files you import are read only on your device. Relay keeps no database of its own and never shares your financial data with anyone else." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay erstellt die Transaktionen und Ausgaben, die du in YNAB und Splitwise anforderst. Importierte Kontoauszugsdateien werden nur auf deinem Gerät gelesen. Relay führt keine eigene Datenbank und gibt deine Finanzdaten niemals weiter."
+          }
+        }
+      }
+    },
+    "Reminds you about an incomplete wallet transaction or offline transactions that are waiting to sync. Nothing else." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erinnert dich an eine unvollständige Wallet-Transaktion oder Offline-Transaktionen, die auf die Synchronisierung warten. Nichts weiter."
+          }
+        }
+      }
+    },
+    "Repeat for Merchant (and Card, YNAB action only). Confirm it looks right, then tap the checkmark to save." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für Händler (und Karte, nur YNAB-Aktion) wiederholen. Bestätigen, dass alles stimmt, dann auf das Häkchen tippen zum Speichern."
+          }
+        }
+      }
+    },
+    "Report Error" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehler melden"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Retry All" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle erneut versuchen"
+          }
+        }
+      }
+    },
+    "Run Migration" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Migration ausführen"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speichern"
+          }
+        }
+      }
+    },
+    "Search actions for \"Add Wallet Transaction to YNAB\" (YNAB, optionally split with Splitwise) or \"Add Wallet Transaction to Splitwise\" (Splitwise only). Tap \"Amount\", scroll right, then select \"Shortcut Input\"." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Aktionen für „Wallet-Transaktion zu YNAB hinzufügen“ (YNAB, optional mit Splitwise aufteilen) oder „Wallet-Transaktion zu Splitwise hinzufügen“ (nur Splitwise) suchen. Auf „Betrag“ tippen, nach rechts scrollen, dann „Kurzbefehl-Eingabe“ auswählen."
+          }
+        }
+      }
+    },
+    "Secure Login" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sicheres Anmelden"
+          }
+        }
+      }
+    },
+    "Select All" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle auswählen"
+          }
+        }
+      }
+    },
+    "Select all cards & categories on the next screen. Then, tap \"Create New Shortcut\"." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Karten und Kategorien auf dem nächsten Bildschirm auswählen. Dann auf „Neuen Kurzbefehl erstellen“ tippen."
+          }
+        }
+      }
+    },
+    "Set It to Run Immediately" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf sofortige Ausführung setzen"
+          }
+        }
+      }
+    },
+    "Set the automation to run immediately for the best experience." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Automatisierung auf sofortige Ausführung setzen für das beste Erlebnis."
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen"
+          }
+        }
+      }
+    },
+    "Setup Automation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisierung einrichten"
+          }
+        }
+      }
+    },
+    "Setup Shortcut Action" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzbefehl-Aktion einrichten"
+          }
+        }
+      }
+    },
+    "Setup Wallet Automation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet-Automatisierung"
+          }
+        }
+      }
+    },
+    "Shortcut Error" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzbefehl-Fehler"
+          }
+        }
+      }
+    },
+    "Show All" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Anzeigen"
+          }
+        }
+      }
+    },
+    "Show Onboarding" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einführung anzeigen"
+          }
+        }
+      }
+    },
+    "Sign-In Relay" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelde-Relay"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überspringen"
+          }
+        }
+      }
+    },
+    "Some transactions are still waiting to sync with YNAB/Splitwise." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einige Transaktionen warten noch auf die Synchronisierung mit YNAB/Splitwise."
+          }
+        }
+      }
+    },
+    "Split" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufteilen"
+          }
+        }
+      }
+    },
+    "Split %@ expenses with Splitwise?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Ausgaben mit Splitwise aufteilen?"
+          }
+        }
+      }
+    },
+    "Split %@ expenses with which friend?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Ausgaben mit welchem Freund aufteilen?"
+          }
+        }
+      }
+    },
+    "Split %lld Selected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ausgewählte aufteilen"
+          }
+        }
+      }
+    },
+    "Split Added" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufteilung hinzugefügt"
+          }
+        }
+      }
+    },
+    "Split Equally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gleich aufteilen"
+          }
+        }
+      }
+    },
+    "Split Manually" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuell aufteilen"
+          }
+        }
+      }
+    },
+    "Split Manually…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuell aufteilen…"
+          }
+        }
+      }
+    },
+    "Split Option" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilungsoption"
+          }
+        }
+      }
+    },
+    "Split this %@ transaction with Splitwise?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese %@-Transaktion mit Splitwise aufteilen?"
+          }
+        }
+      }
+    },
+    "Split this expense?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Ausgabe aufteilen?"
+          }
+        }
+      }
+    },
+    "Split this transaction with Splitwise?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Transaktion mit Splitwise aufteilen?"
+          }
+        }
+      }
+    },
+    "Split Transaction?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktion aufteilen?"
+          }
+        }
+      }
+    },
+    "Split with" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufteilen mit"
+          }
+        }
+      }
+    },
+    "Split With" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufteilen mit"
+          }
+        }
+      }
+    },
+    "Split with (default)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufteilen mit (Standard)"
+          }
+        }
+      }
+    },
+    "Split with %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit %@ aufteilen?"
+          }
+        }
+      }
+    },
+    "Split with Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Splitwise aufteilen"
+          }
+        }
+      }
+    },
+    "Split With Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Splitwise aufteilen"
+          }
+        }
+      }
+    },
+    "Split with which Splitwise friend?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit welchem Splitwise-Freund aufteilen?"
+          }
+        }
+      }
+    },
+    "Splitwise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise"
+          }
+        }
+      }
+    },
+    "Splitwise Friend" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Freund"
+          }
+        }
+      }
+    },
+    "Splitwise Friend Fallback" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Freund-Fallback"
+          }
+        }
+      }
+    },
+    "Splitwise is rate-limiting requests right now. Try again in a few minutes." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise begrenzt momentan die Anfragen. Bitte in ein paar Minuten erneut versuchen."
+          }
+        }
+      }
+    },
+    "Splitwise Split Option" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Teilungsoption"
+          }
+        }
+      }
+    },
+    "Splitwise Template Option" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Vorlageneinstellung"
+          }
+        }
+      }
+    },
+    "Started %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestartet %@"
+          }
+        }
+      }
+    },
+    "Statement Column" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontoauszugs-Spalte"
+          }
+        }
+      }
+    },
+    "Tap on \"Shortcut Input\" on top, then select \"Amount\"." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oben auf „Kurzbefehl-Eingabe“ tippen, dann „Betrag“ auswählen."
+          }
+        }
+      }
+    },
+    "Template" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorlage"
+          }
+        }
+      }
+    },
+    "Template Name" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorlagenname"
+          }
+        }
+      }
+    },
+    "Template name?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorlagenname?"
+          }
+        }
+      }
+    },
+    "Templates" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorlagen"
+          }
+        }
+      }
+    },
+    "Text or regex" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text oder Regex"
+          }
+        }
+      }
+    },
+    "The expense amount, e.g. 12.34" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Ausgabenbetrag, z.B. 12,34"
+          }
+        }
+      }
+    },
+    "The total expense amount, e.g. 12.34" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Gesamtbetrag der Ausgabe, z.B. 12,34"
+          }
+        }
+      }
+    },
+    "This transaction was already completed or dismissed." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Transaktion wurde bereits abgeschlossen oder verworfen."
+          }
+        }
+      }
+    },
+    "Transaction draft" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktionsentwurf"
+          }
+        }
+      }
+    },
+    "Transaction Drafts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktionsentwürfe"
+          }
+        }
+      }
+    },
+    "Transaction Incomplete" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktion unvollständig"
+          }
+        }
+      }
+    },
+    "Use Default Friend" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardfreund verwenden"
+          }
+        }
+      }
+    },
+    "Used to remind you if a wallet transaction is left unfinished or a queued transaction is still waiting to sync, so nothing silently gets lost." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erinnert dich, wenn eine Wallet-Transaktion unvollständig bleibt oder eine Transaktion noch auf die Synchronisierung wartet, damit nichts unbemerkt verloren geht."
+          }
+        }
+      }
+    },
+    "Using YNAB Toolkit?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB Toolkit im Einsatz?"
+          }
+        }
+      }
+    },
+    "Wallet transactions from these exact merchant names go straight to this template. Edit the payee name, swipe to unlink one, or use the arrow to move one to a different template." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wallet-Transaktionen von diesen genauen Händlernamen werden direkt dieser Vorlage zugeordnet. Empfängernamen bearbeiten, wischen zum Aufheben der Verknüpfung oder Pfeil zum Verschieben in eine andere Vorlage."
+          }
+        }
+      }
+    },
+    "We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wir sind nicht mit YNAB oder einem seiner Tochterunternehmen oder verbundenen Unternehmen verbunden oder offiziell in Verbindung gebracht."
+          }
+        }
+      }
+    },
+    "Welcome to Relay" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Willkommen bei Relay"
+          }
+        }
+      }
+    },
+    "When you connect an account, Relay opens YNAB's or Splitwise's own sign-in page in a secure browser window. Your username and password go directly to them — Relay never sees or stores your credentials." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du ein Konto verbindest, öffnet Relay die eigene Anmeldeseite von YNAB oder Splitwise in einem sicheren Browserfenster. Dein Benutzername und Passwort gehen direkt dorthin – Relay sieht oder speichert deine Anmeldedaten niemals."
+          }
+        }
+      }
+    },
+    "Which template for \"%@\"?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Vorlage für „%@“?"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ja"
+          }
+        }
+      }
+    },
+    "YNAB" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB"
+          }
+        }
+      }
+    },
+    "YNAB Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB-Konto"
+          }
+        }
+      }
+    },
+    "YNAB account for card \"%@\"?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB-Konto für Karte „%@“?"
+          }
+        }
+      }
+    },
+    "YNAB Category" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB-Kategorie"
+          }
+        }
+      }
+    },
+    "YNAB is rate-limiting requests right now. Try again in a few minutes." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YNAB begrenzt momentan die Anfragen. Bitte in ein paar Minuten erneut versuchen."
+          }
+        }
+      }
+    },
+    "Your Data" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Daten"
+          }
+        }
+      }
+    },
+    "Your Share" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Anteil"
+          }
+        }
+      }
+    },
+    "Your share of the %@ expense at %@, split with %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Anteil an der %1$@-Ausgabe bei %2$@, aufgeteilt mit %3$@?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your share of the %1$@ expense at %2$@, split with %3$@?"
+          }
+        }
+      }
+    },
+    "Your share, e.g. 12.50" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Anteil, z.B. 12,50"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

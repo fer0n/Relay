@@ -16,9 +16,9 @@ nonisolated enum SplitwiseFriendFallback: String, AppEnum, Codable {
     case defaultFriend
     case ask
 
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Splitwise Friend Fallback"
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("Splitwise Friend Fallback", table: "AppShortcuts"))
     static let caseDisplayRepresentations: [SplitwiseFriendFallback: DisplayRepresentation] = [
-        .defaultFriend: "Use Default Friend",
-        .ask: "Ask Each Time",
+        .defaultFriend: DisplayRepresentation(title: LocalizedStringResource("Use Default Friend", table: "AppShortcuts")),
+        .ask: DisplayRepresentation(title: LocalizedStringResource("Ask Each Time", table: "AppShortcuts")),
     ]
 }

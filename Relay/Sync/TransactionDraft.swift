@@ -95,7 +95,7 @@ struct TransactionDraft: Codable, Identifiable {
     }
 
     var summary: String {
-        "\(amount.asMoneyString) at \(merchant)"
+        String(localized: "\(amount.asMoneyString) at \(merchant)")
     }
 
     /// Formatted for TransactionSummaryRow — negated to match the

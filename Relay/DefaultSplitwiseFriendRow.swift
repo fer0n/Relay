@@ -14,7 +14,7 @@ struct DefaultSplitwiseFriendRow: View {
 
     var body: some View {
         HStack {
-            Text("Splitwise Default")
+            Text("Split with (default)")
             
         Menu {
             splitwiseFriendMenuButtons(friends) { select($0) }

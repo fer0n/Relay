@@ -38,7 +38,7 @@ struct ListChevron: View {
 /// with `.navigationLinkIndicatorVisibility(.hidden)` on the enclosing
 /// List, since `ListChevron` replaces the native disclosure indicator.
 struct RowLabel: View {
-    let title: String
+    let title: LocalizedStringKey
     var systemImage: String?
     var badge: Int?
 
@@ -164,7 +164,7 @@ struct InlineAlertCard: View {
 /// themed text, and glass styling every bottom bar uses — so the four
 /// `safeAreaBar(edge: .bottom)` call sites don't each re-spell it.
 struct BottomBarActionButton: View {
-    let title: String
+    let title: LocalizedStringKey
     var isLoading = false
     var isDisabled = false
     let action: () -> Void

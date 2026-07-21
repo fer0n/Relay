@@ -180,7 +180,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                     resolvedTemplateChoice = templateChoice
                 } else {
                     logger.log("no merchant match — requesting template choice")
-                    resolvedTemplateChoice = try await $templateChoice.requestValue("Which template for \"\(merchant)\"?")
+                    let prompt = String(format: String(localized: "Which template for \"%@\"?"), merchant)
+                    resolvedTemplateChoice = try await $templateChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     touchDraft()
                 }
 
@@ -195,7 +196,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                         newName = newTemplateName
                     } else {
                         logger.log("creating new template — requesting template name")
-                        newName = try await $newTemplateName.requestValue("Template name?")
+                        newName = try await $newTemplateName.requestValue(IntentDialog(stringLiteral: String(localized: "Template name?")))
                         touchDraft()
                     }
                     templateName = newName
@@ -207,7 +208,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                     resolvedPayeeName = payeeOverride
                 } else {
                     logger.log("template=\(templateName, privacy: .public) — requesting payee name")
-                    resolvedPayeeName = try await $payeeOverride.requestValue("Payee name for \"\(merchant)\"?")
+                    let prompt = String(format: String(localized: "Payee name for \"%@\"?"), merchant)
+                    resolvedPayeeName = try await $payeeOverride.requestValue(IntentDialog(stringLiteral: prompt))
                     touchDraft()
                 }
 
@@ -216,9 +218,11 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                     pattern = autoMatchPattern
                 } else {
                     logger.log("payeeName=\(resolvedPayeeName, privacy: .public) — requesting auto-match pattern")
-                    pattern = try await $autoMatchPattern.requestValue(
-                        "Match other merchant names to \(resolvedPayeeName) too? Enter text/regex, or leave blank to skip."
+                    let prompt = String(
+                        format: String(localized: "Match other merchant names to %@ too? Enter text/regex, or leave blank to skip."),
+                        resolvedPayeeName
                     )
+                    pattern = try await $autoMatchPattern.requestValue(IntentDialog(stringLiteral: prompt))
                     touchDraft()
                 }
                 logger.log("autoMatchPattern=\"\(pattern, privacy: .public)\"")
@@ -237,7 +241,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                         let categories = try await YNABCategoryEntity.defaultQuery.suggestedEntities()
                         category = try await $categoryOverride.requestDisambiguation(
                             among: categories,
-                            dialog: "Category for \(templateName)?"
+                            dialog: IntentDialog(stringLiteral: String(format: String(localized: "Category for %@?"), templateName))
                         )
                         touchDraft()
                     }
@@ -258,7 +262,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                         logger.log("categoryId=\(resolvedCategoryId ?? "nil", privacy: .public) — requesting Splitwise option")
                         resolvedSplitwiseOption = try await $splitwiseOptionOverride.requestDisambiguation(
                             among: [.ask, .always, .manual, .never],
-                            dialog: "Split \(templateName) expenses with Splitwise?"
+                            dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with Splitwise?"), templateName))
                         )
                         touchDraft()
                     }
@@ -295,7 +299,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                     let accounts = try await YNABAccountEntity.defaultQuery.suggestedEntities()
                     account = try await $accountOverride.requestDisambiguation(
                         among: accounts,
-                        dialog: "YNAB account for card \"\(card)\"?"
+                        dialog: IntentDialog(stringLiteral: String(format: String(localized: "YNAB account for card \"%@\"?"), card))
                     )
                     touchDraft()
                 }
@@ -400,7 +404,14 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                             friendFullName: resolvedFriend?.fullName
                         )
                     ) {
-                        try await $splitwiseRuntimeChoice.requestValue("Split this \(payeeName) transaction with Splitwise?")
+                        let splitDescription = payeeName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let prompt: String
+                        if splitDescription.isEmpty {
+                            prompt = String(localized: "Split this transaction with Splitwise?", table: "AppShortcuts")
+                        } else {
+                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?", table: "AppShortcuts"), splitDescription)
+                        }
+                        return try await $splitwiseRuntimeChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     }
                     touchDraft()
                 }
@@ -422,7 +433,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
                 resolvedFriend = try await $splitwiseFriend.requestDisambiguation(
                     among: friends,
-                    dialog: "Split with which Splitwise friend?"
+                    dialog: IntentDialog(stringLiteral: String(localized: "Split with which Splitwise friend?"))
                 )
                 touchDraft()
             }
@@ -443,7 +454,13 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             var resolvedOwnShare: Double? = splitwiseOwnShare
             if splitwiseAction == .manual, resolvedOwnShare == nil {
                 logger.log("splitwiseAction=manual — requesting own share")
-                resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(payeeName), split with \(friend.firstName)?")
+                let prompt = String(
+                    format: String(localized: "Your share of the %@ expense at %@, split with %@?"),
+                    formattedAmount,
+                    payeeName,
+                    friend.firstName
+                )
+                resolvedOwnShare = try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
                 touchDraft()
             }
             if splitwiseAction == .manual, let resolvedOwnShare {

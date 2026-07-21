@@ -420,10 +420,12 @@ struct SharedFileImportView: View {
         .cardRowBackground()
     }
 
-    private var bottomButtonLabel: String {
+    private var bottomButtonLabel: LocalizedStringKey {
         if isDone { return "Done" }
-        let verb = destination == .splitwise ? "Split" : "Import"
-        return "\(verb) \(selectedIDs.wrappedValue.count) Selected"
+        let count = selectedIDs.wrappedValue.count
+        return destination == .splitwise
+            ? "Split \(count) Selected"
+            : "Import \(count) Selected"
     }
 
     private var bottomButtonDisabled: Bool {

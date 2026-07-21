@@ -176,8 +176,8 @@ final class PendingOperationQueue {
         guard NotificationsPreferenceStore.isEnabled else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Pending Transactions"
-        content.body = "Some transactions are still waiting to sync with YNAB/Splitwise."
+        content.title = String(localized: "Pending Transactions")
+        content.body = String(localized: "Some transactions are still waiting to sync with YNAB/Splitwise.")
         content.sound = .default
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Self.reminderDelay, repeats: false)

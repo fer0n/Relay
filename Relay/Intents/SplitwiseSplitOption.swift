@@ -17,10 +17,10 @@ nonisolated enum SplitwiseSplitOption: String, AppEnum, Codable {
     case manual
     case never
 
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Splitwise Split Option"
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("Splitwise Split Option", table: "AppShortcuts"))
     static let caseDisplayRepresentations: [SplitwiseSplitOption: DisplayRepresentation] = [
-        .always: "Split Equally",
-        .manual: "Split Manually",
-        .never: "Don't Split",
+        .always: DisplayRepresentation(title: LocalizedStringResource("Split Equally", table: "AppShortcuts")),
+        .manual: DisplayRepresentation(title: LocalizedStringResource("Split Manually", table: "AppShortcuts")),
+        .never: DisplayRepresentation(title: LocalizedStringResource("Don't Split", table: "AppShortcuts")),
     ]
 }

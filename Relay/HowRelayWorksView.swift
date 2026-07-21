@@ -52,8 +52,8 @@ struct HowRelayWorksView: View {
 
 private struct InfoSection: View {
     let icon: String
-    let title: String
-    let text: String
+    let title: LocalizedStringKey
+    let text: LocalizedStringKey
 
     var body: some View {
         Section {

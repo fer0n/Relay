@@ -20,7 +20,7 @@ func splitwiseFriendRows<Row: View>(
     if outstanding.isEmpty {
         ForEach(friends, id: \.id, content: row)
     } else {
-        Section("Outstanding Balance") {
+        Section {
             ForEach(outstanding, id: \.id, content: row)
         }
         ForEach(settled, id: \.id, content: row)

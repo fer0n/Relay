@@ -143,7 +143,7 @@ enum TransactionDraftGuard {
         scheduleNotification(
             for: draft,
             delay: 1,
-            body: "\(draft.summary). Couldn't finish automatically — tap to complete in Relay.",
+            body: String(localized: "\(draft.summary). Couldn't finish automatically — tap to complete in Relay."),
             splitActions: false
         )
     }
@@ -243,13 +243,13 @@ enum TransactionDraftGuard {
             content.categoryIdentifier = WalletSplitNotification.categoryIdentifier
             content.title = draft.summary
             if let friendName = draft.pendingSplitContext?.friend?.firstName {
-                content.body = "Split with \(friendName)?"
+                content.body = String(localized: "Split with \(friendName)?")
             } else {
-                content.body = "Split this expense?"
+                content.body = String(localized: "Split this expense?")
             }
         } else {
-            content.title = "Transaction Incomplete"
-            content.body = body ?? "\(draft.summary). Tap to continue."
+            content.title = String(localized: "Transaction Incomplete")
+            content.body = body ?? String(localized: "\(draft.summary). Tap to continue.")
         }
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)

@@ -41,7 +41,7 @@ struct AutomationTutorialView: View {
             }
         }
 
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .step1: return "Create a Wallet Automation"
             case .step2: return "Set It to Run Immediately"
@@ -72,7 +72,7 @@ struct AutomationTutorialView: View {
             }
         }
 
-        var nextTitle: String {
+        var nextTitle: LocalizedStringKey {
             switch self {
             case .step1: return "Create Automation"
             case .step7: return "Done"

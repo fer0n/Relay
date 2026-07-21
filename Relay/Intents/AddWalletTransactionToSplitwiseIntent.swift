@@ -188,7 +188,8 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     resolvedTemplateChoice = templateChoice
                 } else {
                     logger.log("no merchant match — requesting template choice")
-                    resolvedTemplateChoice = try await $templateChoice.requestValue("Which template for \"\(merchant)\"?")
+                    let prompt = String(format: String(localized: "Which template for \"%@\"?"), merchant)
+                    resolvedTemplateChoice = try await $templateChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     touchDraft()
                 }
 
@@ -203,7 +204,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                         newName = newTemplateName
                     } else {
                         logger.log("creating new template — requesting template name")
-                        newName = try await $newTemplateName.requestValue("Template name?")
+                        newName = try await $newTemplateName.requestValue(IntentDialog(stringLiteral: String(localized: "Template name?")))
                         touchDraft()
                     }
                     templateName = newName
@@ -215,7 +216,8 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     resolvedDescription = descriptionOverride
                 } else {
                     logger.log("template=\(templateName, privacy: .public) — requesting description")
-                    resolvedDescription = try await $descriptionOverride.requestValue("Description for \"\(merchant)\"?")
+                    let prompt = String(format: String(localized: "Description for \"%@\"?"), merchant)
+                    resolvedDescription = try await $descriptionOverride.requestValue(IntentDialog(stringLiteral: prompt))
                     touchDraft()
                 }
 
@@ -224,16 +226,18 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     pattern = autoMatchPattern
                 } else {
                     logger.log("description=\(resolvedDescription, privacy: .public) — requesting auto-match pattern")
-                    pattern = try await $autoMatchPattern.requestValue(
-                        "Match other merchant names to \(resolvedDescription) too? Enter text/regex, or leave blank to skip."
+                    let prompt = String(
+                        format: String(localized: "Match other merchant names to %@ too? Enter text/regex, or leave blank to skip."),
+                        resolvedDescription
                     )
+                    pattern = try await $autoMatchPattern.requestValue(IntentDialog(stringLiteral: prompt))
                     touchDraft()
                 }
                 logger.log("autoMatchPattern=\"\(pattern, privacy: .public)\"")
 
                 let resolvedFriend = try await resolveFriend(
                     existing: existingTemplate?.splitwiseFriend,
-                    dialog: "Split \(templateName) expenses with which friend?"
+                    dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with which friend?"), templateName))
                 )
 
                 let resolvedSplitOption: SplitwiseTemplateOption
@@ -246,7 +250,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                         logger.log("template=\(templateName, privacy: .public) — requesting split option")
                         resolvedSplitOption = try await $splitOptionOverride.requestDisambiguation(
                             among: [.ask, .always, .manual, .never],
-                            dialog: "Split \(templateName) expenses with Splitwise?"
+                            dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with Splitwise?"), templateName))
                         )
                         touchDraft()
                     }
@@ -313,7 +317,14 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                             friendFullName: friendFullName
                         )
                     ) {
-                        try await $splitwiseRuntimeChoice.requestValue("Split this \(expenseDescription) transaction with Splitwise?")
+                        let splitDescription = expenseDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let prompt: String
+                        if splitDescription.isEmpty {
+                            prompt = String(localized: "Split this transaction with Splitwise?", table: "AppShortcuts")
+                        } else {
+                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?", table: "AppShortcuts"), splitDescription)
+                        }
+                        return try await $splitwiseRuntimeChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     }
                     touchDraft()
                 }
@@ -331,7 +342,13 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             if splitwiseAction == .manual, resolvedOwnShare == nil {
                 logger.log("splitwiseAction=manual — requesting own share")
                 let formattedAmount = amount.asMoneyString
-                resolvedOwnShare = try await $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(expenseDescription), split with \(friendFirstName)?")
+                let prompt = String(
+                    format: String(localized: "Your share of the %@ expense at %@, split with %@?"),
+                    formattedAmount,
+                    expenseDescription,
+                    friendFirstName
+                )
+                resolvedOwnShare = try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
                 touchDraft()
             }
             if splitwiseAction == .manual, let resolvedOwnShare {

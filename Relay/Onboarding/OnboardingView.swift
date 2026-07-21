@@ -79,7 +79,7 @@ struct OnboardingView: View {
         }
     }
 
-    private var continueTitle: String {
+    private var continueTitle: LocalizedStringKey {
         switch page {
         case .welcome: return "Continue"
         case .splitwiseFriend: return "Continue"
@@ -99,7 +99,7 @@ struct OnboardingView: View {
         }
     }
 
-    private var secondaryTitle: String {
+    private var secondaryTitle: LocalizedStringKey {
         switch page {
         case .welcome: return "Skip"
         case .splitwiseFriend: return "Skip"
@@ -116,10 +116,10 @@ struct OnboardingView: View {
         case importTemplate
         case automation
 
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .welcome: return "Welcome to Relay"
-            case .splitwiseFriend: return "Default Friend"
+            case .splitwiseFriend: return "Split with"
             case .notifications: return "Enable Reminders"
             case .importTemplate: return "Using YNAB Toolkit?"
             case .automation: return "Setup Wallet Automation"
@@ -137,7 +137,7 @@ struct OnboardingView: View {
             case .importTemplate:
                 return "If you already use the YNAB Toolkit Shortcut, you can migrate its automation data into Relay."
             case .automation:
-                return "Add a Shortcuts automation that opens Relay to add a transaction whenever you tap to pay with Apple Wallet."
+                return "Add a Shortcuts automation that adds a transaction via Relay whenever you tap to pay with Apple Wallet."
             }
         }
     }
@@ -329,3 +329,4 @@ struct OnboardingView: View {
 #Preview {
     OnboardingView()
 }
+
