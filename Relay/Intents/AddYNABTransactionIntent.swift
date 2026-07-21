@@ -102,6 +102,12 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
         )
         let formattedAmount = amount.asMoneyString
 
+        // Shared by the YNAB write and the Splitwise split (when there is
+        // one) so the two fold into a single combined history entry. Nil
+        // when nothing will be split, leaving a plain single-service entry.
+        let willSplit = effectiveSplitwiseOption != .never && splitwiseFriend != nil
+        let groupId = willSplit ? UUID() : nil
+
         // Never depends on the YNAB call's outcome, so it runs concurrently
         // with it instead of paying for both round-trips back to back.
         // Catches its own errors (never throws) so a Splitwise failure never
@@ -113,10 +119,10 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
             // "Always" forces an equal split even if a share happens to be
             // set; only "Manual" actually uses the entered share.
             let ownShare = (effectiveSplitwiseOption == .manual) ? splitwiseOwnShare : nil
-            return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, friend: friend, ownShare: ownShare)
+            return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, friend: friend, ownShare: ownShare, groupId: groupId)
         }
 
-        async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payee)")
+        async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payee)", groupId: groupId)
         async let splitDialogFragment = createSplitIfNeeded()
 
         let outcome = try await ynabOutcome

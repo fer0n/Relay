@@ -272,6 +272,9 @@
         }
       }
     },
+    "Added %@" : {
+
+    },
     "Adds a Splitwise expense from a Wallet transaction, remembering friend/split choices for next time." : {
       "localizations" : {
         "de" : {
@@ -2170,6 +2173,9 @@
           }
         }
       }
+    },
+    "With" : {
+
     },
     "Yes" : {
       "extractionState" : "stale",

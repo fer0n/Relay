@@ -18,18 +18,21 @@ enum PendingSyncOutcome {
 }
 
 nonisolated enum PendingSync {
+    /// `groupId`, when set, is shared with the sibling write from the same
+    /// wallet automation run so the two fold into one combined history entry.
     static func createYNABTransaction(
         _ transaction: YNABTransactionRequest,
         token: String,
-        summary: String
+        summary: String,
+        groupId: UUID? = nil
     ) async throws -> PendingSyncOutcome {
         do {
             try await retryOnConnectivityFailure { try await YNABService.createTransaction(transaction, token: token) }
-            TransactionHistoryStore.record(summary: summary, payload: .ynabTransaction(transaction))
+            TransactionHistoryStore.record(summary: summary, payload: .ynabTransaction(transaction), groupId: groupId)
             return .created
         } catch {
             guard error.isConnectivityFailure else { throw YNABIntentError.from(error) }
-            await PendingOperationQueue.shared.enqueue(.ynabTransaction(transaction), summary: summary)
+            await PendingOperationQueue.shared.enqueue(.ynabTransaction(transaction), summary: summary, groupId: groupId)
             return .queued
         }
     }
@@ -37,15 +40,16 @@ nonisolated enum PendingSync {
     static func createSplitwiseExpense(
         _ expense: SplitwiseExpenseRequest,
         token: String,
-        summary: String
+        summary: String,
+        groupId: UUID? = nil
     ) async throws -> PendingSyncOutcome {
         do {
             try await retryOnConnectivityFailure { try await SplitwiseService.createExpense(expense, token: token) }
-            TransactionHistoryStore.record(summary: summary, payload: .splitwiseExpense(expense))
+            TransactionHistoryStore.record(summary: summary, payload: .splitwiseExpense(expense), groupId: groupId)
             return .created
         } catch {
             guard error.isConnectivityFailure else { throw SplitwiseIntentError.from(error) }
-            await PendingOperationQueue.shared.enqueue(.splitwiseExpense(expense), summary: summary)
+            await PendingOperationQueue.shared.enqueue(.splitwiseExpense(expense), summary: summary, groupId: groupId)
             return .queued
         }
     }

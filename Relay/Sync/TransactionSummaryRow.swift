@@ -12,6 +12,9 @@ import SwiftUI
 
 struct TransactionSummaryRow: View {
     let service: TransactionService
+    /// A second service shown alongside `service` for a combined
+    /// YNAB+Splitwise entry (its icon and name follow the primary one).
+    var secondaryService: TransactionService?
     let date: Date
     /// Payee (YNAB) or description (Splitwise).
     let title: String
@@ -20,9 +23,6 @@ struct TransactionSummaryRow: View {
     /// "· detail" suffix (e.g. a draft, where nothing's been chosen yet).
     var detail: String?
     var errorMessage: String?
-    /// Set for rows that label a NavigationLink in a themed List, which
-    /// hides the native disclosure indicator in favor of ListChevron.
-    var showChevron = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -41,7 +41,14 @@ struct TransactionSummaryRow: View {
                     .fontWeight(.semibold)
                 HStack(spacing: 4) {
                     Image(systemName: service.systemImage)
-                    Text(service.displayName)
+                    if let secondaryService {
+                        Image(systemName: secondaryService.systemImage)
+                    }
+                    if errorMessage != nil {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                     if let detail {
                         Text("· \(detail)")
                     }
@@ -49,12 +56,6 @@ struct TransactionSummaryRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
-                        .lineLimit(1)
-                }
             }
 
             Spacer(minLength: 8)
@@ -63,10 +64,6 @@ struct TransactionSummaryRow: View {
                 .font(.body)
                 .monospacedDigit()
                 .fontWeight(.semibold)
-
-            if (showChevron) {
-                ListChevron()
-            }
         }
         .padding(.vertical, 4)
     }
@@ -74,8 +71,9 @@ struct TransactionSummaryRow: View {
 
 #Preview {
     List {
-        TransactionSummaryRow(service: .ynab, date: Date(), title: "Coffee Shop", amount: "-4.50", detail: "Dining Out", showChevron: true)
+        TransactionSummaryRow(service: .ynab, date: Date(), title: "Coffee Shop", amount: "-4.50", detail: "Dining Out")
         TransactionSummaryRow(service: .splitwise, date: Date().addingTimeInterval(-86400 * 3), title: "Groceries", amount: "32.10", detail: "Alex")
+        TransactionSummaryRow(service: .ynab, secondaryService: .splitwise, date: Date().addingTimeInterval(-86400 * 7), title: "Restaurant", amount: "-45.00", detail: "Dining Out · Alex")
         TransactionSummaryRow(
             service: .ynab,
             date: Date().addingTimeInterval(-86400 * 20),

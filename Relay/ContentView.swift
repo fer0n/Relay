@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var readdAlert: ReaddAlert?
     @State private var path: [ContentRoute] = []
     @State private var continueDraft: TransactionDraft?
+    @State private var selectedHistoryEntry: TransactionHistoryEntry?
     @State private var showSettings = false
     @State private var showOnboarding = false
     @Namespace private var settingsNamespace
@@ -120,7 +121,7 @@ struct ContentView: View {
                     .padding(.horizontal, 30)
                 }
         }
-        // Popping back to the root (e.g. a pushed ContinueDraftView dismissing
+        // Popping back to the root (e.g. a pushed TransactionDetailView dismissing
         // itself after completing a draft) never fires the scenePhase or root
         // onAppear handlers, so reload here whenever the stack empties to drop
         // the just-completed draft from the list.
@@ -182,7 +183,7 @@ struct ContentView: View {
                         Button {
                             continueDraft = draft
                         } label: {
-                            TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount, showChevron: true)
+                            TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount)
                         }
                         .cardRowBackground()
                         .swipeActions {
@@ -207,13 +208,11 @@ struct ContentView: View {
             if !history.isEmpty {
                 Section("Recent") {
                     ForEach(history) { entry in
-                        TransactionSummaryRow(
-                            service: entry.service,
-                            date: entry.createdAt,
-                            title: entry.payload.title,
-                            amount: entry.payload.formattedAmount,
-                            detail: entry.payload.detail
-                        )
+                        Button {
+                            selectedHistoryEntry = entry
+                        } label: {
+                            historyRow(for: entry)
+                        }
                             .cardRowBackground()
                             .contextMenu {
                                 Button {
@@ -326,7 +325,12 @@ struct ContentView: View {
         content
             .sheet(item: $continueDraft, onDismiss: reloadMainListState) { draft in
                 NavigationStack {
-                    ContinueDraftView(draftId: draft.id)
+                    TransactionDetailView(source: .draft(id: draft.id))
+                }
+            }
+            .sheet(item: $selectedHistoryEntry) { entry in
+                NavigationStack {
+                    TransactionDetailView(source: .history(entry))
                 }
             }
             .sheet(item: $importSheetContent) { content in
@@ -403,6 +407,17 @@ struct ContentView: View {
     }
 
     private static let hasCompletedOnboardingKey = "hasLaunchedBefore"
+
+    private func historyRow(for entry: TransactionHistoryEntry) -> some View {
+        TransactionSummaryRow(
+            service: entry.service,
+            secondaryService: entry.secondaryService,
+            date: entry.createdAt,
+            title: entry.title,
+            amount: entry.formattedAmount,
+            detail: entry.detail
+        )
+    }
 
     private func readd(_ entry: TransactionHistoryEntry) {
         Task {

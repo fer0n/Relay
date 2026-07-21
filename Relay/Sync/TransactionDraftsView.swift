@@ -3,7 +3,7 @@
 //  Relay
 //
 //  Lists whatever TransactionDraftGuard still considers "started but not
-//  finished". Tapping one opens ContinueDraftView as a sheet to actually
+//  finished". Tapping one opens TransactionDetailView as a sheet to actually
 //  finish it — the same flow a tapped notification opens — since there's no
 //  way to resume the original suspended App Intent perform() call; dismissing
 //  one instead just clears the draft and cancels its notification without
@@ -22,7 +22,7 @@ struct TransactionDraftsView: View {
                 Button {
                     selectedDraft = draft
                 } label: {
-                    TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount, showChevron: true)
+                    TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount)
                 }
                 .cardRowBackground()
                 .swipeActions {
@@ -46,7 +46,7 @@ struct TransactionDraftsView: View {
         }
         .sheet(item: $selectedDraft, onDismiss: { drafts = TransactionDraftStore.load() }) { draft in
             NavigationStack {
-                ContinueDraftView(draftId: draft.id)
+                TransactionDetailView(source: .draft(id: draft.id))
             }
         }
     }

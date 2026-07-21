@@ -56,12 +56,15 @@ nonisolated enum SplitwiseExpenseHelper {
     /// Creates a non-group Splitwise expense split between the signed-in
     /// user (who pays the full cost) and `friend`; a nil `ownShare` splits
     /// the cost equally. Returns a human-readable summary of each share.
+    /// `groupId`, when set, folds this expense into the same history entry
+    /// as the YNAB transaction from the same wallet automation run.
     static func addExpense(
         amount: Double,
         description: String,
         friend: SplitwiseFriendEntity,
         ownShare: Double?,
-        date: Date? = nil
+        date: Date? = nil,
+        groupId: UUID? = nil
     ) async throws -> SplitwiseExpenseOutcome {
         guard amount.isFinite, amount > 0 else {
             throw SplitwiseIntentError.validation("Amount must be a positive number.")
@@ -111,7 +114,8 @@ nonisolated enum SplitwiseExpenseHelper {
         let outcome = try await PendingSync.createSplitwiseExpense(
             expense,
             token: token,
-            summary: "\(formattedAmount) expense for \(description), split with \(friend.firstName)"
+            summary: "\(formattedAmount) expense for \(description), split with \(friend.firstName)",
+            groupId: groupId
         )
 
         switch outcome {

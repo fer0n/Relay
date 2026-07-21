@@ -22,8 +22,8 @@
 //  user gets *notified* it didn't finish: the notification is registered
 //  with the OS up front and only cancelled by a successful completion, so
 //  it fires on its own even with zero chance to run cleanup code. Tapping it
-//  opens Relay to ContinueYNABWalletTransactionView/
-//  ContinueSplitwiseWalletTransactionView (see DraftNotificationRouter) to
+//  opens Relay to ContinueWalletTransactionView (see
+//  DraftNotificationRouter) to
 //  actually finish the transaction from scratch, using the raw inputs saved
 //  in `payload`.
 //
@@ -135,7 +135,7 @@ enum TransactionDraftGuard {
     /// Re-delivers a *plain* draft reminder right away after a notification
     /// action couldn't finish the transaction on its own (no friend to split
     /// with, an unparseable manual share). The draft still exists, so tapping
-    /// this opens ContinueDraftView to finish it by hand — and it deliberately
+    /// this opens TransactionDetailView to finish it by hand — and it deliberately
     /// drops the split actions so the user isn't offered a quick reply that
     /// already failed once.
     static func notifyNeedsApp(_ id: UUID) {

@@ -5,7 +5,7 @@
 //  Answers the "split with Splitwise?" question from a notification action,
 //  in the background, without opening the app. Always does just the Splitwise
 //  half, via the same SplitwiseExpenseHelper / WalletAutomationDialog path the
-//  intents and ContinueSplitwiseWalletTransactionView use. Both wallet
+//  intents and ContinueWalletTransactionView use. Both wallet
 //  automations arm this: for the YNAB one the YNAB transaction is already
 //  committed by the time the split is asked, so this finishes an optional
 //  side-split; for the standalone Splitwise one the expense *is* the split,

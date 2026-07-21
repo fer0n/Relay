@@ -18,6 +18,11 @@ struct PendingOperation: Codable, Identifiable {
     var attemptCount: Int
     var lastError: String?
     let payload: Payload
+    /// Shared with the sibling write from the same wallet automation run, so
+    /// that once both queued items sync they fold into one combined history
+    /// entry. Nil for standalone writes. Optional decoding keeps operations
+    /// queued before this field existed loadable.
+    var groupId: UUID?
 
     enum Payload: Codable {
         case ynabTransaction(YNABTransactionRequest)

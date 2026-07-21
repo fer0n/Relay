@@ -2,9 +2,8 @@
 //  DraftDetailRow.swift
 //  Relay
 //
-//  Shared row style for ContinueYNABWalletTransactionView and
-//  ContinueSplitwiseWalletTransactionView's detail/split sections: icon +
-//  label on the left, value/control trailing on the right.
+//  Shared row style for ContinueWalletTransactionView's detail/split
+//  sections: icon + label on the left, value/control trailing on the right.
 //
 
 import SwiftUI

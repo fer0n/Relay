@@ -330,6 +330,10 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             // Once it's in, the .ynabWallet guard's job is done, and any
             // interruption of the (optional) split below leaves the YNAB
             // transaction complete rather than losing the whole run.
+            //
+            // Shared by the YNAB write and any Splitwise split below so the
+            // two fold into one combined history entry rather than two rows.
+            let walletGroupId = UUID()
             let milliunits = -Int((amount * 1000).rounded()) // outflow: negative milliunits
             let transaction = YNABTransactionRequest(
                 accountId: accountId,
@@ -343,7 +347,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             )
             let formattedAmount = amount.asMoneyString
             logger.log("creating YNAB transaction: accountId=\(accountId, privacy: .public) amountMilliunits=\(milliunits, privacy: .public) payee=\(payeeName, privacy: .public) categoryId=\(categoryId ?? "nil", privacy: .public)")
-            let ynabOutcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payeeName)")
+            let ynabOutcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payeeName)", groupId: walletGroupId)
             var dialog = WalletAutomationDialog.handleYNABOutcome(ynabOutcome, formattedAmount: formattedAmount, payeeName: payeeName, categoryId: categoryId)
             logger.log("YNAB result: \(dialog, privacy: .public)")
 
@@ -484,7 +488,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
 
             let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
-            let fragment = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare)
+            let fragment = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare, groupId: walletGroupId)
             logger.log("Splitwise split result: \(fragment, privacy: .public)")
             dialog += fragment
 

@@ -22,8 +22,8 @@ enum TransactionService {
 
     var systemImage: String {
         switch self {
-        case .ynab: "banknote"
-        case .splitwise: "person.2"
+        case .ynab: "banknote.fill"
+        case .splitwise: "person.2.fill"
         }
     }
 }

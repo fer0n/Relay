@@ -2,13 +2,13 @@
 //  SplitwiseSplitRows.swift
 //  Relay
 //
-//  Row-level building blocks shared by ContinueYNABWalletTransactionView's
-//  and ContinueSplitwiseWalletTransactionView's "Split" sections. The two
-//  sections differ in row order and in which rows are gated/visible (the
-//  YNAB flow gates the whole section on Splitwise being connected and hides
-//  the friend row when not splitting; the Splitwise flow always shows both
-//  since it's Splitwise-primary), so each view still assembles its own
-//  `Section("Split") { ... }` — only the individual rows are shared.
+//  Row-level building blocks shared by ContinueWalletTransactionView's
+//  "Split" sections. The YNAB and Splitwise draft kinds differ in row order
+//  and in which rows are gated/visible (the YNAB kind gates the whole
+//  section on Splitwise being connected and hides the friend row when not
+//  splitting; the Splitwise kind always shows both since it's
+//  Splitwise-primary), so the view still assembles each kind's section
+//  itself — only the individual rows are shared.
 //
 
 import SwiftUI

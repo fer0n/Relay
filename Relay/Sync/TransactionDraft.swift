@@ -6,8 +6,8 @@
 //  but not yet confirmed created — tracked by TransactionDraftGuard so the
 //  wallet automations' "Ensure Completion" parameter can nudge the user
 //  with a notification if the run gets interrupted before finishing, and so
-//  ContinueYNABWalletTransactionView/ContinueSplitwiseWalletTransactionView
-//  have the raw inputs needed to actually finish it in-app.
+//  ContinueWalletTransactionView has the raw inputs needed to actually
+//  finish it in-app.
 //
 
 import Foundation
@@ -32,7 +32,7 @@ struct TransactionDraft: Codable, Identifiable {
         case ynabWallet(merchant: String, amount: Double, card: String)
         /// `ownShare` carries forward an already-resolved manual split
         /// amount (e.g. from AddWalletTransactionToYNABIntent's Splitwise
-        /// half) so ContinueSplitwiseWalletTransactionView can prefill it
+        /// half) so ContinueWalletTransactionView can prefill it
         /// instead of asking again. nil when the share isn't known yet.
         case splitwiseWallet(merchant: String, amount: Double, ownShare: Double? = nil)
     }

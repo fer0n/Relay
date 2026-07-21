@@ -46,11 +46,11 @@ final class PendingOperationQueue {
         }
     }
 
-    func enqueue(_ payload: PendingOperation.Payload, summary: String) {
+    func enqueue(_ payload: PendingOperation.Payload, summary: String, groupId: UUID? = nil) {
         let wasEmpty = operations.isEmpty
         withAnimation {
             operations.append(
-                PendingOperation(id: UUID(), queuedAt: Date(), summary: summary, attemptCount: 0, lastError: nil, payload: payload)
+                PendingOperation(id: UUID(), queuedAt: Date(), summary: summary, attemptCount: 0, lastError: nil, payload: payload, groupId: groupId)
             )
         }
         persist()
@@ -127,7 +127,7 @@ final class PendingOperationQueue {
                 try await SplitwiseService.createExpense(expense, token: token)
                 SplitwiseFriendUsageStore.recordUsage(friendId: expense.friendUserId)
             }
-            TransactionHistoryStore.record(summary: operation.summary, payload: operation.payload)
+            TransactionHistoryStore.record(summary: operation.summary, payload: operation.payload, groupId: operation.groupId)
             logger.log("synced queued operation: \(operation.summary, privacy: .public)")
             return .success
         } catch {

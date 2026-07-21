@@ -6,8 +6,7 @@
 //  automations — used identically by the Shortcuts intents
 //  (AddYNABTransactionIntent, AddWalletTransactionToYNABIntent,
 //  AddWalletTransactionToSplitwiseIntent) and their in-app resume
-//  counterparts (ContinueYNABWalletTransactionView,
-//  ContinueSplitwiseWalletTransactionView). The two entry points ask their
+//  counterpart (ContinueWalletTransactionView). The two entry points ask their
 //  remaining questions completely differently (requestValue/
 //  requestDisambiguation vs. a SwiftUI form), but everything from "here's
 //  what to say about the outcome" onward was byte-for-byte duplicated
@@ -55,14 +54,16 @@ nonisolated enum WalletAutomationDialog {
         amount: Double,
         description: String,
         friend: SplitwiseFriendEntity,
-        ownShare: Double?
+        ownShare: Double?,
+        groupId: UUID? = nil
     ) async -> String {
         do {
             let outcome = try await SplitwiseExpenseHelper.addExpense(
                 amount: amount,
                 description: description,
                 friend: friend,
-                ownShare: ownShare
+                ownShare: ownShare,
+                groupId: groupId
             )
             switch outcome {
             case .created(let shareSummary):

@@ -3,7 +3,7 @@
 //  Relay
 //
 //  Shared amount/merchant/started-time header for
-//  ContinueYNABWalletTransactionView and ContinueSplitwiseWalletTransactionView.
+//  ContinueWalletTransactionView.
 //
 
 import SwiftUI
