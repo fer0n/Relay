@@ -345,15 +345,6 @@ struct ContentView: View {
             .sheet(item: $manualDraft, onDismiss: reloadMainListState) { draft in
                 NavigationStack {
                     ContinueWalletTransactionView(draft: draft, isManual: true)
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button {
-                                    manualDraft = nil
-                                } label: {
-                                    Image(systemName: "xmark")
-                                }
-                            }
-                        }
                 }
             }
             .sheet(item: $selectedHistoryEntry) { entry in
