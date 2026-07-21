@@ -102,6 +102,9 @@
     "%lld" : {
       "shouldTranslate" : false
     },
+    "0" : {
+
+    },
     "Access Tokens" : {
       "localizations" : {
         "de" : {
@@ -374,6 +377,9 @@
           }
         }
       }
+    },
+    "Both" : {
+
     },
     "Card" : {
       "localizations" : {
@@ -2092,6 +2098,9 @@
           }
         }
       }
+    },
+    "Type" : {
+
     },
     "Used to remind you if a wallet transaction is left unfinished or a queued transaction is still waiting to sync, so nothing silently gets lost." : {
       "localizations" : {

@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var readdAlert: ReaddAlert?
     @State private var path: [ContentRoute] = []
     @State private var continueDraft: TransactionDraft?
+    @State private var manualDraft: TransactionDraft?
     @State private var selectedHistoryEntry: TransactionHistoryEntry?
     @State private var showSettings = false
     @State private var showOnboarding = false
@@ -108,7 +109,7 @@ struct ContentView: View {
                         Spacer()
 
                         Button {
-                            // TODO: add functionality
+                            manualDraft = TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: ""))
                         } label: {
                             Image(systemName: "plus")
                                 .fontWeight(.bold)
@@ -326,6 +327,20 @@ struct ContentView: View {
             .sheet(item: $continueDraft, onDismiss: reloadMainListState) { draft in
                 NavigationStack {
                     TransactionDetailView(source: .draft(id: draft.id))
+                }
+            }
+            .sheet(item: $manualDraft, onDismiss: reloadMainListState) { draft in
+                NavigationStack {
+                    ContinueWalletTransactionView(draft: draft, isManual: true)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button {
+                                    manualDraft = nil
+                                } label: {
+                                    Image(systemName: "xmark")
+                                }
+                            }
+                        }
                 }
             }
             .sheet(item: $selectedHistoryEntry) { entry in

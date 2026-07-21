@@ -41,6 +41,12 @@ struct ContinueWalletTransactionView: View {
 
     /// Payee (YNAB draft) or expense description (Splitwise draft).
     @State private var payeeText = ""
+    /// Raw amount text — only used for a manual entry (isManual); a
+    /// shortcut-started draft's amount comes fixed from the payload.
+    @State private var amountText = ""
+    /// Selected mode for a manual entry (isManual) — switchable via the
+    /// nav-bar menu; ignored otherwise (mode comes from the payload).
+    @State private var manualMode: Mode = .ynab
     @State private var templateChoice: String?
     @State private var availableTemplates: [String] = []
 
@@ -69,20 +75,80 @@ struct ContinueWalletTransactionView: View {
 
     private let defaultFriend: SplitwiseDefaultFriend?
 
+    /// True when this is a from-scratch manual entry (the "+" button) rather
+    /// than finishing a shortcut-started draft: the amount becomes an
+    /// editable field instead of a fixed header, and none of the
+    /// merchant/card/template auto-mapping (which only makes sense for a
+    /// recognized shortcut merchant) is written back to config.
+    let isManual: Bool
+
     /// Preview/testing seam only — nil (the default) always falls through to
     /// the real Keychain check. Lets `#Preview` render the form itself
     /// instead of racing the async "Not Connected" gate.
     let isAuthenticatedOverride: Bool?
 
-    private enum Mode { case ynab, splitwise }
+    private enum Mode: String { case ynab, splitwise }
     private var mode: Mode {
-        if case .ynabWallet = draft.payload { .ynab } else { .splitwise }
+        if isManual { return manualMode }
+        if case .ynabWallet = draft.payload { return .ynab }
+        return .splitwise
     }
 
-    init(draft: TransactionDraft, isAuthenticatedOverride: Bool? = nil) {
+    /// For a manual entry, whether the *currently selected* mode's service
+    /// is connected — drives the NotConnectedView gate reactively so the
+    /// nav-bar menu can switch modes without a stored auth flag.
+    private var isModeAuthenticated: Bool {
+        switch mode {
+        case .ynab: ynabAuth.isAuthenticated
+        case .splitwise: splitwiseAuth.isAuthenticated
+        }
+    }
+
+    /// Persists/restores the last-used manual mode so the "+" button reopens
+    /// on whichever the user left it on — same lightweight UserDefaults
+    /// pattern SharedFileImportView uses for its last import destination.
+    private static let lastManualModeKey = "lastManualTransactionMode"
+    private static func loadLastManualMode() -> Mode {
+        UserDefaults.standard.string(forKey: lastManualModeKey).flatMap(Mode.init(rawValue:)) ?? .ynab
+    }
+    private static func saveLastManualMode(_ mode: Mode) {
+        UserDefaults.standard.set(mode.rawValue, forKey: lastManualModeKey)
+    }
+
+    private var manualModeBinding: Binding<Mode> {
+        Binding(
+            get: { manualMode },
+            set: { newMode in
+                guard newMode != manualMode else { return }
+                withAnimation { manualMode = newMode }
+                Self.saveLastManualMode(newMode)
+                // Match each mode's split convention: YNAB defaults to no
+                // split, Splitwise-primary to splitting every time.
+                splitwiseRuntimeChoice = newMode == .splitwise ? .always : .never
+            }
+        )
+    }
+
+    init(draft: TransactionDraft, isManual: Bool = false, isAuthenticatedOverride: Bool? = nil) {
         self.draft = draft
+        self.isManual = isManual
         self.isAuthenticatedOverride = isAuthenticatedOverride
         defaultFriend = SplitwiseDefaultFriendStore.load()
+
+        // A manual entry has no shortcut-supplied merchant/amount to resolve
+        // against config — it starts blank on the last-used mode, with the
+        // template list and default split friend ready for either mode.
+        if isManual {
+            let startMode = Self.loadLastManualMode()
+            _manualMode = State(initialValue: startMode)
+            let config = WalletTransactionConfigStore.load()
+            _availableTemplates = State(initialValue: Array(config.templates.keys))
+            if let defaultFriend {
+                _selectedFriendId = State(initialValue: defaultFriend.id)
+            }
+            _splitwiseRuntimeChoice = State(initialValue: startMode == .splitwise ? .always : .never)
+            return
+        }
 
         // Resolved synchronously (local disk reads only) so the form's
         // defaults are in place on the very first render — no need to wait
@@ -154,7 +220,7 @@ struct ContinueWalletTransactionView: View {
     }
 
     private var cardName: String {
-        if case .ynabWallet(_, _, let card) = draft.payload { return card }
+        if case .ynabWallet(_, _, let card) = draft.payload, !card.isEmpty { return card }
         return "Account"
     }
 
@@ -176,7 +242,15 @@ struct ContinueWalletTransactionView: View {
         }
     }
 
+    /// Parsed amount for a manual entry — nil while the field is empty or
+    /// not yet a positive number. Unused for shortcut-started drafts.
+    private var manualAmount: Double? {
+        guard let parsed = try? AmountParser.parse(amountText), parsed > 0 else { return nil }
+        return parsed
+    }
+
     private var canSubmit: Bool {
+        if isManual, manualAmount == nil { return false }
         if payeeText.trimmingCharacters(in: .whitespaces).isEmpty { return false }
         switch mode {
         case .ynab:
@@ -194,7 +268,7 @@ struct ContinueWalletTransactionView: View {
 
     var body: some View {
         Group {
-            if notAuthenticated {
+            if isManual ? !isModeAuthenticated : notAuthenticated {
                 switch mode {
                 case .ynab: NotConnectedView(service: "YNAB", connect: ynabAuth.signIn)
                 case .splitwise: NotConnectedView(service: "Splitwise", connect: splitwiseAuth.signIn)
@@ -204,6 +278,26 @@ struct ContinueWalletTransactionView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isManual {
+                ToolbarItem(placement: .principal) {
+                    Menu {
+                        Picker("Type", selection: manualModeBinding) {
+                            Text("Both").tag(Mode.ynab)
+                            Text("Splitwise").tag(Mode.splitwise)
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(mode == .ynab ? "Both" : "Splitwise")
+                                .fontWeight(.semibold)
+                            Image(systemName: "chevron.down")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(Color.foregroundColor)
+                    }
+                }
+            }
+        }
         .task { await load() }
         .onAuthenticated(mode == .ynab ? ynabAuth.isAuthenticated : splitwiseAuth.isAuthenticated) {
             notAuthenticated = false
@@ -214,7 +308,11 @@ struct ContinueWalletTransactionView: View {
     private var content: some View {
         List {
             Section {
-                TransactionDraftHeader(amount: draft.formattedAmount, merchant: draft.merchant, startedAt: draft.startedAt)
+                if isManual {
+                    manualAmountField
+                } else {
+                    TransactionDraftHeader(amount: draft.formattedAmount, merchant: draft.merchant, startedAt: draft.startedAt)
+                }
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.sheetBackgroundColor)
@@ -301,6 +399,17 @@ struct ContinueWalletTransactionView: View {
     }
 
     // MARK: - Rows
+
+    private var manualAmountField: some View {
+        TextField("0", text: $amountText)
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Color.foregroundColor)
+            .fontWeight(.heavy)
+            .font(.system(size: 50))
+            .minimumScaleFactor(0.5)
+            .frame(maxWidth: .infinity)
+    }
 
     private var templateRow: some View {
         DraftDetailRow(icon: "doc.on.doc", title: "Template") {
@@ -453,6 +562,10 @@ struct ContinueWalletTransactionView: View {
     // MARK: - Loading
 
     private func load() async {
+        if isManual {
+            await loadManual()
+            return
+        }
         switch mode {
         case .ynab:
             await loadYNAB()
@@ -460,6 +573,31 @@ struct ContinueWalletTransactionView: View {
             guard !notAuthenticated else { return }
             await loadFriends()
         }
+    }
+
+    /// A manual entry can switch between YNAB ("Both") and Splitwise at any
+    /// time via the nav-bar menu, so load whatever each connected service
+    /// needs up front — YNAB categories/accounts and Splitwise friends —
+    /// instead of gating on the current mode.
+    private func loadManual() async {
+        async let ynabTask: Void = loadManualYNAB()
+        async let friendsTask: Void = loadFriends()
+        _ = await (ynabTask, friendsTask)
+    }
+
+    private func loadManualYNAB() async {
+        guard ynabAuth.isAuthenticated else { return }
+        let token: String
+        if isAuthenticatedOverride == true {
+            token = "preview"
+        } else if let real = await YNABAuthService.validAccessToken() {
+            token = real
+        } else {
+            return
+        }
+        async let categoriesTask: Void = loadCategoriesIfNeeded(token: token)
+        async let accountsTask: Void = loadAccountsIfNeeded(token: token)
+        _ = await (categoriesTask, accountsTask)
     }
 
     private func loadYNAB() async {
@@ -535,7 +673,19 @@ struct ContinueWalletTransactionView: View {
     }
 
     private func submitYNAB() async {
-        guard case .ynabWallet(let merchant, let amount, let card) = draft.payload else { return }
+        let merchant: String
+        let card: String
+        let amount: Double
+        if isManual {
+            merchant = ""
+            card = ""
+            amount = manualAmount ?? 0
+        } else {
+            guard case .ynabWallet(let m, let a, let c) = draft.payload else { return }
+            merchant = m
+            card = c
+            amount = a
+        }
         guard let token = await YNABAuthService.validAccessToken() else {
             notAuthenticated = true
             return
@@ -555,7 +705,7 @@ struct ContinueWalletTransactionView: View {
         let finalPayeeName = trimmedPayee
         let finalCategoryId = selectedCategoryId
 
-        if templateChoice == nil {
+        if !isManual, templateChoice == nil {
             // Creating a new template from payee name
             var template = config.templates[trimmedPayee] ?? WalletTransactionConfig.Template(categoryId: nil)
             template.categoryId = selectedCategoryId
@@ -573,7 +723,7 @@ struct ContinueWalletTransactionView: View {
             errorMessage = "Pick an account."
             return
         }
-        if !accountResolved {
+        if !isManual, !accountResolved {
             config.cards[card] = accountId
             configChanged = true
         }
@@ -662,7 +812,16 @@ struct ContinueWalletTransactionView: View {
     }
 
     private func submitSplitwise() async {
-        guard case .splitwiseWallet(let merchant, let amount, _) = draft.payload else { return }
+        let merchant: String
+        let amount: Double
+        if isManual {
+            merchant = ""
+            amount = manualAmount ?? 0
+        } else {
+            guard case .splitwiseWallet(let m, let a, _) = draft.payload else { return }
+            merchant = m
+            amount = a
+        }
         guard SplitwiseAuthService.currentAccessToken != nil else {
             notAuthenticated = true
             return
@@ -699,7 +858,7 @@ struct ContinueWalletTransactionView: View {
             finalFriendFullName = match.fullName
         }
 
-        if templateChoice == nil {
+        if !isManual, templateChoice == nil {
             // Creating new template
             var template = config.templates[finalTemplateName] ?? WalletTransactionConfig.Template()
             template.splitwiseFriendId = finalFriendId
@@ -713,7 +872,7 @@ struct ContinueWalletTransactionView: View {
             config.templates[finalTemplateName] = template
             config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: finalDescription, templateName: finalTemplateName)
             configChanged = true
-        } else if !templateHasFriend {
+        } else if !isManual, !templateHasFriend {
             // Existing template but no cached friend — save the picked friend
             var template = config.templates[finalTemplateName] ?? WalletTransactionConfig.Template()
             template.splitwiseFriendId = finalFriendId
