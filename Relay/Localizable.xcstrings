@@ -474,6 +474,9 @@
         }
       }
     },
+    "Confirm" : {
+
+    },
     "Connect" : {
       "localizations" : {
         "de" : {
@@ -705,6 +708,7 @@
       }
     },
     "Delete this draft?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -753,6 +757,12 @@
           }
         }
       }
+    },
+    "Discard" : {
+
+    },
+    "Discard this draft?" : {
+
     },
     "Disconnect" : {
       "localizations" : {

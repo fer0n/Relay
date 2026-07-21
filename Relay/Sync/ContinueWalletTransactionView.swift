@@ -36,6 +36,7 @@ struct ContinueWalletTransactionView: View {
     @State private var errorMessage: String?
     @State private var isSubmitting = false
     @State private var showTemplateEditor = false
+    @State private var showDiscardConfirmation = false
     @State private var editingTemplateName: String? = nil
     @Environment(\.dismiss) private var dismiss
 
@@ -81,6 +82,10 @@ struct ContinueWalletTransactionView: View {
     /// merchant/card/template auto-mapping (which only makes sense for a
     /// recognized shortcut merchant) is written back to config.
     let isManual: Bool
+
+    /// Called when the user taps "Discard" — typically deletes the draft and
+    /// dismisses. Nil hides the section entirely (e.g. manual entries).
+    let onDiscard: (() -> Void)?
 
     /// Preview/testing seam only — nil (the default) always falls through to
     /// the real Keychain check. Lets `#Preview` render the form itself
@@ -129,9 +134,10 @@ struct ContinueWalletTransactionView: View {
         )
     }
 
-    init(draft: TransactionDraft, isManual: Bool = false, isAuthenticatedOverride: Bool? = nil) {
+    init(draft: TransactionDraft, isManual: Bool = false, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil) {
         self.draft = draft
         self.isManual = isManual
+        self.onDiscard = onDiscard
         self.isAuthenticatedOverride = isAuthenticatedOverride
         defaultFriend = SplitwiseDefaultFriendStore.load()
 
@@ -362,6 +368,24 @@ struct ContinueWalletTransactionView: View {
                     Text(errorMessage).foregroundStyle(.red)
                 }
                 .listRowBackground(Color.sheetBackgroundColor)
+            }
+
+            if onDiscard != nil {
+                Section {
+                    Button("Discard") {
+                        showDiscardConfirmation = true
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .confirmationDialog(
+                        "Discard this draft?",
+                        isPresented: $showDiscardConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Confirm", role: .destructive, action: onDiscard!)
+                    }
+                }
+                .cardRowBackground()
             }
         }
         .themedList(background: .sheetBackgroundColor)

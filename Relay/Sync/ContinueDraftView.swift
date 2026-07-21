@@ -16,13 +16,13 @@ struct ContinueDraftView: View {
 
     @State private var draft: TransactionDraft?
     @State private var isLoaded = false
-    @State private var showDeleteConfirmation = false
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Group {
             if let draft {
-                ContinueWalletTransactionView(draft: draft)
+                ContinueWalletTransactionView(draft: draft, onDiscard: delete)
             } else if isLoaded {
                 ContentUnavailableView(
                     "Already Handled",
@@ -31,24 +31,6 @@ struct ContinueDraftView: View {
                 )
             } else {
                 ProgressView()
-            }
-        }
-        .toolbar {
-            if draft != nil {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(role: .destructive) {
-                        showDeleteConfirmation = true
-                    } label: {
-                        Image(systemName: "trash.fill")
-                    }
-                    .confirmationDialog(
-                        "Delete this draft?",
-                        isPresented: $showDeleteConfirmation,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Delete", role: .destructive, action: delete)
-                    }
-                }
             }
         }
         .task {
