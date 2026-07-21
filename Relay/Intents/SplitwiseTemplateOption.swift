@@ -28,4 +28,26 @@ nonisolated enum SplitwiseTemplateOption: String, AppEnum, Codable {
         .ask: DisplayRepresentation(title: LocalizedStringResource("Ask Each Time", table: "AppShortcuts")),
         .never: DisplayRepresentation(title: LocalizedStringResource("Don't Split", table: "AppShortcuts")),
     ]
+
+    /// The one-shot runtime choice this stored template option resolves to —
+    /// `.ask` becomes `nil` (no fixed answer, so the UI must still prompt),
+    /// everything else maps to its `SplitwiseSplitOption` counterpart.
+    var splitRuntimeChoice: SplitwiseSplitOption? {
+        switch self {
+        case .always: .always
+        case .manual: .manual
+        case .never: .never
+        case .ask: nil
+        }
+    }
+
+    /// The template option a one-shot runtime choice should be persisted as —
+    /// `nil` (nothing chosen) is stored as `.never`.
+    init(splitRuntimeChoice: SplitwiseSplitOption?) {
+        switch splitRuntimeChoice {
+        case .always: self = .always
+        case .manual: self = .manual
+        case .never, nil: self = .never
+        }
+    }
 }

@@ -27,6 +27,15 @@ nonisolated struct SplitwiseFriendEntity: AppEntity {
     }
 }
 
+extension SplitwiseFriendEntity {
+    /// Builds an entity straight from a template's cached-friend tuple
+    /// (`WalletTransactionConfig.Template.splitwiseFriend`), which carries
+    /// the same three fields.
+    init(templateFriend: (id: Int, firstName: String, fullName: String)) {
+        self.init(id: templateFriend.id, firstName: templateFriend.firstName, fullName: templateFriend.fullName)
+    }
+}
+
 nonisolated struct SplitwiseFriendQuery: EntityQuery {
     func entities(for identifiers: [Int]) async throws -> [SplitwiseFriendEntity] {
         await allFriends().filter { identifiers.contains($0.id) }
