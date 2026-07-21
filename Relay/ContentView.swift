@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var continueDraft: TransactionDraft?
     @State private var showSettings = false
     @State private var showOnboarding = false
+    @Namespace private var settingsNamespace
+    @Namespace private var addNamespace
     @State private var showAutomationTutorial = false
     /// Set by OnboardingView's "Setup" button, consumed once onboarding's
     /// sheet has actually finished dismissing — presenting the tutorial
@@ -91,15 +93,31 @@ struct ContentView: View {
                     }
                 }
                 .safeAreaBar(edge: .bottom) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Text("Settings")
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .themedText()
+                    HStack {
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "switch.2")
+                                .fontWeight(.bold)
+                                .padding(15)
+                                .glassEffect()
+                        }
+                        .matchedTransitionSource(id: "settings", in: settingsNamespace)
+
+                        Spacer()
+
+                        Button {
+                            // TODO: add functionality
+                        } label: {
+                            Image(systemName: "plus")
+                                .fontWeight(.bold)
+                                .padding(15)
+                                .glassEffect()
+                        }
+                        .matchedTransitionSource(id: "add", in: addNamespace)
                     }
-                    .buttonStyle(.glass)
+                    .foregroundStyle(Color.secondary)
+                    .padding(.horizontal, 30)
                 }
         }
         // Popping back to the root (e.g. a pushed ContinueDraftView dismissing
@@ -344,6 +362,7 @@ struct ContentView: View {
                         opensAutomationTutorialAfterSettings = true
                     }
                 )
+                .navigationTransition(.zoom(sourceID: "settings", in: settingsNamespace))
             }
             .sheet(isPresented: $showOnboarding, onDismiss: {
                 // Only reached via the last page's button (interactive
