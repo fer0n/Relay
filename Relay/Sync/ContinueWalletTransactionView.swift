@@ -53,19 +53,30 @@ struct ContinueWalletTransactionView: View {
         .toolbar {
             if model.isManual {
                 ToolbarItem(placement: .principal) {
-                    Menu {
-                        Picker("Type", selection: manualModeBinding) {
-                            Text("Both").tag(ContinueWalletTransactionModel.Mode.ynab)
-                            Text("Splitwise").tag(ContinueWalletTransactionModel.Mode.splitwise)
+                    // Only a real choice when both services are connected —
+                    // with just one connected, the other option in the menu
+                    // would just lead to a "Connect ___" dead end, so show a
+                    // plain (non-interactive) label naming the only usable
+                    // service instead.
+                    if model.ynabAuth.isAuthenticated, model.splitwiseAuth.isAuthenticated {
+                        Menu {
+                            Picker("Type", selection: manualModeBinding) {
+                                Text("Both").tag(ContinueWalletTransactionModel.Mode.ynab)
+                                Text("Splitwise").tag(ContinueWalletTransactionModel.Mode.splitwise)
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(model.mode == .ynab ? "Both" : "Splitwise")
+                                    .fontWeight(.semibold)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2)
+                            }
+                            .foregroundStyle(Color.foregroundColor)
                         }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(model.mode == .ynab ? "Both" : "Splitwise")
-                                .fontWeight(.semibold)
-                            Image(systemName: "chevron.down")
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(Color.foregroundColor)
+                    } else {
+                        Text(model.mode == .ynab ? "YNAB" : "Splitwise")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.foregroundColor)
                     }
                 }
             }

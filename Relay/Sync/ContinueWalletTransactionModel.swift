@@ -99,7 +99,7 @@ final class ContinueWalletTransactionModel {
         // against config — it starts blank on the last-used mode, with the
         // template list and default split friend ready for either mode.
         if isManual {
-            let startMode = Self.loadLastManualMode()
+            let startMode = Self.resolveManualMode(ynabAuthenticated: ynabAuth.isAuthenticated, splitwiseAuthenticated: splitwiseAuth.isAuthenticated)
             manualMode = startMode
             let config = WalletTransactionConfigStore.load()
             availableTemplates = Array(config.templates.keys)
@@ -265,8 +265,23 @@ final class ContinueWalletTransactionModel {
     /// on whichever the user left it on — same lightweight UserDefaults
     /// pattern SharedFileImportView uses for its last import destination.
     private static let lastManualModeKey = "lastManualTransactionMode"
-    private static func loadLastManualMode() -> Mode {
-        UserDefaults.standard.string(forKey: lastManualModeKey).flatMap(Mode.init(rawValue:)) ?? .ynab
+    private static func loadLastManualMode() -> Mode? {
+        UserDefaults.standard.string(forKey: lastManualModeKey).flatMap(Mode.init(rawValue:))
+    }
+
+    /// Picks the mode a fresh manual entry opens on. The stored last-used
+    /// mode only applies when both services are connected (it's a real
+    /// choice there); with just one service connected, that one always wins
+    /// regardless of what was last saved — otherwise a user who has only
+    /// ever connected Splitwise (or disconnected YNAB after saving `.ynab`)
+    /// would land on a "Connect YNAB" dead end despite Splitwise being
+    /// fully usable. With neither connected, `.ynab` is an arbitrary
+    /// fallback since some auth gate has to show.
+    private static func resolveManualMode(ynabAuthenticated: Bool, splitwiseAuthenticated: Bool) -> Mode {
+        if ynabAuthenticated && splitwiseAuthenticated {
+            return loadLastManualMode() ?? .ynab
+        }
+        return splitwiseAuthenticated ? .splitwise : .ynab
     }
     private static func saveLastManualMode(_ mode: Mode) {
         UserDefaults.standard.set(mode.rawValue, forKey: lastManualModeKey)
