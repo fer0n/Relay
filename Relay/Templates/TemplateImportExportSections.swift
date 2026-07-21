@@ -152,6 +152,8 @@ struct LegacyMigrationShortcutSection: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+        } header: {
+            Text("YNAB Toolkit Shortcut")
         } footer: {
             Text("Pulls buckets and merchants straight out of the old \"YNAB Toolkit\" Shortcut's DataJar storage.")
                 .footerText()

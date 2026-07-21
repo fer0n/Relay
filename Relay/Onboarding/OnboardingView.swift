@@ -31,9 +31,6 @@ struct OnboardingView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var scrollPosition: OnboardingPage? = .welcome
-    @State private var usesLegacyShortcut: Bool?
-    @State private var didPrepareMigration = false
-    @State private var migration = LegacyMigrationCallbackHandler()
     @State private var isRequestingNotificationPermission = false
     @State private var splitwiseFriendCanContinue = SplitwiseDefaultFriendStore.load() != nil
     @Environment(\.openURL) private var openURL
@@ -57,8 +54,6 @@ struct OnboardingView: View {
         case .notifications:
             return isRequestingNotificationPermission
                 || (splitwiseAuth.isAuthenticated && !splitwiseFriendCanContinue)
-        case .importTemplate:
-            return false
         case .automation:
             return false
         }
@@ -72,8 +67,6 @@ struct OnboardingView: View {
             return false
         case .notifications:
             return isRequestingNotificationPermission
-        case .importTemplate:
-            return false
         case .automation:
             return false
         }
@@ -84,17 +77,6 @@ struct OnboardingView: View {
         case .welcome: return "Continue"
         case .splitwiseFriend: return "Continue"
         case .notifications: return "Enable Notifications"
-        case .importTemplate:
-            if usesLegacyShortcut != true {
-                return "Yes"
-            }
-            if !didPrepareMigration {
-                return "Install Migration Shortcut"
-            }
-            if migration.resultMessage == nil {
-                return "Run Migration"
-            }
-            return "Continue"
         case .automation: return "Setup Automation"
         }
     }
@@ -104,7 +86,6 @@ struct OnboardingView: View {
         case .welcome: return "Skip"
         case .splitwiseFriend: return "Skip"
         case .notifications: return "Skip"
-        case .importTemplate: return usesLegacyShortcut != true ? "No" : "Skip"
         case .automation: return "Close"
         }
     }
@@ -113,7 +94,6 @@ struct OnboardingView: View {
         case welcome
         case splitwiseFriend
         case notifications
-        case importTemplate
         case automation
 
         var title: LocalizedStringKey {
@@ -121,7 +101,6 @@ struct OnboardingView: View {
             case .welcome: return "Welcome to Relay"
             case .splitwiseFriend: return "Split with"
             case .notifications: return "Enable Reminders"
-            case .importTemplate: return "Using YNAB Toolkit?"
             case .automation: return "Setup Wallet Automation"
             }
         }
@@ -134,8 +113,6 @@ struct OnboardingView: View {
                 return "Choose who to split expenses with by default"
             case .notifications:
                 return "Reminds you about an incomplete wallet transaction or offline transactions that are waiting to sync. Nothing else."
-            case .importTemplate:
-                return "If you already use the YNAB Toolkit Shortcut, you can migrate its automation data into Relay."
             case .automation:
                 return "Add a Shortcuts automation that adds a transaction via Relay whenever you tap to pay with Apple Wallet."
             }
@@ -202,14 +179,6 @@ struct OnboardingView: View {
                         .containerRelativeFrame(.horizontal)
                         .id(OnboardingPage.notifications)
 
-                    OnboardingImportPage(
-                        usesLegacyShortcut: $usesLegacyShortcut,
-                        didPrepareMigration: $didPrepareMigration,
-                        migration: migration
-                    )
-                        .containerRelativeFrame(.horizontal)
-                        .id(OnboardingPage.importTemplate)
-
                     OnboardingAutomationPage()
                         .containerRelativeFrame(.horizontal)
                         .id(OnboardingPage.automation)
@@ -244,9 +213,6 @@ struct OnboardingView: View {
                     case .splitwiseFriend:
                         withAnimation { scrollPosition = .notifications }
                     case .notifications:
-                        withAnimation { scrollPosition = .importTemplate }
-                    case .importTemplate:
-                        usesLegacyShortcut = false
                         withAnimation { scrollPosition = .automation }
                     case .automation:
                         dismiss()
@@ -279,20 +245,8 @@ struct OnboardingView: View {
                             await requestNotificationPermission()
                             await MainActor.run {
                                 isRequestingNotificationPermission = false
-                                withAnimation { scrollPosition = .importTemplate }
+                                withAnimation { scrollPosition = .automation }
                             }
-                        }
-                    case .importTemplate:
-                        if usesLegacyShortcut != true {
-                            usesLegacyShortcut = true
-                        } else if !didPrepareMigration {
-                            openURL(LegacyBucketMigrationShortcut.installURL)
-                            didPrepareMigration = true
-                        } else if migration.resultMessage == nil {
-                            migration.reset()
-                            openURL(LegacyBucketMigrationShortcut.runURL)
-                        } else {
-                            withAnimation { scrollPosition = .automation }
                         }
                     case .automation:
                         onRequestAutomationTutorial()
@@ -313,10 +267,6 @@ struct OnboardingView: View {
         }
         .background(Color.sheetBackgroundColor)
         .sensoryFeedback(.selection, trigger: page)
-        .onChange(of: usesLegacyShortcut) { _, newValue in
-            guard page == .importTemplate, newValue == false else { return }
-            withAnimation { scrollPosition = .automation }
-        }
     }
 
     // Requesting more than once is a no-op once the user has already
