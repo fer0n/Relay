@@ -376,7 +376,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 }
                 let dialog = WalletAutomationDialog.splitwiseWalletDialog(outcome: outcome, formattedAmount: formattedAmount, description: expenseDescription)
                 if successNotification {
-                    WalletCompletionNotification.postConfirmation(dialog: dialog)
+                    WalletCompletionNotification.postConfirmation(dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
                 }
                 logger.log("Splitwise result: \(dialog, privacy: .public)")
                 return .result(dialog: "\(dialog)")

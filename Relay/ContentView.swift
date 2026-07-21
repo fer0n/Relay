@@ -270,6 +270,18 @@ struct ContentView: View {
                 path = [.pendingQueue]
                 draftRouter.pendingQueueReminderTapped = false
             }
+            // A tapped wallet success notification opens the confirmed
+            // transaction's detail view — same deep-link pattern, looking the
+            // entry up by the id the notification carried. Falls back to just
+            // clearing the signal if it's since been evicted from history.
+            .onChange(of: draftRouter.pendingHistoryEntryID) { _, newValue in
+                guard let newValue else { return }
+                path = []
+                let entries = TransactionHistoryStore.load()
+                history = entries
+                selectedHistoryEntry = entries.first { $0.id == newValue }
+                draftRouter.pendingHistoryEntryID = nil
+            }
             // ImportSplitwiseFileIntent brought Relay to the foreground
             // itself (see its supportedModes) specifically to land here —
             // same deep-link pattern, just triggered by the intent instead

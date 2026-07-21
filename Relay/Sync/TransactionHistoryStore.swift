@@ -44,6 +44,14 @@ enum TransactionHistoryStore {
         }
     }
 
+    /// The id of the newest recorded entry — read right after a successful
+    /// write to link that transaction's success notification to its detail
+    /// view. Since `record()` inserts (or merges) at the front, this is the
+    /// entry the just-finished write produced.
+    static func newestEntryID() -> UUID? {
+        load().first?.id
+    }
+
     /// Records a created transaction. When `groupId` matches an entry
     /// already recorded from the same wallet automation run, the two are
     /// folded into one combined entry (YNAB transaction + Splitwise split)

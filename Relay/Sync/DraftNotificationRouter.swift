@@ -33,6 +33,11 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     /// observes this and clears it once it's acted on.
     var pendingQueueReminderTapped = false
 
+    /// Set when the user taps a wallet "Transaction Added" / "Split Added"
+    /// success notification carrying a history entry id; ContentView observes
+    /// this and opens that transaction's detail view, then clears it.
+    var pendingHistoryEntryID: UUID?
+
     /// Set by ImportSplitwiseFileIntent right after it stages a parsed
     /// import (not notification-driven, but the same one-shot signal shape)
     /// — ContentView observes this and clears it once it's acted on.
@@ -66,9 +71,15 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         let identifier = response.notification.request.identifier
         let actionIdentifier = response.actionIdentifier
         let replyText = (response as? UNTextInputNotificationResponse)?.userText
+        // A wallet success notification carries the id of the transaction it
+        // confirmed, so its tap opens that entry's detail view rather than
+        // resolving to nothing (its identifier is a throwaway UUID).
+        let historyEntryID = response.notification.request.content.userInfo["historyEntryID"] as? String
         Task { @MainActor in
             if identifier == PendingOperationQueue.reminderNotificationID {
                 DraftNotificationRouter.shared.pendingQueueReminderTapped = true
+            } else if let historyEntryID, let id = UUID(uuidString: historyEntryID) {
+                DraftNotificationRouter.shared.pendingHistoryEntryID = id
             } else if let id = UUID(uuidString: identifier) {
                 await DraftNotificationRouter.shared.handleDraftResponse(
                     id: id,
@@ -114,7 +125,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
 
         switch await WalletDraftCompletion.complete(draft: draft, action: splitAction, ownShareReply: replyText) {
         case .completed(let dialog):
-            WalletCompletionNotification.postConfirmation(dialog: dialog)
+            WalletCompletionNotification.postConfirmation(dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
         case .resolved:
             // "Don't Split" — the transaction was already complete, so there's
             // nothing to confirm.

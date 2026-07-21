@@ -364,7 +364,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 if successNotification {
                     WalletCompletionNotification.postConfirmation(
                         title: String(localized: "Transaction Added"),
-                        dialog: dialog
+                        dialog: dialog,
+                        historyEntryID: TransactionHistoryStore.newestEntryID()
                     )
                 }
                 logger.log("perform() done — no split")
@@ -439,7 +440,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 if successNotification {
                     WalletCompletionNotification.postConfirmation(
                         title: String(localized: "Transaction Added"),
-                        dialog: dialog
+                        dialog: dialog,
+                        historyEntryID: TransactionHistoryStore.newestEntryID()
                     )
                 }
                 logger.log("perform() done — not split")
@@ -497,7 +499,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
 
             if successNotification {
-                WalletCompletionNotification.postConfirmation(dialog: dialog)
+                WalletCompletionNotification.postConfirmation(dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
             }
 
             logger.log("perform() done")
