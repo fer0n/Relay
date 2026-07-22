@@ -346,6 +346,7 @@ struct ContentView: View {
                 NavigationStack {
                     ContinueWalletTransactionView(draft: draft, isManual: true)
                 }
+                .navigationTransition(.zoom(sourceID: "add", in: addNamespace))
             }
             .sheet(item: $selectedHistoryEntry) { entry in
                 NavigationStack {
