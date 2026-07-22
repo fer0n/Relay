@@ -24,6 +24,19 @@ nonisolated enum SplitwiseService {
     private static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Only `get_expenses` responses carry a Date field (`date`); Splitwise
+        // documents it as e.g. "2012-07-27T05:00:00Z" but also emits
+        // fractional-second timestamps elsewhere in the API, so this tries
+        // both rather than assuming one.
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+            let withFractionalSeconds = ISO8601DateFormatter()
+            withFractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = withFractionalSeconds.date(from: string) { return date }
+            if let date = ISO8601DateFormatter().date(from: string) { return date }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(string)")
+        }
         return decoder
     }
 
@@ -35,6 +48,19 @@ nonisolated enum SplitwiseService {
     static func fetchFriends(token: String) async throws -> [SplitwiseFriend] {
         let data = try await get("get_friends", token: token)
         return try decoder.decode(SplitwiseFriendsResponse.self, from: data).friends
+    }
+
+    /// Expenses shared with `friendId`, newest first, with soft-deleted
+    /// entries filtered out — backs the default-friend transaction list in
+    /// SplitwiseFriendTransactionsView.
+    static func fetchExpenses(friendId: Int, token: String) async throws -> [SplitwiseExpense] {
+        let data = try await get("get_expenses", queryItems: [
+            URLQueryItem(name: "friend_id", value: String(friendId)),
+            URLQueryItem(name: "limit", value: "50"),
+        ], token: token)
+        return try decoder.decode(SplitwiseExpensesResponse.self, from: data).expenses
+            .filter { $0.deletedAt == nil }
+            .sorted { $0.date > $1.date }
     }
 
     static func createExpense(_ expense: SplitwiseExpenseRequest, token: String) async throws {
@@ -56,8 +82,22 @@ nonisolated enum SplitwiseService {
         }
     }
 
-    private static func get(_ path: String, token: String) async throws -> Data {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+    /// Soft-deletes an expense via Splitwise's documented `delete_expense`
+    /// endpoint — used by the detail sheet in SplitwiseFriendTransactionsView.
+    static func deleteExpense(id: Int, token: String) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("delete_expense/\(id)"))
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response, data: data)
+    }
+
+    private static func get(_ path: String, queryItems: [URLQueryItem] = [], token: String) async throws -> Data {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !queryItems.isEmpty {
+            components.queryItems = queryItems
+        }
+        var request = URLRequest(url: components.url!)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)

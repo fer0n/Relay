@@ -19,6 +19,10 @@ struct TransactionSummaryRow: View {
     /// Payee (YNAB) or description (Splitwise).
     let title: String
     let amount: String
+    /// Overrides the amount's color (e.g. green for a Splitwise expense the
+    /// signed-in user lent money on) — nil keeps the default themed text
+    /// color every other call site relies on.
+    var amountColor: Color?
     /// Category name (YNAB) or friend's name (Splitwise) — nil hides the
     /// "· detail" suffix (e.g. a draft, where nothing's been chosen yet).
     var detail: String?
@@ -60,10 +64,16 @@ struct TransactionSummaryRow: View {
 
             Spacer(minLength: 8)
 
-            Text(amount)
-                .font(.body)
-                .monospacedDigit()
-                .fontWeight(.semibold)
+            Group {
+                if let amountColor {
+                    Text(amount).foregroundStyle(amountColor)
+                } else {
+                    Text(amount)
+                }
+            }
+            .font(.body)
+            .monospacedDigit()
+            .fontWeight(.semibold)
         }
         .padding(.vertical, 4)
     }

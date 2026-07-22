@@ -79,6 +79,9 @@
         }
       }
     },
+    "%@ paid" : {
+
+    },
     "%@. Couldn't finish automatically — tap to complete in Relay." : {
       "localizations" : {
         "de" : {
@@ -296,6 +299,7 @@
       }
     },
     "Added %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -625,6 +629,9 @@
         }
       }
     },
+    "Couldn't Delete" : {
+
+    },
     "Couldn't Re-add" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -767,6 +774,9 @@
           }
         }
       }
+    },
+    "Delete this expense?" : {
+
     },
     "Delete this template?" : {
       "localizations" : {
@@ -1607,6 +1617,9 @@
         }
       }
     },
+    "Please check your connection and try again." : {
+
+    },
     "Pulls buckets and merchants straight out of the old \"YNAB Toolkit\" Shortcut's DataJar storage." : {
       "localizations" : {
         "de" : {
@@ -1618,6 +1631,7 @@
       }
     },
     "Queued %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

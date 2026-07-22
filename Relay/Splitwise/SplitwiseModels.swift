@@ -27,12 +27,32 @@ struct SplitwiseFriend: Codable {
         [firstName, lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
+    /// First name plus the last name's initial (e.g. "Alex K.") — used where
+    /// the full surname would be noise, like the per-expense "paid"
+    /// subheader in SplitwiseFriendTransactionsView. Falls back to just the
+    /// first name when there's no last name.
+    var shortName: String {
+        guard let initial = lastName?.trimmingCharacters(in: .whitespaces).first else { return firstName }
+        return "\(firstName) \(initial)."
+    }
+
     /// True once this friend has a nonzero balance in any shared currency —
     /// used to surface not-yet-settled-up friends first in the pickers.
     /// Splitwise lists a zero-amount entry (rather than omitting it) once a
     /// currency is settled, so this checks the amount, not just presence.
     var hasOutstandingBalance: Bool {
         (balance ?? []).contains { Double($0.amount) != 0 }
+    }
+
+    /// The first shared-currency balance, parsed — Splitwise only ever
+    /// returns one balance per shared currency, and personal use is expected
+    /// to have exactly one, so it's shown plainly rather than summed across
+    /// currencies. Positive means the friend owes the signed-in user;
+    /// negative means the reverse. Shared by ContentView's balance card and
+    /// SplitwiseFriendTransactionsView's navigation subtitle.
+    var primaryBalance: (amount: Double, currencyCode: String)? {
+        guard let balance = balance?.first, let amount = Double(balance.amount) else { return nil }
+        return (amount, balance.currencyCode)
     }
 }
 

@@ -12,6 +12,14 @@ struct ContentView: View {
     @State private var drafts = TransactionDraftStore.load()
     @State private var fileImportCount = Self.loadFileImportCount()
     @State private var history = TransactionHistoryStore.load()
+    /// The configured default Splitwise friend's cached record (for their
+    /// balance) — nil hides the balance card in favor of the plain logo.
+    /// Loaded from disk instantly; refreshed live once in `mainList`'s
+    /// `.task` and again on every pull-to-refresh of the transaction list.
+    @State private var defaultSplitwiseFriend = Self.loadDefaultSplitwiseFriendFromCache()
+    /// When `defaultSplitwiseFriend`'s balance was last actually fetched from
+    /// Splitwise — shown on the balance card as "Last refreshed …".
+    @State private var splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
     @State private var path: [ContentRoute] = []
     @State private var continueDraft: TransactionDraft?
     @State private var manualDraft: TransactionDraft?
@@ -60,6 +68,11 @@ struct ContentView: View {
         FileImportStagingStore.load()?.rows.count ?? 0
     }
 
+    private static func loadDefaultSplitwiseFriendFromCache() -> SplitwiseFriend? {
+        guard let defaultId = SplitwiseDefaultFriendStore.load()?.id else { return nil }
+        return SplitwiseFriendCacheStore.load()?.first { $0.id == defaultId }
+    }
+
     /// Shared by every conditionally-shown row/section below so they
     /// animate in/out together instead of just popping.
     private static let rowTransition = AnyTransition.opacity.combined(with: .move(edge: .top))
@@ -90,6 +103,10 @@ struct ContentView: View {
                         PendingQueueView()
                     case .transactionDrafts:
                         TransactionDraftsView()
+                    case .splitwiseFriendTransactions:
+                        if let defaultSplitwiseFriend {
+                            SplitwiseFriendTransactionsView(friend: defaultSplitwiseFriend)
+                        }
                     }
                 }
                 .safeAreaBar(edge: .bottom) {
@@ -134,14 +151,21 @@ struct ContentView: View {
     private var mainList: some View {
         List {
             Section {
-                Image("Logo")
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(.secondary)
-                    .opacity(0.2)
-                    .frame(maxWidth: 100, maxHeight: 100)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
+                if let defaultSplitwiseFriend {
+                    SplitwiseBalanceGrid(friend: defaultSplitwiseFriend, lastRefreshedAt: splitwiseFriendLastRefreshedAt) {
+                        path.append(.splitwiseFriendTransactions)
+                    }
+                    .padding(.vertical, 8)
+                } else {
+                    Image("Logo")
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(.secondary)
+                        .opacity(0.2)
+                        .frame(maxWidth: 100, maxHeight: 100)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                }
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.backgroundColor)
@@ -228,6 +252,14 @@ struct ContentView: View {
         }
         .themedList(background: .backgroundColor)
         .statusBarBackground()
+        // Runs once for this view's lifetime (mainList is only ever created
+        // once per app launch) rather than on every foreground/appearance —
+        // reloadMainListState() already re-reads the disk cache cheaply for
+        // those; this is the one place that automatically calls the
+        // Splitwise API, to keep the balance card fresh without hammering
+        // it. Pull-to-refresh below can still trigger it again on demand.
+        .task { await refreshDefaultSplitwiseFriend(force: false) }
+        .refreshable { await refreshDefaultSplitwiseFriend(force: true) }
     }
 
     // Picks up a token invalidated by an App Intent (e.g. an expired YNAB
@@ -243,6 +275,25 @@ struct ContentView: View {
             drafts = TransactionDraftStore.load()
             fileImportCount = Self.loadFileImportCount()
             history = TransactionHistoryStore.load()
+            defaultSplitwiseFriend = Self.loadDefaultSplitwiseFriendFromCache()
+            splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
+        }
+    }
+
+    /// Live-fetches the friend list and updates the balance card from it —
+    /// shared by `mainList`'s `.task` and its pull-to-refresh. `force` is
+    /// false for `.task` (which re-runs on every navigation back to the
+    /// root) so a recent cache is left untouched — keeping the "Last
+    /// refreshed …" timestamp stable rather than resetting it on each
+    /// visit — and true for pull-to-refresh so pulling down always
+    /// re-fetches regardless of how fresh the cache is.
+    private func refreshDefaultSplitwiseFriend(force: Bool) async {
+        guard force || SplitwiseFriendCacheStore.isStale else { return }
+        guard let defaultId = SplitwiseDefaultFriendStore.load()?.id,
+              let token = SplitwiseAuthService.currentAccessToken else { return }
+        if let fetched = try? await SplitwiseFriendCacheStore.fetch(token: token) {
+            defaultSplitwiseFriend = fetched.first { $0.id == defaultId }
+            splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
         }
     }
 
@@ -457,5 +508,68 @@ struct ContentView: View {
 }
 
 #Preview {
+    let _ = seedPreviewData()
     ContentView()
+}
+
+/// Seeds every store ContentView reads from so the preview shows all of its
+/// sections (balance card, pending, file import, drafts, recent) at once,
+/// and marks onboarding as already completed so its sheet doesn't cover the
+/// list. The `let _ = seedPreviewData()` line above runs this synchronously
+/// before `ContentView()` is constructed, so its `@State` initializers
+/// (which load from these same files) pick up the seeded data instead of
+/// starting empty.
+private func seedPreviewData() {
+    UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+
+    let friend = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: "EUR", amount: "42.50")])
+    SplitwiseFriendCacheStore.save([friend])
+    try? SplitwiseDefaultFriendStore.save(SplitwiseDefaultFriend(id: friend.id, firstName: friend.firstName, fullName: friend.fullName))
+
+    YNABCategoryCacheStore.save([
+        YNABCategory(id: "cat-dining", name: "Dining Out", hidden: false, deleted: false),
+        YNABCategory(id: "cat-groceries", name: "Groceries", hidden: false, deleted: false),
+    ])
+    YNABAccountCacheStore.save([YNABAccount(id: "acct-checking", name: "Checking", closed: false, deleted: false)])
+
+    try? TransactionDraftStore.save([
+        TransactionDraft(id: UUID(), startedAt: Date().addingTimeInterval(-1800), payload: .ynabWallet(merchant: "Coffee Shop", amount: 4.50, card: "Visa")),
+        TransactionDraft(id: UUID(), startedAt: Date().addingTimeInterval(-3600), payload: .splitwiseWallet(merchant: "Groceries", amount: 32.10)),
+    ])
+
+    try? FileImportStagingStore.save(FileImportStaging(
+        destination: .ynab,
+        rows: [FileImportRow(id: "row1", date: Date(), payeeName: "Electric Co", memo: nil, amount: -54.20)],
+        selectedIDs: ["row1"],
+        sourceFilename: "statement.csv",
+        importedAt: Date()
+    ))
+
+    try? PendingOperationQueueStore.save([
+        PendingOperation(
+            id: UUID(),
+            queuedAt: Date().addingTimeInterval(-600),
+            summary: "12.00 at Bakery",
+            attemptCount: 1,
+            lastError: "No connection — will retry automatically.",
+            payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-22", amount: -12000, payeeName: "Bakery", categoryId: "cat-dining", cleared: "cleared", approved: true)),
+            groupId: nil
+        ),
+    ])
+
+    let groupId = UUID()
+    TransactionHistoryStore.record(
+        summary: "45.00 at Restaurant",
+        payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-21", amount: -45000, payeeName: "Restaurant", categoryId: "cat-dining", cleared: "cleared", approved: true)),
+        groupId: groupId
+    )
+    TransactionHistoryStore.record(
+        summary: "Alex: 22.50 €",
+        payload: .splitwiseExpense(SplitwiseExpenseRequest(costCents: 4500, description: "Restaurant", currencyCode: "EUR", payerUserId: 999, payerOwedCents: 2250, friendUserId: friend.id, friendOwedCents: 2250, date: nil)),
+        groupId: groupId
+    )
+    TransactionHistoryStore.record(
+        summary: "12.34 at Coffee Shop",
+        payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-20", amount: -12340, payeeName: "Coffee Shop", categoryId: "cat-groceries", cleared: "cleared", approved: true))
+    )
 }

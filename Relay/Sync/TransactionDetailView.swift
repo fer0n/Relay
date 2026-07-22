@@ -16,6 +16,9 @@
 //  - `.pending(_:)` — a tapped row in PendingQueueView: a read-only summary
 //    of a YNAB transaction or Splitwise expense still waiting to be sent.
 //    Retry/delete stay on the row's swipe actions.
+//  - `.splitwiseExpense(_:)` — a tapped row in
+//    SplitwiseFriendTransactionsView: a read-only summary of an expense
+//    fetched live from Splitwise (rather than one Relay itself created).
 //
 
 import SwiftUI
@@ -25,6 +28,7 @@ struct TransactionDetailView: View {
         case draft(id: UUID)
         case history(TransactionHistoryEntry)
         case pending(PendingOperation)
+        case splitwiseExpense(SplitwiseExpense, friendName: String, onDelete: () async throws -> Void)
     }
 
     let source: Source
@@ -37,6 +41,8 @@ struct TransactionDetailView: View {
             HistoryDetailContent(entry: entry)
         case .pending(let operation):
             PendingDetailContent(operation: operation)
+        case .splitwiseExpense(let expense, let friendName, let onDelete):
+            SplitwiseExpenseDetailContent(expense: expense, friendName: friendName, onDelete: onDelete)
         }
     }
 }
@@ -80,17 +86,28 @@ private struct DraftDetailContent: View {
 
 // MARK: - Shared read-only layout
 
-/// Hero amount/service/subtitle/timestamp header, plus caller-supplied detail
-/// sections — the common shell behind `HistoryDetailContent` and
-/// `PendingDetailContent`.
+/// Hero amount/service-icons/timestamp header, plus caller-supplied detail
+/// sections — the common shell behind `HistoryDetailContent`,
+/// `PendingDetailContent`, and `SplitwiseExpenseDetailContent`.
 private struct ReadOnlyDetailContent<Sections: View>: View {
     let amount: String
     let serviceIcons: [String]
-    let subtitle: String
-    let timestamp: Text
-    /// Called when the user confirms "Discard". Nil hides the section
-    /// entirely (e.g. history, which can't be discarded).
-    var onDiscard: (() -> Void)? = nil
+    /// When this transaction happened — shown as a live-updating relative
+    /// time (e.g. "1 day ago") alongside `serviceIcons`, rather than a
+    /// pre-formatted string, so it keeps ticking forward while the sheet
+    /// stays open.
+    let date: Date
+    /// An optional icon + text line shown above the service-icons/timestamp
+    /// line — e.g. Splitwise's "Paid by" line. Nil shows nothing.
+    var detailLine: (icon: String, text: String)? = nil
+    /// Row label + confirmation wording for the destructive action at the
+    /// bottom — "Discard" for a not-yet-sent operation, "Delete" for a live
+    /// Splitwise expense. Only meaningful when `onDestroy` is set.
+    var destroyLabel: LocalizedStringKey = "Discard"
+    var destroyConfirmationTitle: LocalizedStringKey = "Discard this transaction?"
+    /// Called when the user confirms the destructive action. Nil hides the
+    /// section entirely (e.g. history, which can't be discarded or deleted).
+    var onDestroy: (() async -> Void)? = nil
     @ViewBuilder var sections: () -> Sections
 
     var body: some View {
@@ -102,17 +119,25 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
                         .fontWeight(.heavy)
                         .font(.system(size: 50))
                         .minimumScaleFactor(0.5)
-                    HStack(spacing: 6) {
-                        ForEach(serviceIcons, id: \.self) { icon in
-                            Image(systemName: icon)
+                    if let detailLine {
+                        HStack(spacing: 6) {
+                            Image(systemName: detailLine.icon)
+                            Text(detailLine.text)
                         }
-                        Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                    TimelineView(.periodic(from: date, by: 1)) { context in
+                        HStack(spacing: 6) {
+                            ForEach(serviceIcons, id: \.self) { icon in
+                                Image(systemName: icon)
+                            }
+                            Text(date.fuzzyRelative(to: context.date))
+                                .monospacedDigit()
+                        }
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    timestamp
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -121,8 +146,8 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
 
             sections()
 
-            if let onDiscard {
-                DiscardSection(confirmationTitle: "Discard this transaction?", onDiscard: onDiscard)
+            if let onDestroy {
+                DiscardSection(label: destroyLabel, confirmationTitle: destroyConfirmationTitle, onConfirm: onDestroy)
             }
         }
         .themedList(background: .sheetBackgroundColor)
@@ -143,8 +168,7 @@ private struct HistoryDetailContent: View {
         ReadOnlyDetailContent(
             amount: entry.formattedAmount,
             serviceIcons: [entry.service.systemImage] + (entry.secondaryService.map { [$0.systemImage] } ?? []),
-            subtitle: entry.title,
-            timestamp: Text("Added \(RelativeDateTimeFormatter().localizedString(for: entry.createdAt, relativeTo: Date()))")
+            date: entry.createdAt
         ) {
             Section {
                 DraftDetailRow(icon: "text.alignleft", title: titleLabel) {
@@ -179,6 +203,78 @@ private struct HistoryDetailContent: View {
     }
 }
 
+// MARK: - Splitwise expense (read-only, fetched live from Splitwise)
+
+private struct SplitwiseExpenseDetailContent: View {
+    let expense: SplitwiseExpense
+    let friendName: String
+    let onDelete: () async throws -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showDeleteError = false
+
+    /// The full cost of the expense (not the signed-in user's share) — no
+    /// currency symbol, since the currency is implied by context here.
+    /// Falls back to the raw string if it won't parse.
+    private var amount: String {
+        guard let total = Double(expense.cost) else { return expense.cost }
+        return total.asMoneyString
+    }
+
+    private var payerDetailLine: (icon: String, text: String)? {
+        expense.payerName(friendName: friendName).map { ("creditcard.fill", $0) }
+    }
+
+    var body: some View {
+        ReadOnlyDetailContent(
+            amount: amount,
+            serviceIcons: [TransactionService.splitwise.systemImage],
+            date: expense.date,
+            detailLine: payerDetailLine,
+            destroyLabel: "Delete",
+            destroyConfirmationTitle: "Delete this expense?",
+            onDestroy: delete
+        ) {
+            Section {
+                DraftDetailRow(icon: "text.alignleft", title: "Description") {
+                    Text(expense.description)
+                }
+                .cardRowBackground()
+            }
+
+            Section("Split") {
+                ForEach(expense.paidBreakdown(friendName: friendName)) { paid in
+                    DraftDetailRow(icon: "creditcard.fill", title: "\(paid.name) paid") {
+                        Text(paid.amount.formatted(.currency(code: expense.currencyCode)))
+                    }
+                    .cardRowBackground()
+                }
+
+                ForEach(expense.shareBreakdown(friendName: friendName)) { share in
+                    DraftDetailRow(icon: "person.fill", title: "\(share.name)") {
+                        Text(share.amount.formatted(.currency(code: expense.currencyCode)))
+                    }
+                    .cardRowBackground()
+                }
+            }
+        }
+        .alert("Couldn't Delete", isPresented: $showDeleteError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please check your connection and try again.")
+        }
+    }
+
+    private func delete() async {
+        do {
+            try await onDelete()
+            dismiss()
+        } catch {
+            showDeleteError = true
+        }
+    }
+}
+
 // MARK: - Pending (read-only)
 
 private struct PendingDetailContent: View {
@@ -194,9 +290,8 @@ private struct PendingDetailContent: View {
         ReadOnlyDetailContent(
             amount: operation.payload.formattedAmount,
             serviceIcons: [operation.service.systemImage],
-            subtitle: operation.payload.title,
-            timestamp: Text("Queued \(RelativeDateTimeFormatter().localizedString(for: operation.queuedAt, relativeTo: Date()))"),
-            onDiscard: discard
+            date: operation.queuedAt,
+            onDestroy: discard
         ) {
             Section {
                 DraftDetailRow(icon: "text.alignleft", title: titleLabel) {

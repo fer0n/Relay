@@ -173,7 +173,7 @@ struct ContinueWalletTransactionView: View {
             }
 
             if let onDiscard {
-                DiscardSection(confirmationTitle: "Discard this draft?", onDiscard: onDiscard)
+                DiscardSection(confirmationTitle: "Discard this draft?", onConfirm: onDiscard)
             }
         }
         .themedList(background: .sheetBackgroundColor)
