@@ -4,42 +4,29 @@
 //
 //  Caches the last-fetched Splitwise friend list on disk so template
 //  creation and Shortcuts pickers can show data instantly and keep working
-//  offline, rather than blocking on a live fetch every time. Mirrors
-//  SplitwiseFriendUsageStore.swift's file-storage convention.
+//  offline, rather than blocking on a live fetch every time. Thin wrapper
+//  over the shared FileCache (see CacheStore.swift).
 //
 
 import Foundation
 
 nonisolated enum SplitwiseFriendCacheStore {
-    private static let fileURL = ApplicationSupportFile.url("splitwise-friend-cache.json")
-    private static let lastFetchedKey = "splitwise.friendCache.lastFetchedAt"
+    private static let cache = FileCache<[SplitwiseFriend]>(fileName: "splitwise-friend-cache.json")
 
-    /// When the friend list (and so each friend's balance) was last
-    /// actually fetched from Splitwise — shown as "Last refreshed …" on
-    /// ContentView's balance card. Nil until the first successful `save`.
-    static var lastFetchedAt: Date? {
-        UserDefaults.standard.object(forKey: lastFetchedKey) as? Date
-    }
+    static func load() -> [SplitwiseFriend]? { cache.load() }
+    static func save(_ items: [SplitwiseFriend]) { cache.save(items) }
 
-    /// True once `CacheStore.splitwiseRefreshInterval` has passed since the
-    /// last successful live fetch, or there's never been one — see there for
-    /// why ContentView's `.task` throttles on this.
-    static var isStale: Bool { CacheStore.isStale(lastFetchedAt) }
+    /// When the friend list (and so each friend's balance) was last actually
+    /// fetched from Splitwise — shown as "… ago" on ContentView's balance
+    /// card. Nil until the first successful `save`.
+    static var lastFetchedAt: Date? { cache.lastFetchedAt }
 
-    static func load() -> [SplitwiseFriend]? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? JSONDecoder().decode([SplitwiseFriend].self, from: data)
-    }
-
-    static func save(_ items: [SplitwiseFriend]) {
-        guard let data = try? JSONEncoder().encode(items) else { return }
-        try? data.write(to: fileURL, options: .atomic)
-        UserDefaults.standard.set(Date(), forKey: lastFetchedKey)
-    }
+    /// True once `CacheStore.refreshInterval` has passed since the last
+    /// successful live fetch, or there's never been one — see there for why
+    /// the balance/transaction views throttle on this.
+    static var isStale: Bool { cache.isStale }
 
     static func fetch(token: String) async throws -> [SplitwiseFriend] {
-        try await CacheStore.fetch(load: load, save: save) {
-            try await SplitwiseService.fetchFriends(token: token)
-        }
+        try await cache.fetch { try await SplitwiseService.fetchFriends(token: token) }
     }
 }

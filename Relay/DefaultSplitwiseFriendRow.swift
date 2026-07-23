@@ -36,6 +36,9 @@ struct DefaultSplitwiseFriendRow: View {
             if let cached = SplitwiseFriendCacheStore.load() {
                 friends = SplitwiseFriendUsageStore.sorted(cached)
             }
+            // Show the cache instantly; skip the live fetch while it's fresh
+            // so re-opening this picker doesn't re-hit Splitwise.
+            guard SplitwiseFriendCacheStore.isStale else { return }
             guard let token = SplitwiseAuthService.currentAccessToken else { return }
             let fetched = (try? await SplitwiseFriendCacheStore.fetch(token: token)) ?? friends
             friends = SplitwiseFriendUsageStore.sorted(fetched)

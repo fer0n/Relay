@@ -107,6 +107,8 @@ struct ContentView: View {
                         if let defaultSplitwiseFriend {
                             SplitwiseFriendTransactionsView(friend: defaultSplitwiseFriend)
                         }
+                    case .splitwiseBalances:
+                        SplitwiseBalancesView()
                     }
                 }
                 .safeAreaBar(edge: .bottom) {
@@ -171,6 +173,9 @@ struct ContentView: View {
             .listRowBackground(Color.backgroundColor)
 
             Section {
+                NavigationLink(value: ContentRoute.splitwiseBalances) {
+                    RowLabel(title: "Balances", systemImage: "person.2.fill")
+                }
                 NavigationLink(value: ContentRoute.templates) {
                     RowLabel(title: "Templates", systemImage: "doc.on.doc")
                 }

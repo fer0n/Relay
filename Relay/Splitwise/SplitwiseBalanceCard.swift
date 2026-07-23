@@ -50,26 +50,46 @@ struct SplitwiseBalanceGrid: View {
     }
 }
 
-private struct SplitwiseBalanceCard: View {
+/// `maxWidth` defaults to the fixed width `SplitwiseBalanceGrid` centers on
+/// ContentView; `SplitwiseBalancesView` passes `.infinity` so each card fills
+/// its grid column instead.
+struct SplitwiseBalanceCard: View {
+    /// `.large` is ContentView's original single pinned card; `.compact`
+    /// tightens padding/type sizes for the 2-up grid in
+    /// SplitwiseBalancesView, where there's much less width per card.
+    enum Size {
+        case large
+        case compact
+    }
+
     let friend: SplitwiseFriend
     var lastRefreshedAt: Date?
+    var size: Size = .large
+    var maxWidth: CGFloat? = 230
 
-    var outerPadding: CGFloat = 18
-    var innerRadius: CGFloat = 46
+    private var outerPadding: CGFloat { size == .large ? 18 : 15 }
+    private var innerDiameter: CGFloat { size == .large ? 46 : 35 }
+    private var iconFont: Font { size == .large ? .title2 : .title3 }
+    private var balanceFont: Font { size == .large ? .title2.weight(.bold) : .title3.weight(.bold) }
+    /// Negative padding around the icon circle in `.compact` — shrinks its
+    /// reserved layout space (without shrinking the circle itself) so it
+    /// sits tighter against the card's edge and the balance text.
+    private var iconNegativePadding: CGFloat { size == .large ? 0 : 5 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center) {
                 Image(systemName: "person.fill")
-                    .font(.title2)
+                    .font(iconFont)
                     .foregroundStyle(.secondary)
-                    .frame(width: innerRadius, height: innerRadius)
+                    .frame(width: innerDiameter, height: innerDiameter)
                     .background(Color.secondary.opacity(0.15), in: Circle())
+                    .padding(-iconNegativePadding)
 
                 Spacer(minLength: 8)
 
                 Text(friend.formattedBalanceText)
-                    .font(.title2.weight(.bold))
+                    .font(balanceFont)
                     .foregroundStyle(friend.balanceColor)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -78,11 +98,7 @@ private struct SplitwiseBalanceCard: View {
 
             Spacer(minLength: 20)
 
-            Text(friend.fullName)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.foregroundColor)
-                .lineLimit(1)
-                .padding(.leading, 5)
+            nameText
 
             if let lastRefreshedAt {
                 // A coarse, single-unit "time ago" instead of Text's built-in
@@ -102,8 +118,25 @@ private struct SplitwiseBalanceCard: View {
             }
         }
         .padding(outerPadding)
-        .frame(maxWidth: 230, minHeight: 100, alignment: .topLeading)
-        .background(Color.sheetInsetColor, in: RoundedRectangle(cornerRadius: innerRadius / 2 + outerPadding, style: .continuous))
+        .frame(maxWidth: maxWidth, minHeight: 100, alignment: .topLeading)
+        .background(Color.sheetInsetColor, in: RoundedRectangle(cornerRadius: innerDiameter / 2 + outerPadding - iconNegativePadding, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var nameText: some View {
+        switch size {
+        case .large:
+            Text(friend.fullName)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color.foregroundColor)
+                .lineLimit(1)
+                .padding(.leading, 5)
+        case .compact:
+            Text(friend.fullName)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
     }
 }
 

@@ -248,6 +248,9 @@ struct TemplateEditView: View {
         if let cached = YNABCategoryCacheStore.load() {
             categories = YNABCategoryUsageStore.sorted(cached)
         }
+        // Show the cache instantly, but skip the live fetch while it's still
+        // fresh — re-opening this editor shouldn't re-hit YNAB (200 req/hr).
+        guard YNABCategoryCacheStore.isStale else { return }
         isLoadingCategories = categories.isEmpty
         defer { isLoadingCategories = false }
         do {
@@ -265,6 +268,7 @@ struct TemplateEditView: View {
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
         }
+        guard SplitwiseFriendCacheStore.isStale else { return }
         isLoadingFriends = friends.isEmpty
         defer { isLoadingFriends = false }
         do {

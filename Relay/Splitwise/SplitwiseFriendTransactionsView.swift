@@ -50,14 +50,13 @@ struct SplitwiseFriendTransactionsView: View {
         .navigationTitle(friend.fullName)
         .navigationSubtitle(Text(displayFriend.formattedBalanceText).foregroundStyle(displayFriend.balanceColor))
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await load() }
+        .refreshable { await load(force: true) }
         .task {
             expenses = SplitwiseExpenseCacheStore.load(friendId: friend.id) ?? []
             // Navigating away and back recreates this view, re-running
-            // `.task` — without this check that would hit the Splitwise API
-            // on every visit. Pull-to-refresh above bypasses it.
-            guard SplitwiseExpenseCacheStore.isStale(friendId: friend.id) else { return }
-            await load()
+            // `.task`; load(force: false) throttles each fetch on its own
+            // cache staleness so that doesn't hit the API on every visit.
+            await load(force: false)
         }
         .sheet(item: $selectedExpense) { expense in
             NavigationStack {
@@ -94,25 +93,32 @@ struct SplitwiseFriendTransactionsView: View {
         return .green
     }
 
-    private func load() async {
+    /// Refreshes the expense list and the friend balance, each throttled on
+    /// its own cache's staleness unless `force` (pull-to-refresh) bypasses it.
+    /// Gating them independently means arriving from ContentView /
+    /// SplitwiseBalancesView — which may have just refreshed the friend list —
+    /// doesn't redundantly re-fetch it, and a fresh expense cache doesn't
+    /// block refreshing a stale balance (or vice versa).
+    private func load(force: Bool) async {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             loadError = "Not connected to Splitwise."
             return
         }
-        // Fetch expenses and the friend list together: the friend fetch
-        // refreshes the same SplitwiseFriendCacheStore that backs
-        // ContentView's balance card, so popping back shows an up-to-date
-        // balance (reloadMainListState re-reads that cache on pop). Its
-        // failure is non-fatal — the expense list is what this view is for,
-        // so we only surface an error if the expenses fail.
-        async let friendsResult = SplitwiseFriendCacheStore.fetch(token: token)
-        do {
-            expenses = try await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token)
-            loadError = nil
-        } catch {
-            loadError = "Couldn't load transactions."
+        if force || SplitwiseExpenseCacheStore.isStale(friendId: friend.id) {
+            do {
+                expenses = try await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token)
+                loadError = nil
+            } catch {
+                loadError = "Couldn't load transactions."
+            }
         }
-        if let updated = (try? await friendsResult)?.first(where: { $0.id == friend.id }) {
+        // The friend fetch refreshes the same SplitwiseFriendCacheStore that
+        // backs ContentView's balance card, so popping back shows an
+        // up-to-date balance (reloadMainListState re-reads that cache on pop).
+        // Non-fatal — the expense list is what this view is for, so only an
+        // expense failure surfaces an error above.
+        if force || SplitwiseFriendCacheStore.isStale,
+           let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
             refreshedFriend = updated
         }
     }

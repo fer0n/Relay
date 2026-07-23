@@ -508,12 +508,17 @@ struct SharedFileImportView: View {
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
         }
-        isLoadingFriends = friends.isEmpty
-        defer { isLoadingFriends = false }
-        do {
-            friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
-        } catch {
-            logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
+        // Show the cache instantly; only hit the network when it's stale, so
+        // re-opening this sheet doesn't re-fetch. Selection validation below
+        // still runs against whatever list we have.
+        if SplitwiseFriendCacheStore.isStale {
+            isLoadingFriends = friends.isEmpty
+            defer { isLoadingFriends = false }
+            do {
+                friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
+            } catch {
+                logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
+            }
         }
         // A stale default friend (removed/blocked since being set) would
         // otherwise leave the friend picker pointing at nothing.
@@ -530,12 +535,14 @@ struct SharedFileImportView: View {
         if let cached = YNABAccountCacheStore.load() {
             accounts = cached
         }
-        isLoadingAccounts = accounts.isEmpty
-        defer { isLoadingAccounts = false }
-        do {
-            accounts = try await YNABAccountCacheStore.fetch(token: token)
-        } catch {
-            logger.error("failed to load accounts: \(String(describing: error), privacy: .public)")
+        if YNABAccountCacheStore.isStale {
+            isLoadingAccounts = accounts.isEmpty
+            defer { isLoadingAccounts = false }
+            do {
+                accounts = try await YNABAccountCacheStore.fetch(token: token)
+            } catch {
+                logger.error("failed to load accounts: \(String(describing: error), privacy: .public)")
+            }
         }
         if let selectedAccountId, !accounts.contains(where: { $0.id == selectedAccountId }) {
             self.selectedAccountId = nil

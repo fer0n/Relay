@@ -4,28 +4,20 @@
 //
 //  Caches the last-fetched YNAB account list on disk so the card-to-account
 //  picker (in-app and via Shortcuts) can show data instantly and keep
-//  working offline, rather than blocking on a live fetch every time. Mirrors
-//  YNABCategoryUsageStore.swift's file-storage convention.
+//  working offline, rather than blocking on a live fetch every time. Thin
+//  wrapper over the shared FileCache (see CacheStore.swift).
 //
 
 import Foundation
 
 nonisolated enum YNABAccountCacheStore {
-    private static let fileURL = ApplicationSupportFile.url("ynab-account-cache.json")
+    private static let cache = FileCache<[YNABAccount]>(fileName: "ynab-account-cache.json")
 
-    static func load() -> [YNABAccount]? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? JSONDecoder().decode([YNABAccount].self, from: data)
-    }
-
-    static func save(_ items: [YNABAccount]) {
-        guard let data = try? JSONEncoder().encode(items) else { return }
-        try? data.write(to: fileURL, options: .atomic)
-    }
+    static func load() -> [YNABAccount]? { cache.load() }
+    static func save(_ items: [YNABAccount]) { cache.save(items) }
+    static var isStale: Bool { cache.isStale }
 
     static func fetch(token: String) async throws -> [YNABAccount] {
-        try await CacheStore.fetch(load: load, save: save) {
-            try await YNABService.fetchAccounts(token: token)
-        }
+        try await cache.fetch { try await YNABService.fetchAccounts(token: token) }
     }
 }
