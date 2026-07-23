@@ -20,14 +20,12 @@ extension SplitwiseFriend {
     }
 
     /// Matches Splitwise's own convention: positive means the friend owes
-    /// the signed-in user (green), negative means the reverse (red). Shared
-    /// by the balance card and SplitwiseFriendTransactionsView's navigation
-    /// subtitle.
+    /// the signed-in user (green). Shared by the balance card and
+    /// SplitwiseFriendTransactionsView's navigation subtitle.
     var balanceColor: Color {
-        guard let amount = primaryBalance?.amount else { return .secondary }
+        guard let amount = primaryBalance?.amount else { return .primary }
         if amount > 0 { return .green }
-        if amount < 0 { return .red }
-        return .secondary
+        return .primary
     }
 }
 
