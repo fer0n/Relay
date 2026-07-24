@@ -17,9 +17,12 @@ struct TemplatePickerRow: View {
     let templates: [String]
     @Binding var choice: String?
     let onCreateNew: () -> Void
+    /// True when a template is required to submit (YNAB) rather than
+    /// optional (Splitwise, which can auto-create one from the payee name).
+    var isIncomplete: Bool = false
 
     var body: some View {
-        DraftDetailRow(icon: "doc.on.doc", title: "Template") {
+        DraftDetailRow(icon: "doc.on.doc", title: "Template", isIncomplete: isIncomplete) {
             Menu {
                 Button("Create New", action: onCreateNew)
                 if !templates.isEmpty { Divider() }
@@ -188,15 +191,14 @@ struct CategoryPickerRow: View {
     @Binding var selection: String?
 
     var body: some View {
-        DraftDetailRow(icon: "tag.fill", title: "Category") {
+        DraftDetailRow(icon: "tag.fill", title: "Category", isIncomplete: selection == nil) {
             if isLoading {
                 ProgressView()
             } else {
                 MenuPickerField(
                     selection: $selection,
-                    label: categories.first { $0.id == selection }?.name ?? "Optional"
+                    label: categories.first { $0.id == selection }?.name ?? "Select"
                 ) {
-                    Text("None").tag(String?.none)
                     ForEach(categories, id: \.id) { category in
                         Text(category.name).tag(Optional(category.id))
                     }

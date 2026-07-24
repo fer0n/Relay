@@ -113,10 +113,15 @@ struct ContinueWalletTransactionView: View {
             .listRowBackground(Color.sheetBackgroundColor)
 
             Section {
-                TemplatePickerRow(templates: model.availableTemplates, choice: $model.templateChoice) {
-                    editingTemplateName = nil
-                    showTemplateEditor = true
-                }
+                TemplatePickerRow(
+                    templates: model.availableTemplates,
+                    choice: $model.templateChoice,
+                    onCreateNew: {
+                        editingTemplateName = nil
+                        showTemplateEditor = true
+                    },
+                    isIncomplete: model.mode == .ynab && model.templateChoice == nil
+                )
 
                 if model.mode == .ynab {
                     payeeTextRow(title: "Payee", placeholder: String(localized: "Payee Name"))

@@ -158,11 +158,20 @@ final class ContinueWalletTransactionModel {
                 payeeText = info.payeeName
                 let template = config.templates[info.templateName]
                 selectedCategoryId = template?.categoryId
-                splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                // Drafts follow the merchant template's own split setting only
+                // — never the global last-used choice, which would let the
+                // last manual entry's pick spill into this draft.
+                splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice
                 resolvedTemplateFriend = template?.splitwiseFriend
             } else {
                 payeeText = merchant
-                splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? .never
+                // Unrecognized merchant — no template to carry a split default
+                // from, so leave this unset rather than silently landing on
+                // "don't split" (or an unrelated global last-used choice).
+                // canSubmit's nil check then forces an explicit pick before
+                // the transaction can go through, instead of letting an
+                // unreviewed draft submit as soon as the account resolves.
+                splitwiseRuntimeChoice = nil
             }
 
             if let accountId = config.cards[card] {
@@ -203,7 +212,10 @@ final class ContinueWalletTransactionModel {
                 templateChoice = info.templateName
                 payeeText = info.payeeName
                 let template = config.templates[info.templateName]
-                splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                // Drafts follow the merchant template's own split setting only
+                // — never the global last-used choice, which would let the
+                // last manual entry's pick spill into this draft.
+                splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice
                 if let friend = template?.splitwiseFriend {
                     templateHasFriend = true
                     templateFriend = SplitwiseFriendEntity(templateFriend: friend)
@@ -213,8 +225,12 @@ final class ContinueWalletTransactionModel {
                 // Unknown merchant: leave the Payee field blank so its
                 // placeholder (the raw merchant) shows; splitwisePayeeName
                 // falls back to that merchant when it's left untouched.
+                // No template to carry a split default from either, so leave
+                // this unset rather than silently landing on "always split"
+                // (or an unrelated global last-used choice) — canSubmit's
+                // nil check forces an explicit pick before submitting.
                 payeeText = ""
-                splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? .always
+                splitwiseRuntimeChoice = nil
             }
         }
     }
@@ -307,6 +323,11 @@ final class ContinueWalletTransactionModel {
         case .ynab:
             if payeeText.trimmingCharacters(in: .whitespaces).isEmpty { return false }
             if selectedAccountId == nil { return false }
+            // Unlike Splitwise (which can auto-create a template from the
+            // payee name on submit), YNAB requires an explicit template and
+            // category up front — no silent auto-create/uncategorized path.
+            if templateChoice == nil { return false }
+            if selectedCategoryId == nil { return false }
             if splitwiseAuth.isAuthenticated, splitwiseRuntimeChoice == nil { return false }
             if resolvedSplitwiseAction != .never, selectedFriendId == nil && defaultFriend == nil { return false }
             if resolvedSplitwiseAction == .manual, Double(ownShareText) == nil { return false }
@@ -404,15 +425,18 @@ final class ContinueWalletTransactionModel {
     }
 
     /// Explicit setter (bound in the view instead of the plain property) so
-    /// the split choice is remembered for next time — regardless of
-    /// manual vs. shortcut-started, unlike the account/template
-    /// equivalents below. This global "last used" value takes priority
-    /// over a resolved template's own saved splitwiseOption (see init()
-    /// and applyTemplate()) — it's only a per-merchant *initial* default,
-    /// not a floor the global choice can't override.
+    /// a manual entry's split choice is remembered as the global "last used"
+    /// default for the next manual entry (unlike the account/template
+    /// equivalents below, this is remembered even without a template). Drafts
+    /// deliberately don't participate: they neither seed from nor write to
+    /// this value, so a draft always reflects its own merchant template's
+    /// setting rather than whatever the last manual entry happened to pick
+    /// (and vice versa — a draft's pick never spills back into manual).
     func setSplitwiseRuntimeChoice(_ choice: SplitwiseSplitOption?) {
         splitwiseRuntimeChoice = choice
-        Self.saveLastSplitChoice(choice)
+        if isManual {
+            Self.saveLastSplitChoice(choice)
+        }
     }
 
     private static let lastManualAccountIdKey = "lastManualTransactionAccountId"
@@ -461,10 +485,20 @@ final class ContinueWalletTransactionModel {
             if mode == .ynab {
                 selectedCategoryId = template?.categoryId
             }
-            if name == nil {
-                splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (mode == .splitwise ? .always : .never)
+            if isManual {
+                // Manual entries keep the global last-used choice as their
+                // convenience default (per-mode fallback when none is saved).
+                if name == nil {
+                    splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (mode == .splitwise ? .always : .never)
+                } else {
+                    splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                }
             } else {
-                splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                // Drafts never read the global last-used choice (that's the
+                // "new transaction default spilling into drafts"): the split
+                // follows the picked template's own option, or stays unset —
+                // forcing an explicit pick — when there's no template.
+                splitwiseRuntimeChoice = name == nil ? nil : (template?.splitwiseOption ?? .never).splitRuntimeChoice
             }
             if let friend = template?.splitwiseFriend {
                 templateHasFriend = true
@@ -713,21 +747,12 @@ final class ContinueWalletTransactionModel {
         let finalPayeeName = trimmedPayee
         let finalCategoryId = selectedCategoryId
 
-        if !isManual, templateChoice == nil {
-            // Creating a new template from payee name
-            var template = config.templates[trimmedPayee] ?? WalletTransactionConfig.Template(categoryId: nil)
-            template.categoryId = selectedCategoryId
-            template.splitwiseOption = SplitwiseTemplateOption(splitRuntimeChoice: splitwiseRuntimeChoice)
-            config.templates[trimmedPayee] = template
-            config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: trimmedPayee, templateName: trimmedPayee)
+        // Template is required to submit (canSubmit), so it's always set here
+        // — persist an edited payee (or a template change) so it's corrected
+        // automatically next time, matching the Splitwise flow. No-op when
+        // nothing changed.
+        if !isManual, let templateChoice, config.linkMerchantIfChanged(merchant: merchant, payeeName: finalPayeeName, templateName: templateChoice) {
             configChanged = true
-        } else if !isManual, let templateChoice {
-            // Known merchant — persist an edited payee (or a template change)
-            // so it's corrected automatically next time, matching the
-            // Splitwise flow. No-op when nothing changed.
-            if config.linkMerchantIfChanged(merchant: merchant, payeeName: finalPayeeName, templateName: templateChoice) {
-                configChanged = true
-            }
         }
 
         guard let accountId = selectedAccountId else {
