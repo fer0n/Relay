@@ -30,6 +30,14 @@ struct TransactionHistoryEntry: Codable, Identifiable {
     /// alongside a Splitwise split in the same run — the two are shown as
     /// one combined row and re-added together.
     var split: Split?
+    /// The Shortcuts-supplied merchant string this entry resolved from, when
+    /// created by a wallet automation run rather than a manual/re-add entry.
+    /// Nil for those, and for any entry recorded before this field existed
+    /// (Optional decodes to nil for a missing key, no tolerant init needed).
+    /// Lets the confirmation detail view resolve the current Payee/Template
+    /// mapping for this merchant and write an edited payee back to
+    /// WalletTransactionConfig.
+    var merchant: String?
 
     struct Split: Codable {
         let summary: String

@@ -22,7 +22,7 @@ struct SplitwiseOptionRow: View {
     @Binding var newOption: SplitwiseTemplateOption
 
     var body: some View {
-        DraftDetailRow(icon: "divide.circle.fill", title: title) {
+        DraftDetailRow(icon: "divide.circle.fill", title: title, isEditable: !isResolved) {
             if isResolved {
                 Text(resolvedOption.label)
             } else {
@@ -55,7 +55,8 @@ struct SplitwiseFriendPickerRow: View {
         DraftDetailRow(
             icon: "person.2.fill",
             title: "Split With",
-            isIncomplete: isIncomplete
+            isIncomplete: isIncomplete,
+            isEditable: resolvedFriendName == nil
         ) {
             if let resolvedFriendName {
                 Text(resolvedFriendName)

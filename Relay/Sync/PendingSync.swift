@@ -41,15 +41,16 @@ nonisolated enum PendingSync {
         _ expense: SplitwiseExpenseRequest,
         token: String,
         summary: String,
-        groupId: UUID? = nil
+        groupId: UUID? = nil,
+        merchant: String? = nil
     ) async throws -> PendingSyncOutcome {
         do {
             try await retryOnConnectivityFailure { try await SplitwiseService.createExpense(expense, token: token) }
-            TransactionHistoryStore.record(summary: summary, payload: .splitwiseExpense(expense), groupId: groupId)
+            TransactionHistoryStore.record(summary: summary, payload: .splitwiseExpense(expense), groupId: groupId, merchant: merchant)
             return .created
         } catch {
             guard error.isConnectivityFailure else { throw SplitwiseIntentError.from(error) }
-            await PendingOperationQueue.shared.enqueue(.splitwiseExpense(expense), summary: summary, groupId: groupId)
+            await PendingOperationQueue.shared.enqueue(.splitwiseExpense(expense), summary: summary, groupId: groupId, merchant: merchant)
             return .queued
         }
     }

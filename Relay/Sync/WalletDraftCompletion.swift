@@ -84,7 +84,8 @@ nonisolated enum WalletDraftCompletion {
                 amount: amount,
                 description: context.description,
                 friend: friend,
-                ownShare: ownShare
+                ownShare: ownShare,
+                merchant: draft.merchant
             )
             let dialog = WalletAutomationDialog.splitwiseWalletDialog(
                 outcome: outcome,

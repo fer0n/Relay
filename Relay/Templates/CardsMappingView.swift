@@ -26,7 +26,6 @@ struct CardsMappingView: View {
     /// card name → YNAB account id, edited locally and persisted on Save.
     @State private var mappings: [String: String]
     @State private var errorMessage: String?
-    @State private var isKeyboardVisible = false
 
     /// Snapshot of the loaded mappings, compared against `mappings` in
     /// `hasChanges` so the Save bar only appears once something's changed.
@@ -94,12 +93,7 @@ struct CardsMappingView: View {
         }
         .themedList(background: .backgroundColor)
         .navigationTitle("Cards Mapping")
-        .safeAreaBar(edge: .bottom) {
-            if hasChanges, !isKeyboardVisible {
-                BottomBarActionButton(title: "Save", action: save)
-            }
-        }
-        .onKeyboardVisibilityChange($isKeyboardVisible)
+        .bottomBarActionButton(isPresented: hasChanges, title: "Save", action: save)
         .task {
             await loadAccounts()
         }

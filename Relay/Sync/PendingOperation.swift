@@ -23,6 +23,10 @@ struct PendingOperation: Codable, Identifiable {
     /// entry. Nil for standalone writes. Optional decoding keeps operations
     /// queued before this field existed loadable.
     var groupId: UUID?
+    /// The Shortcuts-supplied merchant string, carried through to
+    /// TransactionHistoryStore.record once this syncs — see
+    /// TransactionHistoryEntry.merchant. Nil for standalone writes.
+    var merchant: String? = nil
 
     enum Payload: Codable {
         case ynabTransaction(YNABTransactionRequest)

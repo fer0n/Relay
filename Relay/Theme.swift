@@ -188,6 +188,29 @@ struct BottomBarActionButton: View {
     }
 }
 
+/// Backs `View.bottomBarActionButton` — owns the keyboard-visibility state
+/// so every call site gets the same "hidden while typing" rule for free
+/// instead of re-declaring its own `@State private var isKeyboardVisible`.
+private struct BottomBarActionButtonModifier: ViewModifier {
+    let isPresented: Bool
+    let title: LocalizedStringKey
+    var isLoading = false
+    var isDisabled = false
+    let action: () -> Void
+
+    @State private var isKeyboardVisible = false
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaBar(edge: .bottom) {
+                if isPresented, !isKeyboardVisible {
+                    BottomBarActionButton(title: title, isLoading: isLoading, isDisabled: isDisabled, action: action)
+                }
+            }
+            .onKeyboardVisibilityChange($isKeyboardVisible)
+    }
+}
+
 extension View {
     /// The card-style row background used throughout themed Lists.
     func cardRowBackground() -> some View {
@@ -231,6 +254,25 @@ extension View {
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
                 isVisible.wrappedValue = false
             }
+    }
+
+    /// A single `BottomBarActionButton` pinned to the bottom safe area,
+    /// entirely absent while the keyboard is up rather than riding above it —
+    /// `safeAreaBar` would otherwise reposition it right above the keyboard
+    /// the moment it can be shown, which reads as the button chasing the
+    /// keyboard up the screen. Shared by every screen with a single bottom
+    /// action (Save, Add Transaction, Add Expense) so they all appear/
+    /// disappear the same plain way instead of each spelling out its own
+    /// keyboard-visibility tracking, with each screen free to drift on
+    /// whether/how it animates.
+    func bottomBarActionButton(
+        isPresented: Bool,
+        title: LocalizedStringKey,
+        isLoading: Bool = false,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        modifier(BottomBarActionButtonModifier(isPresented: isPresented, title: title, isLoading: isLoading, isDisabled: isDisabled, action: action))
     }
 
     /// Binds this field's focus to `isFocused` and adds a keyboard-toolbar

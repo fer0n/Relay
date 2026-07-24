@@ -2,7 +2,7 @@
 //  DiscardSection.swift
 //  Relay
 //
-//  Shared destructive row — a centered, secondary-styled button gated behind
+//  Shared destructive row — a centered, red-styled button gated behind
 //  a destructive confirmationDialog. Used by the editable continue flow
 //  (ContinueWalletTransactionView, "Discard"), the read-only pending detail
 //  view (TransactionDetailView's PendingDetailContent, "Discard"), and the
@@ -25,7 +25,7 @@ struct DiscardSection: View {
             Button(label) {
                 showConfirmation = true
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.red)
             .frame(maxWidth: .infinity)
             .confirmationDialog(
                 confirmationTitle,

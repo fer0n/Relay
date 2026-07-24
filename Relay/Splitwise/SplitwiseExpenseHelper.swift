@@ -64,7 +64,8 @@ nonisolated enum SplitwiseExpenseHelper {
         friend: SplitwiseFriendEntity,
         ownShare: Double?,
         date: Date? = nil,
-        groupId: UUID? = nil
+        groupId: UUID? = nil,
+        merchant: String? = nil
     ) async throws -> SplitwiseExpenseOutcome {
         guard amount.isFinite, amount > 0 else {
             throw SplitwiseIntentError.validation("Amount must be a positive number.")
@@ -115,7 +116,8 @@ nonisolated enum SplitwiseExpenseHelper {
             expense,
             token: token,
             summary: "\(formattedAmount) expense for \(description), split with \(friend.firstName)",
-            groupId: groupId
+            groupId: groupId,
+            merchant: merchant
         )
 
         switch outcome {

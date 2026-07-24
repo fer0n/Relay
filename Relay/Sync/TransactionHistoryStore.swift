@@ -56,7 +56,7 @@ enum TransactionHistoryStore {
     /// already recorded from the same wallet automation run, the two are
     /// folded into one combined entry (YNAB transaction + Splitwise split)
     /// instead of adding a second row.
-    static func record(summary: String, payload: PendingOperation.Payload, groupId: UUID? = nil) {
+    static func record(summary: String, payload: PendingOperation.Payload, groupId: UUID? = nil, merchant: String? = nil) {
         lock.lock()
         defer { lock.unlock() }
 
@@ -67,7 +67,7 @@ enum TransactionHistoryStore {
             entries[index] = merged
         } else {
             entries.insert(
-                TransactionHistoryEntry(id: UUID(), createdAt: Date(), summary: summary, payload: payload, groupId: groupId, split: nil),
+                TransactionHistoryEntry(id: UUID(), createdAt: Date(), summary: summary, payload: payload, groupId: groupId, split: nil, merchant: merchant),
                 at: 0
             )
         }

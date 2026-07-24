@@ -26,7 +26,6 @@ struct ContinueWalletTransactionView: View {
     @State private var model: ContinueWalletTransactionModel
     @State private var showTemplateEditor = false
     @State private var editingTemplateName: String?
-    @State private var isKeyboardVisible = false
     @FocusState private var isAmountFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -199,26 +198,14 @@ struct ContinueWalletTransactionView: View {
             }
             .presentationBackground(Color.sheetBackgroundColor)
         }
-        .safeAreaBar(edge: .bottom) {
-            // While the keyboard is up, the button is only shown once the
-            // form is actually submittable — otherwise it'd just be sitting
-            // there disabled, chasing the keyboard up the screen for no
-            // reason. Once canSubmit flips true it animates in immediately,
-            // keyboard or not.
-            if model.canSubmit || !isKeyboardVisible {
-                BottomBarActionButton(
-                    title: model.mode == .ynab ? "Add Transaction" : "Add Expense",
-                    isLoading: model.isSubmitting,
-                    isDisabled: !model.canSubmit || model.isSubmitting
-                ) {
-                    Task { if await model.submit() { dismiss() } }
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+        .bottomBarActionButton(
+            isPresented: true,
+            title: model.mode == .ynab ? "Add Transaction" : "Add Expense",
+            isLoading: model.isSubmitting,
+            isDisabled: !model.canSubmit || model.isSubmitting
+        ) {
+            Task { if await model.submit() { dismiss() } }
         }
-        .animation(.default, value: model.canSubmit)
-        .animation(.default, value: isKeyboardVisible)
-        .onKeyboardVisibilityChange($isKeyboardVisible)
     }
 
     // MARK: - Rows

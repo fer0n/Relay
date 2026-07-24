@@ -65,10 +65,10 @@ struct SplitwiseBalanceCard: View {
     let friend: SplitwiseFriend
     var lastRefreshedAt: Date?
     var size: Size = .large
-    var maxWidth: CGFloat? = 230
+    var maxWidth: CGFloat? = 210
 
-    private var outerPadding: CGFloat { size == .large ? 18 : 15 }
-    private var innerDiameter: CGFloat { size == .large ? 46 : 35 }
+    private var outerPadding: CGFloat { size == .large ? 15 : 15 }
+    private var innerDiameter: CGFloat { size == .large ? 40 : 35 }
     private var iconFont: Font { size == .large ? .title2 : .title3 }
     private var balanceFont: Font { size == .large ? .title2.weight(.bold) : .title3.weight(.bold) }
     /// Negative padding around the icon circle in `.compact` — shrinks its

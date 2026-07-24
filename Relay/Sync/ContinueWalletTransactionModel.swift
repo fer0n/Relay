@@ -921,7 +921,8 @@ final class ContinueWalletTransactionModel {
                 amount: amount,
                 description: finalDescription,
                 friend: SplitwiseFriendEntity(templateFriend: finalFriend),
-                ownShare: ownShare
+                ownShare: ownShare,
+                merchant: isManual ? nil : merchant
             )
             TransactionDraftGuard.complete(draft.id)
             return true

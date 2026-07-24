@@ -295,7 +295,8 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     amount: amount,
                     description: expenseDescription,
                     friend: SplitwiseFriendEntity(id: friendId, firstName: friendFirstName, fullName: friendFullName),
-                    ownShare: (splitwiseAction == .manual) ? resolvedOwnShare : nil
+                    ownShare: (splitwiseAction == .manual) ? resolvedOwnShare : nil,
+                    merchant: merchant
                 )
                 if let draftId {
                     TransactionDraftGuard.complete(draftId)

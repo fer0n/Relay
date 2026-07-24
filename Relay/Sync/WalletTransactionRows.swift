@@ -28,7 +28,7 @@ struct TemplatePickerRow: View {
                 }
             } label: {
                 Text(choice ?? "Select")
-                    .foregroundStyle(choice == nil ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(choice == nil ? Color.accentColor : Color.primary)
                     .lineLimit(1)
             }
         }
@@ -50,7 +50,8 @@ struct AccountPickerRow: View {
         DraftDetailRow(
             icon: "creditcard.fill",
             title: "\(cardName)",
-            isIncomplete: selection == nil
+            isIncomplete: selection == nil,
+            isEditable: !isResolved
         ) {
             if isResolved {
                 Text(accounts.first { $0.id == selection }?.name ?? "Unknown")

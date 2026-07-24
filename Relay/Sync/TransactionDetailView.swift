@@ -22,6 +22,9 @@
 //
 
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: "com.octabits.relay", category: "TransactionDetailView")
 
 struct TransactionDetailView: View {
     enum Source {
@@ -160,8 +163,34 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
 private struct HistoryDetailContent: View {
     let entry: TransactionHistoryEntry
 
-    private var titleLabel: LocalizedStringKey {
-        entry.service == .ynab ? "Payee" : "Description"
+    /// The merchant's Payee/Template mapping as of when this screen opened —
+    /// resolved once at init (rather than a computed property re-reading
+    /// WalletTransactionConfigStore from disk on every body evaluation, e.g.
+    /// each keystroke in the Payee field) and refreshed in-place after a
+    /// successful save. Nil when the entry predates `merchant` being
+    /// recorded, or the mapping was since removed — either way there's
+    /// nothing to show or edit.
+    @State private var linkedInfo: WalletTransactionConfig.MerchantInfo?
+    /// Seeded once at init from `linkedInfo`'s payee name. Editable only for
+    /// a Splitwise entry with a resolvable merchant; unused (and the row
+    /// hidden) otherwise.
+    @State private var payeeText: String
+
+    @Environment(\.dismiss) private var dismiss
+
+    init(entry: TransactionHistoryEntry) {
+        self.entry = entry
+        let info = entry.merchant.flatMap { WalletTransactionConfigStore.load().resolvedMerchantInfo(for: $0) }
+        _linkedInfo = State(initialValue: info)
+        _payeeText = State(initialValue: info?.payeeName ?? "")
+    }
+
+    /// Whether the typed Payee differs from what's currently on record —
+    /// drives the Save bar, mirroring TemplateEditView's `hasChanges`.
+    private var hasPayeeChanges: Bool {
+        guard let info = linkedInfo else { return false }
+        let trimmed = payeeText.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && trimmed != info.payeeName
     }
 
     var body: some View {
@@ -171,20 +200,39 @@ private struct HistoryDetailContent: View {
             date: entry.createdAt
         ) {
             Section {
-                DraftDetailRow(icon: "text.alignleft", title: titleLabel) {
+                DraftDetailRow(icon: "text.alignleft", title: entry.service.titleFieldLabel, isEditable: false) {
                     Text(entry.title)
                 }
                 .cardRowBackground()
 
+                // Only for a Splitwise wallet-automation entry with a still-
+                // resolvable merchant mapping — description and payee are the
+                // same value at creation time, but the Payee field here edits
+                // the merchant's *go-forward* mapping, not this frozen entry.
+                if entry.service == .splitwise, let info = linkedInfo {
+                    DraftDetailRow(icon: "doc.on.doc", title: "Template", isEditable: false) {
+                        Text(info.templateName)
+                    }
+                    .cardRowBackground()
+
+                    DraftDetailRow(icon: "person.text.rectangle", title: "Payee") {
+                        TextField("Payee", text: $payeeText)
+                            .multilineTextAlignment(.trailing)
+                            .submitLabel(.done)
+                            .autocorrectionDisabled()
+                    }
+                    .cardRowBackground()
+                }
+
                 if let categoryName = entry.categoryName {
-                    DraftDetailRow(icon: "tag.fill", title: "Category") {
+                    DraftDetailRow(icon: "tag.fill", title: "Category", isEditable: false) {
                         Text(categoryName)
                     }
                     .cardRowBackground()
                 }
 
                 if let accountName = entry.accountName {
-                    DraftDetailRow(icon: "creditcard.fill", title: "Account") {
+                    DraftDetailRow(icon: "creditcard.fill", title: "Account", isEditable: false) {
                         Text(accountName)
                     }
                     .cardRowBackground()
@@ -193,12 +241,28 @@ private struct HistoryDetailContent: View {
 
             if let splitSummary = entry.splitSummary {
                 Section("Split") {
-                    DraftDetailRow(icon: "person.2.fill", title: "With") {
+                    DraftDetailRow(icon: "person.2.fill", title: "With", isEditable: false) {
                         Text(splitSummary)
                     }
                     .cardRowBackground()
                 }
             }
+        }
+        .bottomBarActionButton(isPresented: hasPayeeChanges, title: "Save", action: savePayee)
+    }
+
+    private func savePayee() {
+        guard let merchant = entry.merchant, let info = linkedInfo else { return }
+        let trimmed = payeeText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        var config = WalletTransactionConfigStore.load()
+        guard config.linkMerchantIfChanged(merchant: merchant, payeeName: trimmed, templateName: info.templateName) else { return }
+        do {
+            try WalletTransactionConfigStore.save(config)
+            linkedInfo = WalletTransactionConfig.MerchantInfo(payeeName: trimmed, templateName: info.templateName)
+            dismiss()
+        } catch {
+            logger.error("failed to save edited payee: \(String(describing: error), privacy: .public)")
         }
     }
 }
@@ -236,7 +300,7 @@ private struct SplitwiseExpenseDetailContent: View {
             onDestroy: delete
         ) {
             Section {
-                DraftDetailRow(icon: "text.alignleft", title: "Description") {
+                DraftDetailRow(icon: "text.alignleft", title: "Description", isEditable: false) {
                     Text(expense.description)
                 }
                 .cardRowBackground()
@@ -244,14 +308,14 @@ private struct SplitwiseExpenseDetailContent: View {
 
             Section("Split") {
                 ForEach(expense.paidBreakdown(friendName: friendName)) { paid in
-                    DraftDetailRow(icon: "creditcard.fill", title: "\(paid.name) paid") {
+                    DraftDetailRow(icon: "creditcard.fill", title: "\(paid.name) paid", isEditable: false) {
                         Text(paid.amount.formatted(.currency(code: expense.currencyCode)))
                     }
                     .cardRowBackground()
                 }
 
                 ForEach(expense.shareBreakdown(friendName: friendName)) { share in
-                    DraftDetailRow(icon: "person.fill", title: "\(share.name)") {
+                    DraftDetailRow(icon: "person.fill", title: "\(share.name)", isEditable: false) {
                         Text(share.amount.formatted(.currency(code: expense.currencyCode)))
                     }
                     .cardRowBackground()
@@ -282,10 +346,6 @@ private struct PendingDetailContent: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private var titleLabel: LocalizedStringKey {
-        operation.service == .ynab ? "Payee" : "Description"
-    }
-
     var body: some View {
         ReadOnlyDetailContent(
             amount: operation.payload.formattedAmount,
@@ -294,13 +354,13 @@ private struct PendingDetailContent: View {
             onDestroy: discard
         ) {
             Section {
-                DraftDetailRow(icon: "text.alignleft", title: titleLabel) {
+                DraftDetailRow(icon: "text.alignleft", title: operation.service.titleFieldLabel, isEditable: false) {
                     Text(operation.payload.title)
                 }
                 .cardRowBackground()
 
                 if let detail = operation.payload.detail {
-                    DraftDetailRow(icon: operation.service == .ynab ? "tag.fill" : "person.2.fill", title: operation.service == .ynab ? "Category" : "With") {
+                    DraftDetailRow(icon: operation.service == .ynab ? "tag.fill" : "person.2.fill", title: operation.service == .ynab ? "Category" : "With", isEditable: false) {
                         Text(detail)
                     }
                     .cardRowBackground()
@@ -309,7 +369,7 @@ private struct PendingDetailContent: View {
 
             if let lastError = operation.lastError {
                 Section("Last Error") {
-                    DraftDetailRow(icon: "exclamationmark.triangle.fill", title: "Attempt \(operation.attemptCount)") {
+                    DraftDetailRow(icon: "exclamationmark.triangle.fill", title: "Attempt \(operation.attemptCount)", isEditable: false) {
                         Text(lastError)
                     }
                     .cardRowBackground()

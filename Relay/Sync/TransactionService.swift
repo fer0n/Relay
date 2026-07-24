@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 enum TransactionService {
     case ynab
@@ -24,6 +25,16 @@ enum TransactionService {
         switch self {
         case .ynab: "banknote.fill"
         case .splitwise: "person.2.fill"
+        }
+    }
+
+    /// YNAB's title field is the payee; Splitwise's is a free-text
+    /// description — shared by every detail row that shows a transaction's
+    /// title (TransactionDetailView's history/pending content).
+    var titleFieldLabel: LocalizedStringKey {
+        switch self {
+        case .ynab: "Payee"
+        case .splitwise: "Description"
         }
     }
 }
