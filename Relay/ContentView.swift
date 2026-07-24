@@ -29,9 +29,7 @@ struct ContentView: View {
     /// usual empty form.
     @State private var manualPrefillEntry: TransactionHistoryEntry?
     @State private var selectedHistoryEntry: TransactionHistoryEntry?
-    @State private var showSettings = false
     @State private var showOnboarding = false
-    @Namespace private var settingsNamespace
     @Namespace private var addNamespace
     @State private var showAutomationTutorial = false
     /// Set by OnboardingView's "Setup" button, consumed once onboarding's
@@ -109,33 +107,30 @@ struct ContentView: View {
                         }
                     case .splitwiseBalances:
                         SplitwiseBalancesView()
+                    case .settings:
+                        SettingsView(
+                            onRequestShowTutorial: {
+                                opensOnboardingAfterSettings = true
+                            },
+                            onRequestAutomationSetup: {
+                                opensAutomationTutorialAfterSettings = true
+                            }
+                        )
                     }
                 }
-                .safeAreaBar(edge: .bottom) {
-                    HStack {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Image(systemName: "switch.2")
-                                .fontWeight(.bold)
-                                .padding(15)
-                                .glassEffect()
-                        }
-                        .matchedTransitionSource(id: "settings", in: settingsNamespace)
-
-                        Spacer()
-
-                        Button {
-                            startManualEntry(prefill: nil)
-                        } label: {
-                            Image(systemName: "plus")
-                                .fontWeight(.bold)
-                                .padding(15)
-                                .glassEffect()
-                        }
-                        .matchedTransitionSource(id: "add", in: addNamespace)
+                .safeAreaInset(edge: .bottom) {
+                    Button {
+                        startManualEntry(prefill: nil)
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .padding(18)
+                            .glassEffect(.regular.tint(Color.accentColor).interactive())
                     }
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(.primary)
+                    .matchedTransitionSource(id: "add", in: addNamespace)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.horizontal, 30)
                 }
         }
@@ -157,7 +152,7 @@ struct ContentView: View {
                     SplitwiseBalanceGrid(friend: defaultSplitwiseFriend, lastRefreshedAt: splitwiseFriendLastRefreshedAt) {
                         path.append(.splitwiseFriendTransactions)
                     }
-                    .padding(.vertical, 8)
+                    .padding(.bottom, 8)
                 } else {
                     Image("Logo")
                         .resizable()
@@ -178,6 +173,9 @@ struct ContentView: View {
                 }
                 NavigationLink(value: ContentRoute.templates) {
                     RowLabel(title: "Templates", systemImage: "doc.on.doc")
+                }
+                NavigationLink(value: ContentRoute.settings) {
+                    RowLabel(title: "Settings", systemImage: "switch.2")
                 }
             }
             .cardRowBackground()
@@ -439,26 +437,17 @@ struct ContentView: View {
                 }
                 .presentationBackground(Color.sheetBackgroundColor)
             }
-            .sheet(isPresented: $showSettings, onDismiss: {
-                if opensOnboardingAfterSettings {
+            .onChange(of: opensOnboardingAfterSettings) { _, newValue in
+                if newValue {
                     opensOnboardingAfterSettings = false
                     showOnboarding = true
                 }
-                if opensAutomationTutorialAfterSettings {
+            }
+            .onChange(of: opensAutomationTutorialAfterSettings) { _, newValue in
+                if newValue {
                     opensAutomationTutorialAfterSettings = false
                     showAutomationTutorial = true
                 }
-            }) {
-                SettingsView(
-                    onRequestShowTutorial: {
-                        opensOnboardingAfterSettings = true
-                    },
-                    onRequestAutomationSetup: {
-                        opensAutomationTutorialAfterSettings = true
-                    }
-                )
-                .navigationTransition(.zoom(sourceID: "settings", in: settingsNamespace))
-                .presentationBackground(Color.sheetBackgroundColor)
             }
             .sheet(isPresented: $showOnboarding, onDismiss: {
                 // Only reached via the last page's button (interactive

@@ -22,118 +22,116 @@ struct SettingsView: View {
     var onRequestAutomationSetup: () -> Void = {}
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    AccountConnectionRow(
-                        title: "YNAB",
-                        isConnected: ynabAuth.isAuthenticated,
-                        connect: ynabAuth.signIn,
-                        disconnect: ynabAuth.signOut
-                    )
+        List {
+            Section {
+                AccountConnectionRow(
+                    title: "YNAB",
+                    isConnected: ynabAuth.isAuthenticated,
+                    connect: ynabAuth.signIn,
+                    disconnect: ynabAuth.signOut
+                )
 
-                    AccountConnectionRow(
-                        title: "Splitwise",
-                        isConnected: splitwiseAuth.isAuthenticated,
-                        connect: splitwiseAuth.signIn,
-                        disconnect: splitwiseAuth.signOut
-                    )
+                AccountConnectionRow(
+                    title: "Splitwise",
+                    isConnected: splitwiseAuth.isAuthenticated,
+                    connect: splitwiseAuth.signIn,
+                    disconnect: splitwiseAuth.signOut
+                )
 
-                    if splitwiseAuth.isAuthenticated {
-                        DefaultSplitwiseFriendRow()
-                    }
+                if splitwiseAuth.isAuthenticated {
+                    DefaultSplitwiseFriendRow()
                 }
-                .cardRowBackground()
+            }
+            .cardRowBackground()
 
-                Section {
-                    Toggle("Notifications", isOn: $notificationsEnabled)
-                        .onChange(of: notificationsEnabled) { _, newValue in
-                            NotificationsPreferenceStore.isEnabled = newValue
-                            if newValue {
-                                requestNotificationPermission()
-                            }
+            Section {
+                Toggle("Notifications", isOn: $notificationsEnabled)
+                    .onChange(of: notificationsEnabled) { _, newValue in
+                        NotificationsPreferenceStore.isEnabled = newValue
+                        if newValue {
+                            requestNotificationPermission()
                         }
-                } footer: {
-                    Text("Used to remind you if a wallet transaction is left unfinished or a queued transaction is still waiting to sync, so nothing silently gets lost.")
-                        .footerText()
-                }
-                .tint(.accentColor)
-                .cardRowBackground()
-
-                BackupImportExportSection()
-
-                LegacyMigrationShortcutSection(migration: migration)
-
-                Section {
-                    NavigationLink(value: SettingsRoute.howRelayWorks) {
-                        RowLabel(title: "How Relay Works")
                     }
-                } footer: {
-                    // Required by the YNAB API Terms of Service.
-                    Text("We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
-                        .footerText()
-                }
-                .cardRowBackground()
+            } footer: {
+                Text("Used to remind you if a wallet transaction is left unfinished or a queued transaction is still waiting to sync, so nothing silently gets lost.")
+                    .footerText()
+            }
+            .tint(.accentColor)
+            .cardRowBackground()
 
-                Section {
-                    Button("Show Onboarding") {
-                        onRequestShowTutorial()
-                        dismiss()
-                    }
+            BackupImportExportSection()
 
-                    Button("Automation Setup") {
-                        onRequestAutomationSetup()
-                        dismiss()
-                    }
+            LegacyMigrationShortcutSection(migration: migration)
+
+            Section {
+                NavigationLink(value: SettingsRoute.howRelayWorks) {
+                    RowLabel(title: "How Relay Works")
                 }
-                .cardRowBackground()
+            } footer: {
+                // Required by the YNAB API Terms of Service.
+                Text("We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates.")
+                    .footerText()
             }
-            .themedList(background: .sheetBackgroundColor)
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: SettingsRoute.self) { route in
-                switch route {
-                case .howRelayWorks:
-                    HowRelayWorksView()
+            .cardRowBackground()
+
+            Section {
+                Button("Show Onboarding") {
+                    onRequestShowTutorial()
+                    dismiss()
+                }
+
+                Button("Automation Setup") {
+                    onRequestAutomationSetup()
+                    dismiss()
                 }
             }
-            .legacyMigrationCallback(migration, openURL: openURL)
-            .alert(
-                "Couldn't Connect to YNAB",
-                isPresented: Binding(
-                    get: { ynabAuth.signInError != nil },
-                    set: { if !$0 { ynabAuth.clearSignInError() } }
-                )
-            ) {
-                Button("Report Error") {
-                    openURL(SignInErrorMail.reportURL(
-                        service: "YNAB",
-                        message: ynabAuth.signInError ?? "",
-                        detail: ynabAuth.signInErrorDetail
-                    ))
-                }
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(ynabAuth.signInError ?? "")
+            .cardRowBackground()
+        }
+        .themedList(background: .backgroundColor)
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: SettingsRoute.self) { route in
+            switch route {
+            case .howRelayWorks:
+                HowRelayWorksView()
             }
-            .alert(
-                "Couldn't Connect to Splitwise",
-                isPresented: Binding(
-                    get: { splitwiseAuth.signInError != nil },
-                    set: { if !$0 { splitwiseAuth.clearSignInError() } }
-                )
-            ) {
-                Button("Report Error") {
-                    openURL(SignInErrorMail.reportURL(
-                        service: "Splitwise",
-                        message: splitwiseAuth.signInError ?? "",
-                        detail: splitwiseAuth.signInErrorDetail
-                    ))
-                }
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(splitwiseAuth.signInError ?? "")
+        }
+        .legacyMigrationCallback(migration, openURL: openURL)
+        .alert(
+            "Couldn't Connect to YNAB",
+            isPresented: Binding(
+                get: { ynabAuth.signInError != nil },
+                set: { if !$0 { ynabAuth.clearSignInError() } }
+            )
+        ) {
+            Button("Report Error") {
+                openURL(SignInErrorMail.reportURL(
+                    service: "YNAB",
+                    message: ynabAuth.signInError ?? "",
+                    detail: ynabAuth.signInErrorDetail
+                ))
             }
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(ynabAuth.signInError ?? "")
+        }
+        .alert(
+            "Couldn't Connect to Splitwise",
+            isPresented: Binding(
+                get: { splitwiseAuth.signInError != nil },
+                set: { if !$0 { splitwiseAuth.clearSignInError() } }
+            )
+        ) {
+            Button("Report Error") {
+                openURL(SignInErrorMail.reportURL(
+                    service: "Splitwise",
+                    message: splitwiseAuth.signInError ?? "",
+                    detail: splitwiseAuth.signInErrorDetail
+                ))
+            }
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(splitwiseAuth.signInError ?? "")
         }
     }
 
@@ -152,5 +150,7 @@ private enum SettingsRoute: Hashable {
 }
 
 #Preview {
-    SettingsView()
+    NavigationStack {
+        SettingsView()
+    }
 }

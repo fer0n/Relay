@@ -17,4 +17,5 @@ enum ContentRoute: Hashable {
     case transactionDrafts
     case splitwiseFriendTransactions
     case splitwiseBalances
+    case settings
 }
