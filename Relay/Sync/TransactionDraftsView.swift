@@ -18,7 +18,7 @@ struct TransactionDraftsView: View {
 
     var body: some View {
         List {
-            ForEach(drafts) { draft in
+            ForEach(drafts.sorted { $0.startedAt > $1.startedAt }) { draft in
                 Button {
                     selectedDraft = draft
                 } label: {
