@@ -123,10 +123,18 @@ nonisolated enum SplitwiseExpenseHelper {
         switch outcome {
         case .created:
             SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
+            // Force-refreshes the friend balance right away rather than
+            // leaving it to the next staleness-based fetch — an expense that
+            // just posted live should be reflected immediately, same as
+            // SplitwiseFriendTransactionsView.delete(_:) does after a delete.
+            Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token) }
             let ownAmount = (Double(ownShareCents) / 100).asMoneyString
             let friendAmount = (Double(friendShareCents) / 100).asMoneyString
             return .created(shareSummary: "You: \(ownAmount), \(friend.firstName): \(friendAmount)")
         case .queued:
+            // Nothing posted live (offline/queued for later), so there's
+            // nothing new to refresh yet — PendingSync will actually create
+            // the expense once connectivity returns.
             return .queued
         }
     }

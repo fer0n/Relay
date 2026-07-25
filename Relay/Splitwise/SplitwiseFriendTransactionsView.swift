@@ -162,8 +162,11 @@ struct SplitwiseFriendTransactionsView: View {
 
     /// Deletes `expense` on Splitwise, then drops it from the in-memory list
     /// and re-saves the cache so popping back to this list (or ContentView's
-    /// balance card) doesn't show stale data. Leaves the friend's cached
-    /// balance to the next live refresh rather than recomputing it locally.
+    /// balance card) doesn't show stale data. Also force-refreshes the
+    /// friend's balance right away — deleting an expense changes it, and
+    /// waiting on SplitwiseFriendCacheStore's normal staleness window would
+    /// leave the balance card showing a stale amount until it happens to
+    /// expire.
     private func delete(_ expense: SplitwiseExpense) async throws {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             throw SplitwiseAPIError.unauthorized
@@ -171,6 +174,9 @@ struct SplitwiseFriendTransactionsView: View {
         try await SplitwiseService.deleteExpense(id: expense.id, token: token)
         expenses.removeAll { $0.id == expense.id }
         SplitwiseExpenseCacheStore.save(friendId: friend.id, expenses)
+        if let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
+            refreshedFriend = updated
+        }
     }
 
     /// Row swipe action's entry point into `delete(_:)` — unlike the sheet's
