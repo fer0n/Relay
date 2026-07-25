@@ -11,30 +11,6 @@ extension Color {
     static let backgroundColor = Color("BackgroundColor")
     static let sheetBackgroundColor = Color("SheetBackgroundColor")
     static let sheetInsetColor = Color("SheetInsetColor")
-    /// `cardRowBackground()`'s row color inside a sheet — `sheetBackgroundColor`
-    /// is the same color as `sheetInsetColor` (a sheet's own backdrop matches
-    /// what a row looks like out in the regular list), so rows drawn directly
-    /// on it need their own, slightly more contrasty color instead of blending
-    /// in. See `EnvironmentValues.rowInsetColor`.
-    static let sheetRowColor = Color("SheetRowColor")
-}
-
-private struct RowInsetColorKey: EnvironmentKey {
-    static let defaultValue = Color.sheetInsetColor
-}
-
-extension EnvironmentValues {
-    /// What `cardRowBackground()` actually paints — `sheetInsetColor` by
-    /// default, overridden to `sheetRowColor` by `themedList(background:
-    /// rowInsetColor:)` for screens presented inside a sheet. Row components
-    /// shared between both contexts (e.g. `SplitwiseFriendPickerRow`, used by
-    /// both the pushed `TemplateEditView` and the sheet-presented
-    /// `ContinueWalletTransactionView`) pick up whichever is in scope rather
-    /// than needing two copies.
-    var rowInsetColor: Color {
-        get { self[RowInsetColorKey.self] }
-        set { self[RowInsetColorKey.self] = newValue }
-    }
 }
 
 struct UnreadBadge: View {
@@ -252,21 +228,10 @@ private struct BottomBarActionButtonModifier: ViewModifier {
     }
 }
 
-private struct CardRowBackgroundModifier: ViewModifier {
-    @Environment(\.rowInsetColor) private var rowInsetColor
-
-    func body(content: Content) -> some View {
-        content.listRowBackground(rowInsetColor)
-    }
-}
-
 extension View {
-    /// The card-style row background used throughout themed Lists — reads
-    /// `Environment.rowInsetColor` rather than a fixed color so the same row
-    /// (e.g. a picker shared between a pushed screen and a sheet) renders
-    /// correctly in either context.
+    /// The card-style row background used throughout themed Lists.
     func cardRowBackground() -> some View {
-        modifier(CardRowBackgroundModifier())
+        listRowBackground(Color.sheetInsetColor)
     }
 
     /// Text styling shared by themed List rows and the bottom-bar Settings
@@ -371,15 +336,10 @@ extension View {
     }
 
     /// `themedListStyle()` plus a plain screen background — the common case
-    /// for a List with no empty state to show through it. Screens presented
-    /// inside a sheet pass `rowInsetColor: .sheetRowColor` so their
-    /// `cardRowBackground()` rows keep enough contrast against
-    /// `sheetBackgroundColor` (which equals the ordinary `sheetInsetColor`
-    /// rows use everywhere else) — see `EnvironmentValues.rowInsetColor`.
-    func themedList(background: Color, rowInsetColor: Color = Color.sheetInsetColor) -> some View {
+    /// for a List with no empty state to show through it.
+    func themedList(background: Color) -> some View {
         self
             .themedListStyle()
             .background(background)
-            .environment(\.rowInsetColor, rowInsetColor)
     }
 }
