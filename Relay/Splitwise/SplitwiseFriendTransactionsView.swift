@@ -97,16 +97,17 @@ struct SplitwiseFriendTransactionsView: View {
     /// "12.50" if they're owed), falling back to the plain unsigned cost if
     /// the signed-in user's id isn't cached yet.
     private func amountText(for expense: SplitwiseExpense) -> String {
-        expense.currentUserNetBalance?.asMoneyString ?? expense.cost
+        let amount = expense.currentUserNetBalance ?? Double(expense.cost)
+        return amount?.asMoneyString ?? expense.cost
     }
 
-    /// Green when the signed-in user lent money on this expense (a positive
-    /// net balance); the default neutral text color when they borrowed
-    /// (negative) or the sign isn't known yet — unlike the balance card,
-    /// borrowed amounts here aren't flagged red.
+    /// Accent color when the signed-in user is owed money on this expense (a
+    /// positive net balance, "get back"); the default neutral text color
+    /// when they owe (negative) or the sign isn't known yet — matches the
+    /// balance card's convention (SplitwiseBalanceCard.balanceColor).
     private func amountColor(for expense: SplitwiseExpense) -> Color? {
         guard let net = expense.currentUserNetBalance, net > 0 else { return nil }
-        return .green
+        return Color.accentColor
     }
 
     /// Refreshes the expense list and the friend balance, each throttled on
@@ -119,6 +120,15 @@ struct SplitwiseFriendTransactionsView: View {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             loadError = "Not connected to Splitwise."
             return
+        }
+        // Backfills SplitwiseCurrentUserStore for accounts signed in before
+        // SplitwiseAuthService started warming it on sign-in — without it,
+        // currentUserNetBalance can't resolve, so every row falls back to
+        // the plain unsigned cost (no sign, no color). Only runs once ever,
+        // since the guard is "not cached yet", not a staleness check.
+        if SplitwiseCurrentUserStore.load() == nil,
+           let user = try? await SplitwiseService.fetchCurrentUser(token: token) {
+            try? SplitwiseCurrentUserStore.save(user)
         }
         if force || SplitwiseExpenseCacheStore.isStale(friendId: friend.id) {
             do {

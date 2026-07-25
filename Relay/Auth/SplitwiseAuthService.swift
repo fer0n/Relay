@@ -116,6 +116,16 @@ final class SplitwiseAuthService {
             // need a first online visit to a template editor before
             // offline template creation works.
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token.accessToken) }
+            // Warms SplitwiseCurrentUserStore too — otherwise it stays empty
+            // until the first expense is added through Relay, and every
+            // signed/colored amount that depends on it (e.g.
+            // SplitwiseFriendTransactionsView's rows) silently falls back to
+            // the plain unsigned cost until then.
+            Task {
+                if let user = try? await SplitwiseService.fetchCurrentUser(token: token.accessToken) {
+                    try? SplitwiseCurrentUserStore.save(user)
+                }
+            }
         } catch {
             logger.error("token exchange failed: \(String(describing: error), privacy: .public)")
             signInError = Self.signInErrorMessage(for: error)
