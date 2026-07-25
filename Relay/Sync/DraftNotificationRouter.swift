@@ -49,6 +49,11 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     /// no separate staging store for it until a destination is picked.
     var pendingSharedFile: SharedStatementFile?
 
+    /// Set by QuickActionSceneDelegate when the user triggers the "New
+    /// Transaction" Home Screen quick action (long-press the app icon) —
+    /// same one-shot signal shape as the other properties above.
+    var pendingQuickActionNewTransaction = false
+
     private override init() {
         super.init()
     }

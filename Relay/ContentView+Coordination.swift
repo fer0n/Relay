@@ -79,6 +79,15 @@ extension ContentView {
                 draftRouter.pendingSharedFile = nil
                 importSheetContent = .sharedFile(newValue)
             }
+            // The "New Transaction" Home Screen quick action — same
+            // deep-link pattern, opening the same blank manual-entry sheet
+            // as the "+" button.
+            .onChange(of: draftRouter.pendingQuickActionNewTransaction) { _, pending in
+                guard pending else { return }
+                draftRouter.pendingQuickActionNewTransaction = false
+                path = []
+                startManualEntry(prefill: nil)
+            }
             // Delivered when the user taps Relay's "Copy to Relay" action on
             // a CSV/QIF file in the Share Sheet (see CFBundleDocumentTypes in
             // Info.plist) — iOS copies the file into our sandbox's

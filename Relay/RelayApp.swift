@@ -7,6 +7,8 @@ import SwiftUI
 
 @main
 struct RelayApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         // Must happen before any notification response can arrive —
         // UNUserNotificationCenter only delivers a tap to a delegate that's

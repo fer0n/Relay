@@ -265,10 +265,13 @@ struct ContentView: View {
         }
     }
 
-    /// Opens the manual-entry sheet, blank for the "+" button (`prefill:
-    /// nil`) or seeded with a history entry's fields for "Re-add" — either
-    /// way the user reviews/edits before it's actually submitted.
-    private func startManualEntry(prefill: TransactionHistoryEntry?) {
+    /// Opens the manual-entry sheet, blank for the "+" button or the "New
+    /// Transaction" quick action (`prefill: nil`) or seeded with a history
+    /// entry's fields for "Re-add" — either way the user reviews/edits
+    /// before it's actually submitted. Non-private (rather than the rest of
+    /// this file's `@State`-adjacent members) so ContentView+Coordination.swift
+    /// can call it in reaction to the quick-action deep link.
+    func startManualEntry(prefill: TransactionHistoryEntry?) {
         manualPrefillEntry = prefill
         manualDraft = TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: ""))
     }
