@@ -26,7 +26,6 @@ struct ContinueWalletTransactionView: View {
     @State private var model: ContinueWalletTransactionModel
     @State private var showTemplateEditor = false
     @State private var editingTemplateName: String?
-    @FocusState private var isAmountFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     /// Called when the user taps "Discard" — typically deletes the draft and
@@ -215,17 +214,14 @@ struct ContinueWalletTransactionView: View {
 
     // MARK: - Rows
 
+    /// Uses `InstantFocusTextField` rather than a plain `TextField` focused in
+    /// `.onAppear`: focusing through `@FocusState` doesn't raise the keyboard
+    /// until the sheet's presentation transition has committed, which is a
+    /// visible delay on every open. See that file for the details.
     private var manualAmountField: some View {
-        TextField("0", text: $model.amountText)
-            .keyboardType(.decimalPad)
-            .multilineTextAlignment(.center)
-            .foregroundStyle(Color.foregroundColor)
-            .fontWeight(.heavy)
-            .font(.system(size: 50))
-            .minimumScaleFactor(0.5)
+        InstantFocusTextField(text: $model.amountText, placeholder: "0")
             .frame(maxWidth: .infinity)
-            .dismissButtonToolbar(isFocused: $isAmountFocused)
-            .onAppear { isAmountFocused = true }
+            .frame(height: 60)
     }
 
     /// The `payeeText`-bound text field with its auto-match suggestion bar —
