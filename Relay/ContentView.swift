@@ -11,6 +11,7 @@ struct ContentView: View {
     // a same-type extension in another file, which can't see `private` members.
     @State var pendingQueue = PendingOperationQueue.shared
     @State var draftRouter = DraftNotificationRouter.shared
+    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var drafts = TransactionDraftStore.load()
     @State var fileImportCount = Self.loadFileImportCount()
     @State var history = TransactionHistoryStore.load()
@@ -79,6 +80,14 @@ struct ContentView: View {
         Array(drafts.sorted { $0.startedAt > $1.startedAt }.prefix(3))
     }
 
+    /// `defaultSplitwiseFriend`, but only once Splitwise is actually
+    /// connected — otherwise the disk cache from a previous sign-in would
+    /// keep showing a stale balance card (and its "Balances"/friend
+    /// transactions routes) after signing out in Settings.
+    private var visibleSplitwiseFriend: SplitwiseFriend? {
+        splitwiseAuth.isAuthenticated ? defaultSplitwiseFriend : nil
+    }
+
     // Split into `navigationContent` + two modifier-applying functions (rather
     // than one long chain hung directly off `body`) because the compiler
     // couldn't type-check the whole thing as a single expression in
@@ -131,8 +140,8 @@ struct ContentView: View {
         case .transactionDrafts:
             TransactionDraftsView()
         case .splitwiseFriendTransactions:
-            if let defaultSplitwiseFriend {
-                SplitwiseFriendTransactionsView(friend: defaultSplitwiseFriend)
+            if let visibleSplitwiseFriend {
+                SplitwiseFriendTransactionsView(friend: visibleSplitwiseFriend)
             }
         case .splitwiseBalances:
             SplitwiseBalancesView()
@@ -150,11 +159,11 @@ struct ContentView: View {
 
     private var mainList: some View {
         List {
-            ContentBalanceHeaderSection(friend: defaultSplitwiseFriend, lastRefreshedAt: splitwiseFriendLastRefreshedAt) {
+            ContentBalanceHeaderSection(friend: visibleSplitwiseFriend, lastRefreshedAt: splitwiseFriendLastRefreshedAt) {
                 path.append(.splitwiseFriendTransactions)
             }
 
-            ContentQuickLinksSection()
+            ContentQuickLinksSection(splitwiseConnected: splitwiseAuth.isAuthenticated)
 
             if pendingQueue.operations.count > 0 {
                 NavigationLink(value: ContentRoute.pendingQueue) {
@@ -219,6 +228,11 @@ struct ContentView: View {
     // foregrounding (scenePhase), first appearance, and popping back to the
     // root of the NavigationStack after a pushed detail dismisses itself.
     func reloadMainListState() {
+        // Picks up a sign-in/out that happened in Settings' own
+        // SplitwiseAuthService instance while this one was already alive —
+        // same reasoning as YNABAuthService's refreshFromKeychain() call
+        // sites for App Intent-invalidated tokens.
+        splitwiseAuth.refreshFromKeychain()
         withAnimation {
             drafts = TransactionDraftStore.load()
             fileImportCount = Self.loadFileImportCount()

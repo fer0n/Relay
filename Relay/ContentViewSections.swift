@@ -44,12 +44,18 @@ struct ContentBalanceHeaderSection: View {
     }
 }
 
-/// The always-present navigation rows (Balances / Templates / Settings).
+/// The always-present navigation rows (Templates / Settings), plus Balances
+/// when Splitwise is actually connected — without a token it's just an empty
+/// grid, so there's nothing useful for it to lead to.
 struct ContentQuickLinksSection: View {
+    let splitwiseConnected: Bool
+
     var body: some View {
         Section {
-            NavigationLink(value: ContentRoute.splitwiseBalances) {
-                RowLabel(title: "Balances", systemImage: "person.2.fill")
+            if splitwiseConnected {
+                NavigationLink(value: ContentRoute.splitwiseBalances) {
+                    RowLabel(title: "Balances", systemImage: "person.2.fill")
+                }
             }
             NavigationLink(value: ContentRoute.templates) {
                 RowLabel(title: "Templates", systemImage: "doc.on.doc")
