@@ -20,4 +20,9 @@ nonisolated enum YNABAccountCacheStore {
     static func fetch(token: String) async throws -> [YNABAccount] {
         try await cache.fetch { try await YNABService.fetchAccounts(token: token) }
     }
+
+    /// Called from `YNABAuthService.signOut()` — see
+    /// `YNABCategoryCacheStore.delete()` for why sign-out and not
+    /// `invalidateAccessToken()`.
+    static func delete() { cache.delete() }
 }

@@ -146,3 +146,12 @@ struct SplitwiseFriendsResponse: Codable {
 struct SplitwiseCreateExpenseResponse: Codable {
     let errors: [String: [String]]?
 }
+
+/// `undelete_expense`'s body. Only `success` is modeled: Splitwise's
+/// accompanying `errors` field isn't documented with a stable shape for this
+/// endpoint (an object on failure, plausibly an empty array on success), and
+/// guessing wrong would fail the decode of an otherwise fine response — see
+/// `SplitwiseService.undeleteExpense` for how a failed decode is treated.
+struct SplitwiseUndeleteExpenseResponse: Codable {
+    let success: Bool?
+}

@@ -19,8 +19,23 @@ private struct SplitwiseExpenseCache: Codable {
 }
 
 nonisolated enum SplitwiseExpenseCacheStore {
+    private static let filenamePrefix = "splitwise-expense-cache-"
+
     private static func fileURL(friendId: Int) -> URL {
-        ApplicationSupportFile.url("splitwise-expense-cache-\(friendId).json")
+        ApplicationSupportFile.url("\(filenamePrefix)\(friendId).json")
+    }
+
+    /// Drops every friend's cached expense list, so the next visit to any
+    /// friend's history re-fetches instead of waiting out its staleness
+    /// window. Used when an expense changes outside of that friend's own
+    /// screen and there's no way to tell whose cache it belongs to — the
+    /// Activity feed's "Restore" only knows the expense id, not the friend.
+    static func invalidateAll() {
+        let directory = ApplicationSupportFile.directory
+        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        for file in files where file.lastPathComponent.hasPrefix(filenamePrefix) {
+            try? FileManager.default.removeItem(at: file)
+        }
     }
 
     static func load(friendId: Int) -> [SplitwiseExpense]? {

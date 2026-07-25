@@ -44,19 +44,17 @@ struct ContentBalanceHeaderSection: View {
     }
 }
 
-/// The always-present navigation rows (Templates / Settings), plus Balances
-/// when Splitwise is actually connected — without a token it's just an empty
-/// grid, so there's nothing useful for it to lead to.
+/// The always-present navigation rows (Templates / Settings), plus a
+/// "Splitwise" section for Balances and Activity. That second section is
+/// omitted wholesale — header included — when Splitwise isn't connected:
+/// without a token both destinations are empty (an empty grid, an empty
+/// feed), and gating only the rows would leave a titled section with nothing
+/// under it.
 struct ContentQuickLinksSection: View {
     let splitwiseConnected: Bool
 
     var body: some View {
         Section {
-            if splitwiseConnected {
-                NavigationLink(value: ContentRoute.splitwiseBalances) {
-                    RowLabel(title: "Balances", systemImage: "person.2.fill")
-                }
-            }
             NavigationLink(value: ContentRoute.templates) {
                 RowLabel(title: "Templates", systemImage: "doc.on.doc")
             }
@@ -65,6 +63,18 @@ struct ContentQuickLinksSection: View {
             }
         }
         .cardRowBackground()
+
+        if splitwiseConnected {
+            Section("Splitwise") {
+                NavigationLink(value: ContentRoute.splitwiseBalances) {
+                    RowLabel(title: "Balances", systemImage: "person.2.fill")
+                }
+                NavigationLink(value: ContentRoute.splitwiseActivity) {
+                    RowLabel(title: "Activity", systemImage: "bell.fill")
+                }
+            }
+            .cardRowBackground()
+        }
     }
 }
 

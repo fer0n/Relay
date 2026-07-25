@@ -20,4 +20,11 @@ nonisolated enum YNABCategoryCacheStore {
     static func fetch(token: String) async throws -> [YNABCategory] {
         try await cache.fetch { try await YNABService.fetchCategories(token: token) }
     }
+
+    /// Called from `YNABAuthService.signOut()` so the category list doesn't
+    /// outlive the token it was read with. Deliberately *not* wired into
+    /// `invalidateAccessToken()`, which also fires when a token simply
+    /// expires — the cache is what keeps the pickers usable until the user
+    /// signs back in.
+    static func delete() { cache.delete() }
 }

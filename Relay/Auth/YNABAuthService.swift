@@ -168,9 +168,17 @@ final class YNABAuthService {
         return "Something went wrong while connecting to YNAB. Please try again."
     }
 
+    /// Disconnecting drops the data read through the token as well as the
+    /// token itself, so nothing pulled from YNAB is left on disk (the YNAB API
+    /// Terms' data-handling rules, see CLAUDE.md). Only here, not in
+    /// `invalidateAccessToken()` — that also runs when a token merely expires,
+    /// where the caches are exactly what keeps the pickers working until the
+    /// user signs back in.
     func signOut() {
         accessToken = nil
         Self.invalidateAccessToken()
+        YNABCategoryCacheStore.delete()
+        YNABAccountCacheStore.delete()
     }
 
     // MARK: - Refresh

@@ -149,6 +149,8 @@ struct ContentView: View {
             }
         case .splitwiseBalances:
             SplitwiseBalancesView()
+        case .splitwiseActivity:
+            SplitwiseActivityView()
         case .settings:
             SettingsView(
                 onRequestShowTutorial: {

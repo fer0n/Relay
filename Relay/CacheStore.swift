@@ -138,4 +138,16 @@ nonisolated struct FileCache<Value: Codable> {
     func fetch(remote: () async throws -> Value) async throws -> Value {
         try await CacheStore.fetch(load: load, save: save, remote: remote)
     }
+
+    /// Drops the cached file and its fetch timestamp — for signing out of the
+    /// service the data came from, so nothing read through its API outlives
+    /// the token that fetched it.
+    ///
+    /// The in-memory memo needs no separate clearing: it's keyed on the file's
+    /// modification date, and `load()` stats the file before consulting it, so
+    /// a deleted file can never be served from it.
+    func delete() {
+        try? FileManager.default.removeItem(at: fileURL)
+        UserDefaults.standard.removeObject(forKey: lastFetchedKey)
+    }
 }

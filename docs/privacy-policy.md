@@ -4,7 +4,7 @@ title: Relay Privacy Policy
 
 # Privacy Policy for Relay
 
-**Last updated:** July 18, 2026
+**Last updated:** July 25, 2026
 
 Relay is a personal-finance utility that connects to your own YNAB and/or
 Splitwise account to add transactions and import bank statement files.
@@ -18,8 +18,9 @@ When you connect YNAB and/or Splitwise, Relay requests OAuth access to:
 
 - Read your YNAB budget, categories, and accounts, and create transactions
   in YNAB on your behalf.
-- Read your Splitwise groups and friends, and create expenses in Splitwise
-  on your behalf.
+- Read your Splitwise groups, friends, balances, shared expenses, and recent
+  account activity, and create, delete, or restore expenses in Splitwise on
+  your behalf.
 
 Relay also processes bank/CSV statement files you choose to import, solely
 to extract transaction data for import into YNAB.
@@ -36,6 +37,12 @@ to extract transaction data for import into YNAB.
   sign-in codes/tokens. Relay has no other backend: no database, no
   analytics, no third party receives data obtained through the YNAB or
   Splitwise API.
+- What Relay reads from YNAB and Splitwise to display in the app — your YNAB
+  categories and accounts, and your Splitwise friends, balances, shared
+  expense history, and recent account activity — is cached on-device so
+  screens open instantly and still show something when you're offline. These
+  caches only ever come from those APIs and go nowhere else; they're refreshed
+  in place, and deleted when you disconnect the corresponding account.
 - Imported statement files are read locally on-device to build transactions
   for YNAB; Relay does not upload or retain copies of these files beyond
   what's needed to complete the import.
@@ -56,16 +63,17 @@ to extract transaction data for import into YNAB.
 Tokens remain in the device Keychain until you disconnect an account in
 Relay or delete the app, at which point they are removed. Relay does not
 retain transaction or budget data outside of what YNAB and Splitwise
-themselves store, other than the Pending Queue and Transaction Drafts
-above, each of which is deleted as soon as it's resolved (synced,
-completed, or removed by the user).
+themselves store, other than the on-device caches, Pending Queue, and
+Transaction Drafts above. The Pending Queue and Transaction Drafts are
+deleted as soon as they're resolved (synced, completed, or removed by the
+user); the caches are deleted when you disconnect that account.
 
 ## Deleting your data
 
 - To remove Relay's access, disconnect YNAB and/or Splitwise from within the
-  app (this deletes the local tokens), and/or revoke Relay's access from
-  your YNAB or Splitwise account security settings.
-- Deleting the app removes all locally stored tokens.
+  app (this deletes the local tokens and that account's cached data), and/or
+  revoke Relay's access from your YNAB or Splitwise account security settings.
+- Deleting the app removes all locally stored tokens and cached data.
 
 ## Changes to this policy
 

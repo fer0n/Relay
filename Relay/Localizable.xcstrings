@@ -151,6 +151,9 @@
         }
       }
     },
+    "Activity" : {
+
+    },
     "Add ${amount} at ${merchant} with ${card} to YNAB" : {
       "localizations" : {
         "de" : {
@@ -672,6 +675,9 @@
           }
         }
       }
+    },
+    "Couldn't Restore" : {
+
     },
     "Create a New Shortcut" : {
       "localizations" : {
@@ -1736,6 +1742,9 @@
           }
         }
       }
+    },
+    "Restore" : {
+
     },
     "Retry" : {
       "localizations" : {

@@ -140,11 +140,20 @@ final class SplitwiseAuthService {
         return "Something went wrong while connecting to Splitwise. Please try again."
     }
 
+    /// Disconnecting is the user's data-deletion request (see CLAUDE.md's
+    /// Splitwise API Terms notes), so it drops everything read through the
+    /// token as well as the token itself — the cached friend list/balances,
+    /// every friend's expense history, and the activity feed. None of those
+    /// are reachable in the app once signed out, so keeping them on disk would
+    /// leave Splitwise data behind with no way to see or clear it.
     func signOut() {
         accessToken = nil
         KeychainStore.delete(for: Self.accessTokenKey)
         KeychainStore.delete(for: Self.refreshTokenKey)
         SplitwiseCurrentUserStore.delete()
+        SplitwiseFriendCacheStore.delete()
+        SplitwiseExpenseCacheStore.invalidateAll()
+        SplitwiseNotificationCacheStore.delete()
     }
 }
 

@@ -29,4 +29,8 @@ nonisolated enum SplitwiseFriendCacheStore {
     static func fetch(token: String) async throws -> [SplitwiseFriend] {
         try await cache.fetch { try await SplitwiseService.fetchFriends(token: token) }
     }
+
+    /// Called from `SplitwiseAuthService.signOut()` so the friend list and
+    /// balances don't outlive the token they were read with.
+    static func delete() { cache.delete() }
 }

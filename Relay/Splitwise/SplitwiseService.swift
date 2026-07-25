@@ -63,6 +63,18 @@ nonisolated enum SplitwiseService {
             .sorted { $0.date > $1.date }
     }
 
+    /// Recent account activity — the same feed the Splitwise app shows under
+    /// "Activity" — newest first, backing SplitwiseActivityView. Capped at the
+    /// same 50 entries as `fetchExpenses`; without an explicit `limit`
+    /// Splitwise returns the entire history.
+    static func fetchNotifications(token: String) async throws -> [SplitwiseNotification] {
+        let data = try await get("get_notifications", queryItems: [
+            URLQueryItem(name: "limit", value: "50"),
+        ], token: token)
+        return try decoder.decode(SplitwiseNotificationsResponse.self, from: data).notifications
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     static func createExpense(_ expense: SplitwiseExpenseRequest, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("create_expense"))
         request.httpMethod = "POST"
@@ -90,6 +102,30 @@ nonisolated enum SplitwiseService {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
+    }
+
+    /// Brings a soft-deleted expense back via the documented
+    /// `undelete_expense` endpoint — backs the Activity feed's "Restore"
+    /// action. Splitwise answers 200 even when it refused (e.g. the expense
+    /// was already restored), reporting the real outcome in the body's
+    /// `success` flag, so a 2xx alone isn't enough here.
+    static func undeleteExpense(id: Int, token: String) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("undelete_expense/\(id)"))
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response, data: data)
+
+        // Only an explicit `false` is treated as a failure: a body Relay
+        // can't parse (a shape change, an empty response) alongside a 2xx is
+        // more likely a success than not, and the caller re-fetches the feed
+        // straight after — which shows the truth either way. Guessing
+        // "failed" there would put an error in front of a restore that
+        // actually worked.
+        let result = try? decoder.decode(SplitwiseUndeleteExpenseResponse.self, from: data)
+        if result?.success == false {
+            throw SplitwiseAPIError.validation("Splitwise wouldn't restore this expense.")
+        }
     }
 
     private static func get(_ path: String, queryItems: [URLQueryItem] = [], token: String) async throws -> Data {
