@@ -36,6 +36,12 @@ final class ContinueWalletTransactionModel {
     /// recognized shortcut merchant) is written back to config.
     let isManual: Bool
 
+    /// True when this manual entry was seeded from a history entry — the
+    /// "Re-add" action — rather than started blank. Only affects presentation
+    /// (the amount field doesn't grab focus when there's already an amount to
+    /// review); everything the prefill actually set lives in the fields below.
+    let isPrefilled: Bool
+
     /// Preview/testing seam only — nil (the default) always falls through to
     /// the real Keychain check. Lets `#Preview` render the form itself
     /// instead of racing the async "Not Connected" gate.
@@ -107,6 +113,7 @@ final class ContinueWalletTransactionModel {
     init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, isAuthenticatedOverride: Bool? = nil) {
         self.draft = draft
         self.isManual = isManual
+        self.isPrefilled = prefill != nil
         self.isAuthenticatedOverride = isAuthenticatedOverride
         defaultFriend = SplitwiseDefaultFriendStore.load()
 

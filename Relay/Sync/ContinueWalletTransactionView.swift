@@ -218,8 +218,12 @@ struct ContinueWalletTransactionView: View {
     /// `.onAppear`: focusing through `@FocusState` doesn't raise the keyboard
     /// until the sheet's presentation transition has committed, which is a
     /// visible delay on every open. See that file for the details.
+    ///
+    /// A re-add skips that automatic focus — its amount is already filled in
+    /// and the form is there to be reviewed, so opening straight into the
+    /// keyboard would just cover the fields being checked.
     private var manualAmountField: some View {
-        InstantFocusTextField(text: $model.amountText, placeholder: "0")
+        InstantFocusTextField(text: $model.amountText, placeholder: "0", autoFocuses: !model.isPrefilled)
             .frame(maxWidth: .infinity)
             .frame(height: 60)
     }

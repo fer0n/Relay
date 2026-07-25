@@ -16,17 +16,27 @@
 //  in during the sheet's own layout pass, so the keyboard rises *with* the
 //  sheet rather than behind it.
 //
+//  Auto-focusing is opt-out (`autoFocuses`): it's the right call for a blank
+//  entry, where typing the amount is the first thing to do, but not for a
+//  "Re-add", which already has an amount and opens for review — raising the
+//  keyboard over the form there just hides the fields being reviewed.
+//
 
 import SwiftUI
 import UIKit
 
-/// `UITextField` that claims first responder as soon as it lands in a window.
+/// `UITextField` that claims first responder as soon as it lands in a window,
+/// unless `focusesOnAppearing` is cleared before it gets there.
 final class AutoFocusingTextField: UITextField {
+    /// Set once at creation (see `InstantFocusTextField.makeUIView`) — this
+    /// isn't a live "focus me now" switch, just whether the one automatic
+    /// grab on first appearance happens at all.
+    var focusesOnAppearing = true
     private var hasFocused = false
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard !hasFocused, window != nil else { return }
+        guard focusesOnAppearing, !hasFocused, window != nil else { return }
         hasFocused = true
         becomeFirstResponder()
     }
@@ -35,9 +45,13 @@ final class AutoFocusingTextField: UITextField {
 struct InstantFocusTextField: UIViewRepresentable {
     @Binding var text: String
     let placeholder: String
+    /// False for a pre-filled amount, which opens for review rather than for
+    /// typing — see the note in this file's header.
+    var autoFocuses: Bool = true
 
     func makeUIView(context: Context) -> AutoFocusingTextField {
         let field = AutoFocusingTextField()
+        field.focusesOnAppearing = autoFocuses
         field.addTarget(context.coordinator, action: #selector(Coordinator.textChanged(_:)), for: .editingChanged)
         field.inputAccessoryView = context.coordinator.makeDismissBar(for: field)
 
