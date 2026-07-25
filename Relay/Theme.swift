@@ -48,7 +48,7 @@ struct RowLabel: View {
             if let systemImage {
                 Image(systemName: systemImage)
                     .fontWeight(.bold)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.accentColor)
                     .frame(width: 30, alignment: .center)
             }
             Text(title)

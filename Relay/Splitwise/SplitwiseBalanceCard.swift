@@ -24,7 +24,7 @@ extension SplitwiseFriend {
     /// SplitwiseFriendTransactionsView's navigation subtitle.
     var balanceColor: Color {
         guard let amount = primaryBalance?.amount else { return .primary }
-        if amount > 0 { return .green }
+        if amount > 0 { return Color.accentColor }
         return .primary
     }
 }

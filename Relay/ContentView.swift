@@ -113,7 +113,7 @@ struct ContentView: View {
                             .padding(18)
                             .glassEffect(.regular.tint(Color.accentColor).interactive())
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.backgroundColor)
                     .matchedTransitionSource(id: "add", in: addNamespace)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.horizontal, 30)
