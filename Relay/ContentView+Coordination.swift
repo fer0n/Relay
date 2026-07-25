@@ -132,20 +132,20 @@ extension ContentView {
                 .navigationTransition(.zoom(sourceID: draft.id, in: detailNamespace))
                 .presentationBackground(Color.sheetBackgroundColor)
             }
-            .sheet(item: $manualDraft, onDismiss: reloadMainListState) { draft in
+            .sheet(item: $manualEntry, onDismiss: reloadMainListState) { entry in
                 // A re-add has no matched transition source (unlike the "+"
                 // button) — zooming from the "+" button regardless of which
                 // history row triggered it would look wrong, so that
                 // transition only applies to a from-scratch entry.
                 Group {
-                    if manualPrefillEntry == nil {
+                    if entry.prefill == nil {
                         NavigationStack {
-                            ContinueWalletTransactionView(draft: draft, isManual: true, prefill: manualPrefillEntry)
+                            ContinueWalletTransactionView(draft: entry.draft, isManual: true, prefill: nil)
                         }
                         .navigationTransition(.zoom(sourceID: "add", in: addNamespace))
                     } else {
                         NavigationStack {
-                            ContinueWalletTransactionView(draft: draft, isManual: true, prefill: manualPrefillEntry)
+                            ContinueWalletTransactionView(draft: entry.draft, isManual: true, prefill: entry.prefill)
                         }
                     }
                 }

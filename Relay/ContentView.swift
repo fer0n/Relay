@@ -25,12 +25,7 @@ struct ContentView: View {
     @State private var splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
     @State var path: [ContentRoute] = []
     @State var continueDraft: TransactionDraft?
-    @State var manualDraft: TransactionDraft?
-    /// Set alongside `manualDraft` by the "Re-add" context menu action so
-    /// the manual-entry sheet opens pre-filled with that history entry's
-    /// fields instead of blank. Nil (the "+" button's case) presents the
-    /// usual empty form.
-    @State var manualPrefillEntry: TransactionHistoryEntry?
+    @State var manualEntry: ManualEntry?
     @State var selectedHistoryEntry: TransactionHistoryEntry?
     @State var showOnboarding = false
     @Namespace var addNamespace
@@ -53,6 +48,22 @@ struct ContentView: View {
     @State var opensAutomationTutorialAfterSettings = false
     @State var importSheetContent: ImportSheetContent?
     @Environment(\.scenePhase) var scenePhase
+
+    /// What the manual-entry sheet is presenting: the blank draft it hangs
+    /// off, plus — for "Re-add" — the history entry to seed its fields from
+    /// (nil for the "+" button's usual empty form).
+    ///
+    /// Both travel *inside* the sheet's item rather than the prefill sitting
+    /// in a `@State` of its own: the sheet's content closure captured that
+    /// separate state before the "Re-add" action had set it, so the first
+    /// re-add after launch built the form with `prefill: nil` and opened
+    /// blank (and every later one silently reused the *previous* entry).
+    struct ManualEntry: Identifiable {
+        let draft: TransactionDraft
+        let prefill: TransactionHistoryEntry?
+
+        var id: UUID { draft.id }
+    }
 
     /// What the single file-import sheet should show — a just-shared file
     /// (`sharedFile`) or reopening an already-staged import (`review`).
@@ -276,8 +287,10 @@ struct ContentView: View {
     /// this file's `@State`-adjacent members) so ContentView+Coordination.swift
     /// can call it in reaction to the quick-action deep link.
     func startManualEntry(prefill: TransactionHistoryEntry?) {
-        manualPrefillEntry = prefill
-        manualDraft = TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: ""))
+        manualEntry = ManualEntry(
+            draft: TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: "")),
+            prefill: prefill
+        )
     }
 }
 
