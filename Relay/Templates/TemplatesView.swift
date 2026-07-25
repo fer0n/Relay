@@ -164,9 +164,9 @@ private struct TemplateRow: View {
         // Only meaningful once Splitwise is connected — it's the template new
         // Splitwise merchants get auto-filed under.
         if splitwiseConnected, template.isSplitwiseDefault {
-            parts.append(String(localized: "Default for new merchants"))
+            parts.append(String(localized: "Default"))
         }
-        parts.append("\(template.autoMatch.count) auto-match rule\(template.autoMatch.count == 1 ? "" : "s")")
+        parts.append("\(template.autoMatch.count) rule\(template.autoMatch.count == 1 ? "" : "s")")
         if splitwiseConnected, template.splitwiseOption != .never {
             parts.append(template.splitwiseOption.label)
         }

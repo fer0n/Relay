@@ -44,9 +44,14 @@ nonisolated enum FileImportHistoryStore {
     /// most recently added.
     static func record(_ ids: [String], destination: FileImportDestination) {
         var history = load()
+        // `recentIds` is capped at `recentLimit`, so the linear `contains`
+        // this replaces was up to `recentLimit` comparisons per id — a Set
+        // built once makes each dedup check O(1). The array stays the source
+        // of truth for order (the cap trims oldest-first).
+        var present = Set(history.recentIds)
         for id in ids {
             let namespaced = key(id, destination)
-            if !history.recentIds.contains(namespaced) {
+            if present.insert(namespaced).inserted {
                 history.recentIds.append(namespaced)
             }
         }
@@ -63,7 +68,8 @@ nonisolated enum FileImportHistoryStore {
     /// `record`.
     static func merge(_ incoming: FileImportHistory) {
         var history = load()
-        for id in incoming.recentIds where !history.recentIds.contains(id) {
+        var present = Set(history.recentIds)
+        for id in incoming.recentIds where present.insert(id).inserted {
             history.recentIds.append(id)
         }
         if history.recentIds.count > recentLimit {

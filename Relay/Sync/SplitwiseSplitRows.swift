@@ -74,8 +74,7 @@ struct SplitwiseFriendPickerRow: View {
                     Button(noneLabel) { selectedFriendId = nil }
                     splitwiseFriendMenuButtons(friends) { selectedFriendId = $0.id }
                 } label: {
-                    Text(friends.first { $0.id == selectedFriendId }?.fullName ?? noneLabel)
-                        .lineLimit(1)
+                    MenuPickerLabel { Text(friends.first { $0.id == selectedFriendId }?.fullName ?? noneLabel) }
                 }
                 .tint(Color.foregroundColor)
             }

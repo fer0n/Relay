@@ -30,9 +30,8 @@ struct TemplatePickerRow: View {
                     Button(name) { choice = name }
                 }
             } label: {
-                Text(choice ?? "Select")
+                MenuPickerLabel { Text(choice ?? "Select") }
                     .foregroundStyle(choice == nil ? Color.accentColor : Color.primary)
-                    .lineLimit(1)
             }
         }
         .cardRowBackground()

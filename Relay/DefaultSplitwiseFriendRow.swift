@@ -15,20 +15,16 @@ struct DefaultSplitwiseFriendRow: View {
     var body: some View {
         HStack {
             Text("Split with (default)")
-            
-        Menu {
-            splitwiseFriendMenuButtons(friends) { select($0) }
-            if defaultFriend != nil {
-                Divider()
-                Button("Clear", role: .destructive, action: clear)
-            }
-        } label: {
-                Spacer()
-                Text(defaultFriend?.fullName ?? "None")
+            Spacer()
+            Menu {
+                splitwiseFriendMenuButtons(friends) { select($0) }
+                if defaultFriend != nil {
+                    Divider()
+                    Button("Clear", role: .destructive, action: clear)
+                }
+            } label: {
+                MenuPickerLabel { Text(defaultFriend?.fullName ?? "None") }
                     .foregroundStyle(.secondary)
-                Image(systemName: "chevron.up.chevron.down")
-                    .foregroundStyle(.secondary)
-                    .imageScale(.small)
             }
             .contentShape(Rectangle())
         }

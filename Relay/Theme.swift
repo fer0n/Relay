@@ -61,6 +61,24 @@ struct RowLabel: View {
     }
 }
 
+/// The collapsed label content shared by every `Menu`-based picker in the
+/// app (`MenuPickerField`, plus the hand-rolled template/friend pickers that
+/// can't use a real `Picker` — see their own comments for why) — the
+/// caller's content plus the trailing `chevron.up.chevron.down` indicator
+/// that marks it as a picker, matching what a native `Picker` shows.
+struct MenuPickerLabel<Label: View>: View {
+    @ViewBuilder var label: () -> Label
+
+    var body: some View {
+        HStack(spacing: 4) {
+            label()
+                .lineLimit(1)
+            Image(systemName: "chevron.up.chevron.down")
+                .imageScale(.small)
+        }
+    }
+}
+
 /// A menu-style `Picker` whose collapsed button shows a caller-supplied
 /// label instead of the system-derived one. A plain `Picker(...)
 /// .pickerStyle(.menu).labelsHidden()` has a longstanding SwiftUI bug where
@@ -82,8 +100,7 @@ struct MenuPickerField<Selection: Hashable, Content: View>: View {
                 EmptyView()
             }
         } label: {
-            Text(label)
-                .lineLimit(1)
+            MenuPickerLabel { Text(label) }
         }
         .tint(Color.foregroundColor)
     }

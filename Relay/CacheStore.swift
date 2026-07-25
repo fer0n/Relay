@@ -49,20 +49,77 @@ nonisolated enum CacheStore {
 nonisolated struct FileCache<Value: Codable> {
     private let fileURL: URL
     private let lastFetchedKey: String
+    private let memo = Memo()
 
     init(fileName: String) {
         fileURL = ApplicationSupportFile.url(fileName)
         lastFetchedKey = "cache.\(fileName).lastFetchedAt"
     }
 
+    /// In-memory copy of the last decoded value, so repeated `load()`s don't
+    /// re-read and re-decode the whole file. `load()` is called from view
+    /// bodies — every row of ContentView's "Recent" list resolves a category
+    /// or friend name through it (see `PendingOperation.Payload.detail`) — so
+    /// a fresh read plus a full decode per call meant a dozen file reads per
+    /// body pass, which showed up as dropped frames while scrolling.
+    ///
+    /// Keyed on the file's modification date rather than only being
+    /// invalidated by `save()`: that costs one stat instead of a decode, and
+    /// stays honest if the file is ever replaced by something other than
+    /// this instance (a restore, a future intent) instead of silently
+    /// serving a stale value.
+    private final class Memo: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value: Value?
+        private var modifiedAt: Date?
+
+        /// The memoized value, or nil when there isn't one for `date` and the
+        /// caller should decode. Only successful decodes are stored, so a nil
+        /// return is unambiguously a miss rather than a cached failure.
+        func value(modifiedAt date: Date) -> Value? {
+            lock.lock()
+            defer { lock.unlock() }
+            return modifiedAt == date ? value : nil
+        }
+
+        func store(_ newValue: Value, modifiedAt date: Date) {
+            lock.lock()
+            defer { lock.unlock() }
+            value = newValue
+            modifiedAt = date
+        }
+    }
+
+    /// A fresh stat every call — `FileManager` doesn't cache these the way
+    /// `URL.resourceValues` can, which matters since this is exactly what
+    /// tells the memo the file changed underneath it.
+    private static func modificationDate(of url: URL) -> Date? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false)) else { return nil }
+        return attributes[.modificationDate] as? Date
+    }
+
     func load() -> Value? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? JSONDecoder().decode(Value.self, from: data)
+        let modifiedAt = Self.modificationDate(of: fileURL)
+        if let modifiedAt, let memoized = memo.value(modifiedAt: modifiedAt) {
+            return memoized
+        }
+        guard let data = try? Data(contentsOf: fileURL),
+              let decoded = try? JSONDecoder().decode(Value.self, from: data) else { return nil }
+        if let modifiedAt {
+            memo.store(decoded, modifiedAt: modifiedAt)
+        }
+        return decoded
     }
 
     func save(_ value: Value) {
         guard let data = try? JSONEncoder().encode(value) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        let didWrite = (try? data.write(to: fileURL, options: .atomic)) != nil
+        // Only memo a value that actually reached disk — otherwise it'd be
+        // filed under the *previous* file's modification date and served as
+        // though it were the file's contents.
+        if didWrite, let modifiedAt = Self.modificationDate(of: fileURL) {
+            memo.store(value, modifiedAt: modifiedAt)
+        }
         UserDefaults.standard.set(Date(), forKey: lastFetchedKey)
     }
 

@@ -95,10 +95,11 @@ private struct DraftDetailContent: View {
 private struct ReadOnlyDetailContent<Sections: View>: View {
     let amount: String
     let serviceIcons: [String]
-    /// When this transaction happened — shown as a live-updating relative
-    /// time (e.g. "1 day ago") alongside `serviceIcons`, rather than a
-    /// pre-formatted string, so it keeps ticking forward while the sheet
-    /// stays open.
+    /// When this transaction happened — shown as a single-unit relative time
+    /// (e.g. "1 day ago") alongside `serviceIcons`, live-updating via
+    /// `FuzzyDateText`. Its schedule backs off to a coarser tick interval
+    /// once the near-term buckets are past, so an open detail sheet doesn't
+    /// re-invalidate the view graph every second for a day-old transaction.
     let date: Date
     /// An optional icon + text line shown above the service-icons/timestamp
     /// line — e.g. Splitwise's "Paid by" line. Nil shows nothing.
@@ -130,14 +131,12 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     }
-                    TimelineView(.periodic(from: date, by: 1)) { context in
-                        HStack(spacing: 6) {
-                            ForEach(serviceIcons, id: \.self) { icon in
-                                Image(systemName: icon)
-                            }
-                            Text(date.fuzzyRelative(to: context.date))
-                                .monospacedDigit()
+                    HStack(spacing: 6) {
+                        ForEach(serviceIcons, id: \.self) { icon in
+                            Image(systemName: icon)
                         }
+                        FuzzyDateText(date: date)
+                            .monospacedDigit()
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

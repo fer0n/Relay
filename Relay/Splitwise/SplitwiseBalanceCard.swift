@@ -77,6 +77,24 @@ struct SplitwiseBalanceCard: View {
     private var iconNegativePadding: CGFloat { size == .large ? 0 : 5 }
 
     var body: some View {
+        Group {
+            if size == .large {
+                cardContent
+                    .padding(outerPadding)
+                    .frame(maxWidth: maxWidth, minHeight: 100, alignment: .topLeading)
+                    .background(Color.sheetInsetColor, in: RoundedRectangle(cornerRadius: innerDiameter / 2 + outerPadding - iconNegativePadding, style: .continuous))
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: innerDiameter / 2 + outerPadding - iconNegativePadding, style: .continuous))
+            } else {
+                cardContent
+                    .padding(outerPadding)
+                    .frame(maxWidth: maxWidth, minHeight: 100, alignment: .topLeading)
+                    .background(Color.sheetInsetColor, in: RoundedRectangle(cornerRadius: innerDiameter / 2 + outerPadding - iconNegativePadding, style: .continuous))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var cardContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center) {
                 Image(systemName: "person.fill")
@@ -101,25 +119,15 @@ struct SplitwiseBalanceCard: View {
             nameText
 
             if let lastRefreshedAt {
-                // A coarse, single-unit "time ago" instead of Text's built-in
-                // `.relative` style, which counts every second across two
-                // units ("1 min, 3 sec ago") and jitters in width. TimelineView
-                // ticks it each second; the string only changes once per unit
-                // step, and monospaced digits keep the width stable.
-                TimelineView(.periodic(from: lastRefreshedAt, by: 1)) { context in
-                    Text(lastRefreshedAt.fuzzyRelative(to: context.date))
-                        .font(.caption2)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .padding(.leading, 5)
-                        .padding(.top, 2)
-                }
+                FuzzyDateText(date: lastRefreshedAt)
+                    .font(.caption2)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.leading, 5)
+                    .padding(.top, 2)
             }
         }
-        .padding(outerPadding)
-        .frame(maxWidth: maxWidth, minHeight: 100, alignment: .topLeading)
-        .background(Color.sheetInsetColor, in: RoundedRectangle(cornerRadius: innerDiameter / 2 + outerPadding - iconNegativePadding, style: .continuous))
     }
 
     @ViewBuilder

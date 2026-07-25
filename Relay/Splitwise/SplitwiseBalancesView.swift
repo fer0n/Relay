@@ -21,32 +21,38 @@ import SwiftUI
 struct SplitwiseBalancesView: View {
     @State private var friends = SplitwiseFriendCacheStore.load()?.partitionedByBalance.outstanding ?? []
     @State private var lastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
-    /// Advanced by `clock` so `lastRefreshedSubtitle` re-renders live.
-    /// `navigationSubtitle` takes only a `Text` (which can't embed the balance
-    /// card's TimelineView), so the tick has to come from state here.
-    @State private var now = Date()
 
     static let spacing: CGFloat = 10
 
     private let columns = [GridItem(.flexible(), spacing: spacing), GridItem(.flexible(), spacing: spacing)]
-    /// A coarse 60s tick, not per-second: the subtitle is fuzzy (whole minutes
-    /// past the first minute), so a minute cadence keeps it roughly current
-    /// without re-rendering the screen every second.
-    private let clock = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: SplitwiseBalancesView.spacing) {
-                ForEach(friends, id: \.id) { friend in
-                    NavigationLink {
-                        SplitwiseFriendTransactionsView(friend: friend)
-                    } label: {
-                        SplitwiseBalanceCard(friend: friend, size: .compact, maxWidth: .infinity)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: SplitwiseBalancesView.spacing) {
+                        ForEach(friends, id: \.id) { friend in
+                            NavigationLink {
+                                SplitwiseFriendTransactionsView(friend: friend)
+                            } label: {
+                                SplitwiseBalanceCard(friend: friend, size: .compact, maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 16)
+
+                    if let lastRefreshedAt {
+                        FuzzyDateText(date: lastRefreshedAt)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
+                .padding()
+                .frame(minHeight: geometry.size.height)
             }
-            .padding()
         }
         .background {
             Color.backgroundColor
@@ -55,26 +61,12 @@ struct SplitwiseBalancesView: View {
             }
         }
         .navigationTitle("Balances")
-        .navigationSubtitle(lastRefreshedSubtitle)
         .refreshable { await refresh(force: true) }
         // Same throttle-unless-forced pattern as ContentView's
         // refreshDefaultSplitwiseFriend — re-running `.task` on every
         // navigation back to this screen shouldn't hit the API if the cache
         // is still fresh.
         .task { await refresh(force: false) }
-        .onReceive(clock) { now = $0 }
-    }
-
-    /// Live, single-unit "x min ago" in the nav sub header, replacing the old
-    /// verbose "Last refreshed …" that was computed once per render (so it
-    /// stayed frozen between refreshes). `navigationSubtitle` only accepts a
-    /// `Text`, so — unlike the balance card's embedded TimelineView — this
-    /// recomputes from `now` (ticked by `clock`); `fuzzyRelative` is coarse,
-    /// so the text only changes on a unit step, and `Text.monospacedDigit()`
-    /// keeps the width from jumping.
-    private var lastRefreshedSubtitle: Text {
-        guard let lastRefreshedAt else { return Text("") }
-        return Text(lastRefreshedAt.fuzzyRelative(to: now)).monospacedDigit()
     }
 
     private func refresh(force: Bool) async {

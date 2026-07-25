@@ -125,6 +125,12 @@
         }
       }
     },
+    "1 min ago" : {
+
+    },
+    "30s ago" : {
+
+    },
     "Access Tokens" : {
       "localizations" : {
         "de" : {
@@ -737,7 +743,7 @@
         }
       }
     },
-    "Default for new merchants" : {
+    "Default" : {
 
     },
     "Delete" : {
@@ -1446,6 +1452,9 @@
           }
         }
       }
+    },
+    "Now" : {
+
     },
     "OK" : {
       "localizations" : {
