@@ -222,11 +222,11 @@ struct ContentView: View {
         .themedList(background: .backgroundColor)
         .statusBarBackground()
         // Runs once for this view's lifetime (mainList is only ever created
-        // once per app launch) rather than on every foreground/appearance —
+        // once per app launch) rather than on every appearance —
         // reloadMainListState() already re-reads the disk cache cheaply for
-        // those; this is the one place that automatically calls the
-        // Splitwise API, to keep the balance card fresh without hammering
-        // it. Pull-to-refresh below can still trigger it again on demand.
+        // those. Foregrounding also live-refreshes, via
+        // withLifecycleHandlers in ContentView+Coordination.swift. Pull-to-
+        // refresh below can still trigger it again on demand.
         .task { await refreshDefaultSplitwiseFriend(force: false) }
         .refreshable { await refreshDefaultSplitwiseFriend(force: true) }
     }
@@ -251,13 +251,15 @@ struct ContentView: View {
     }
 
     /// Live-fetches the friend list and updates the balance card from it —
-    /// shared by `mainList`'s `.task` and its pull-to-refresh. `force` is
-    /// false for `.task` (which re-runs on every navigation back to the
-    /// root) so a recent cache is left untouched — keeping the "Last
+    /// shared by `mainList`'s `.task`, its pull-to-refresh, and foregrounding
+    /// (ContentView+Coordination.swift). `force` is false for `.task` and
+    /// foregrounding so a recent cache is left untouched — keeping the "Last
     /// refreshed …" timestamp stable rather than resetting it on each
     /// visit — and true for pull-to-refresh so pulling down always
-    /// re-fetches regardless of how fresh the cache is.
-    private func refreshDefaultSplitwiseFriend(force: Bool) async {
+    /// re-fetches regardless of how fresh the cache is. Non-private so
+    /// ContentView+Coordination.swift can call it, same reasoning as
+    /// startManualEntry above.
+    func refreshDefaultSplitwiseFriend(force: Bool) async {
         guard force || SplitwiseFriendCacheStore.isStale else { return }
         guard let defaultId = SplitwiseDefaultFriendStore.load()?.id,
               let token = SplitwiseAuthService.currentAccessToken else { return }

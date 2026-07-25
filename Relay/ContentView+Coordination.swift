@@ -28,6 +28,7 @@ extension ContentView {
                 if newPhase == .active {
                     Task { await pendingQueue.flush() }
                     reloadMainListState()
+                    Task { await refreshDefaultSplitwiseFriend(force: false) }
                 }
             }
             // A tapped draft notification opens the draft as a sheet,
