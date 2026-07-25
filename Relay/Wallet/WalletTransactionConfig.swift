@@ -205,14 +205,50 @@ struct WalletTransactionConfig: Codable {
         if let info = merchants[merchantText] {
             return info
         }
-        for (templateName, template) in templates {
-            for rule in template.autoMatch {
+        for templateName in templates.keys.sorted() {
+            for rule in templates[templateName]?.autoMatch ?? [] {
                 if merchantText.range(of: rule.pattern, options: [.regularExpression, .caseInsensitive]) != nil {
                     return MerchantInfo(payeeName: rule.payeeName, templateName: templateName)
                 }
             }
         }
         return nil
+    }
+
+    /// The template a *already-created* transaction was filed under, worked
+    /// backwards from what got stored with it. TransactionHistoryEntry
+    /// records the transaction, not the template behind it, so "Re-add" has
+    /// to invert the same mappings that produced the payee in the first
+    /// place — in the order resolution originally ran:
+    ///
+    /// 1. the merchant's own mapping, when the run recorded a merchant
+    ///    (`TransactionHistoryEntry.merchant`) — the exact lookup the
+    ///    original submit did;
+    /// 2. whichever per-merchant mapping or auto-match rule *names* this
+    ///    payee, since that name is precisely what such a rule emits;
+    /// 3. a template named after the payee, which is what the manual
+    ///    Splitwise submit path creates when no template is picked.
+    ///
+    /// Nil when the payee was typed freehand and never linked to anything,
+    /// and for a mapping pointing at a since-deleted template — the picker
+    /// then opens unset rather than on a name it can't offer. Resolving
+    /// against the *current* config (rather than a name frozen into the
+    /// history entry) also means a template renamed since still resolves.
+    func templateName(forPayeeName payeeName: String, merchant: String?) -> String? {
+        if let merchant, let info = resolvedMerchantInfo(for: merchant), templates[info.templateName] != nil {
+            return info.templateName
+        }
+        // Sorted rather than straight dictionary iteration so an ambiguous
+        // config (the same payee named by two templates) resolves to the
+        // same one every time instead of varying per launch.
+        for merchantText in merchants.keys.sorted() {
+            guard let info = merchants[merchantText], info.payeeName == payeeName else { continue }
+            if templates[info.templateName] != nil { return info.templateName }
+        }
+        for templateName in templates.keys.sorted() where templates[templateName]?.autoMatch.contains(where: { $0.payeeName == payeeName }) == true {
+            return templateName
+        }
+        return templates[payeeName] != nil ? payeeName : nil
     }
 }
 

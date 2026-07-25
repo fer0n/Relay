@@ -127,7 +127,7 @@ final class ContinueWalletTransactionModel {
                 selectedFriendId = defaultFriend.id
             }
             if let prefill {
-                applyPrefill(prefill)
+                applyPrefill(prefill, config: config)
             } else {
                 selectedAccountId = Self.loadLastManualAccountId()
                 splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (startMode == .splitwise ? .always : .never)
@@ -240,7 +240,7 @@ final class ContinueWalletTransactionModel {
     /// which opens this sheet pre-filled instead of resubmitting silently,
     /// so the user can review or tweak it (a different amount, account,
     /// category, ...) before it's actually created again.
-    private func applyPrefill(_ entry: TransactionHistoryEntry) {
+    private func applyPrefill(_ entry: TransactionHistoryEntry, config: WalletTransactionConfig) {
         switch entry.payload {
         case .ynabTransaction(let transaction):
             amountText = (abs(Double(transaction.amount)) / Const.milliunitsPerUnit).asMoneyString
@@ -254,6 +254,17 @@ final class ContinueWalletTransactionModel {
             amountText = (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
             payeeText = expense.description
         }
+
+        // The history entry stores the transaction, not the template it came
+        // from, so the template is worked backwards out of the config (see
+        // templateName(forPayeeName:merchant:)). Assigned directly rather
+        // than through applyTemplate(): the fields a template would push —
+        // category, split option, friend — are already being seeded from the
+        // entry itself just above/below, and are what a re-add should
+        // reproduce. `.onChange(of: model.templateChoice)` in the view
+        // doesn't fire for a value set here in init, so it won't overwrite
+        // them either.
+        templateChoice = config.templateName(forPayeeName: payeeText, merchant: entry.merchant)
 
         let splitExpense: SplitwiseExpenseRequest?
         if let split = entry.split {
