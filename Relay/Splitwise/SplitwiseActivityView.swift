@@ -43,6 +43,7 @@ struct SplitwiseActivityView: View {
                 if let expenseId = item.restorableExpenseId {
                     SplitwiseActivityRow(item: item)
                         .cardRowBackground()
+                        .transition(.contentRow)
                         .contextMenu {
                             Button {
                                 Task { await restore(expenseId: expenseId) }
@@ -54,6 +55,7 @@ struct SplitwiseActivityView: View {
                 } else {
                     SplitwiseActivityRow(item: item)
                         .cardRowBackground()
+                        .transition(.contentRow)
                 }
             }
 
@@ -97,7 +99,8 @@ struct SplitwiseActivityView: View {
         }
         guard force || SplitwiseNotificationCacheStore.isStale else { return }
         do {
-            items = SplitwiseActivityItem.items(for: try await SplitwiseNotificationCacheStore.fetch(token: token))
+            let fetched = SplitwiseActivityItem.items(for: try await SplitwiseNotificationCacheStore.fetch(token: token))
+            withAnimation { items = fetched }
             lastRefreshedAt = SplitwiseNotificationCacheStore.lastFetchedAt
             loadError = nil
         } catch {

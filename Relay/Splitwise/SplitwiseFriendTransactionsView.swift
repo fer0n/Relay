@@ -70,6 +70,7 @@ struct SplitwiseFriendTransactionsView: View {
                     }
                     .cardRowBackground()
                     .matchedTransitionSource(id: expense.id, in: detailNamespace)
+                    .transition(.contentRow)
                     .swipeActions {
                         Button {
                             expensePendingDelete = expense
@@ -97,7 +98,9 @@ struct SplitwiseFriendTransactionsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await load(force: true) }
         .task {
-            expenses = SplitwiseExpenseCacheStore.load(friendId: friend.id) ?? []
+            withAnimation {
+                expenses = SplitwiseExpenseCacheStore.load(friendId: friend.id) ?? []
+            }
             lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
             // Navigating away and back recreates this view, re-running
             // `.task`; load(force: false) throttles each fetch on its own
@@ -170,7 +173,8 @@ struct SplitwiseFriendTransactionsView: View {
         }
         if force || SplitwiseExpenseCacheStore.isStale(friendId: friend.id) {
             do {
-                expenses = try await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token)
+                let fetched = try await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token)
+                withAnimation { expenses = fetched }
                 lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
                 loadError = nil
             } catch {
@@ -200,7 +204,7 @@ struct SplitwiseFriendTransactionsView: View {
             throw SplitwiseAPIError.unauthorized
         }
         try await SplitwiseService.deleteExpense(id: expense.id, token: token)
-        expenses.removeAll { $0.id == expense.id }
+        withAnimation { expenses.removeAll { $0.id == expense.id } }
         SplitwiseExpenseCacheStore.save(friendId: friend.id, expenses)
         if let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
             refreshedFriend = updated
