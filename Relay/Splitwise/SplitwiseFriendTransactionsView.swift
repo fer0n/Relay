@@ -42,8 +42,16 @@ struct SplitwiseFriendTransactionsView: View {
     var body: some View {
         List {
             Section {
-                SplitwiseBalanceCard(friend: displayFriend, lastRefreshedAt: lastRefreshedAt)
+                SplitwiseBalanceCard(friend: displayFriend, lastRefreshedAt: lastRefreshedAt, maxWidth: .infinity)
                     .frame(maxWidth: .infinity)
+                    .listRowInsets(
+                        .init(
+                            top: 0,
+                            leading: 0,
+                            bottom: 0,
+                            trailing: 0
+                        )
+                    )
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.backgroundColor)
             }
@@ -86,7 +94,6 @@ struct SplitwiseFriendTransactionsView: View {
             }
         }
         .themedList(background: .backgroundColor)
-        .contentMargins(.top, 0, for: .scrollContent)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await load(force: true) }
         .task {
