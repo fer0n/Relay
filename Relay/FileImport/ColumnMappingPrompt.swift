@@ -104,7 +104,7 @@ private struct ColumnMappingSheet<Entity: Identifiable, RowContent: View>: View 
                 .buttonStyle(.plain)
                 .cardRowBackground()
             }
-            .themedList(background: .sheetBackgroundColor)
+            .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
             .navigationTitle(dialog)
             #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)

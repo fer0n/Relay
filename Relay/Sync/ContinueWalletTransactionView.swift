@@ -181,7 +181,7 @@ struct ContinueWalletTransactionView: View {
                 DiscardSection(confirmationTitle: "Discard this draft?", onConfirm: onDiscard)
             }
         }
-        .themedList(background: .sheetBackgroundColor)
+        .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
         .animation(.default, value: model.resolvedSplitwiseAction)
         .onChange(of: model.templateChoice) { _, newTemplate in
             model.applyTemplate(newTemplate)

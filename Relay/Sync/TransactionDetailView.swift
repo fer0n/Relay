@@ -152,7 +152,7 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
                 DiscardSection(label: destroyLabel, confirmationTitle: destroyConfirmationTitle, onConfirm: onDestroy)
             }
         }
-        .themedList(background: .sheetBackgroundColor)
+        .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

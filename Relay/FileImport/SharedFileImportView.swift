@@ -270,7 +270,7 @@ struct SharedFileImportView: View {
     /// at all (e.g. a stale badge count).
     private var emptyList: some View {
         List {}
-            .themedList(background: .sheetBackgroundColor)
+            .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
             .overlay {
                 EmptyListBackground(systemName: "doc.badge.plus")
             }
@@ -347,7 +347,7 @@ struct SharedFileImportView: View {
                 .listRowBackground(Color.sheetBackgroundColor)
             }
         }
-        .themedList(background: .sheetBackgroundColor)
+        .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
         #if !os(macOS)
         .environment(\.editMode, $editMode)
         #endif

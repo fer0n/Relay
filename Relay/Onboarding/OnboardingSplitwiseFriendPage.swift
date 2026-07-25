@@ -36,7 +36,7 @@ struct OnboardingSplitwiseFriendPage: View {
                         friendRow(friend)
                     }
                 }
-                .themedList(background: .sheetBackgroundColor)
+                .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
             }
         }
         .task(id: splitwiseAuth.accessToken) {

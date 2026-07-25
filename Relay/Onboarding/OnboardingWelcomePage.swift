@@ -34,7 +34,7 @@ struct OnboardingWelcomePage: View {
             }
             .cardRowBackground()
         }
-        .themedList(background: .sheetBackgroundColor)
+        .themedList(background: .sheetBackgroundColor, rowInsetColor: .sheetRowColor)
         .alert(
             "Couldn't Connect to YNAB",
             isPresented: Binding(
