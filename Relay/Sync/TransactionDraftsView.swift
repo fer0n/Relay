@@ -28,9 +28,11 @@ struct TransactionDraftsView: View {
                 .cardRowBackground()
                 .matchedTransitionSource(id: draft.id, in: detailNamespace)
                 .swipeActions {
-                    Button("Dismiss", role: .destructive) {
+                    Button(role: .destructive) {
                         TransactionDraftGuard.complete(draft.id)
                         drafts.removeAll { $0.id == draft.id }
+                    } label: {
+                        Image(systemName: "trash.fill")
                     }
                 }
             }

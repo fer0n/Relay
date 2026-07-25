@@ -89,8 +89,10 @@ struct ContentDraftsSection: View {
                 .cardRowBackground()
                 .matchedTransitionSource(id: draft.id, in: namespace)
                 .swipeActions {
-                    Button("Dismiss", role: .destructive) {
+                    Button(role: .destructive) {
                         onDismiss(draft)
+                    } label: {
+                        Image(systemName: "trash.fill")
                     }
                 }
             }

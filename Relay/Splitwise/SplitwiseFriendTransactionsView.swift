@@ -27,6 +27,12 @@ struct SplitwiseFriendTransactionsView: View {
     /// When this friend's expenses were last live-fetched — passed to the
     /// balance card's "Last refreshed …" line, same as ContentView's card.
     @State private var lastRefreshedAt: Date?
+    /// Set by the swipe action's "Delete" button to gate a confirmation
+    /// before actually deleting — attached to the row itself (not the swipe
+    /// button) so the dialog gets the correct appear transition on iOS 26;
+    /// anchoring it to a control inside `.swipeActions` animates wrong since
+    /// that control is already being torn down as the swipe closes.
+    @State private var expensePendingDelete: SplitwiseExpense?
     @Namespace private var detailNamespace
 
     /// The freshest friend we have: the live-refreshed record if `load()` has
@@ -57,6 +63,21 @@ struct SplitwiseFriendTransactionsView: View {
                     .cardRowBackground()
                     .matchedTransitionSource(id: expense.id, in: detailNamespace)
                     .swipeActions {
+                        Button {
+                            expensePendingDelete = expense
+                        } label: {
+                            Image(systemName: "trash.fill")
+                        }
+                        .tint(.red)
+                    }
+                    .confirmationDialog(
+                        "Delete this expense?",
+                        isPresented: Binding(
+                            get: { expensePendingDelete?.id == expense.id },
+                            set: { if !$0 { expensePendingDelete = nil } }
+                        ),
+                        titleVisibility: .visible
+                    ) {
                         Button("Delete", role: .destructive) {
                             Task { await deleteWithSwipe(expense) }
                         }
