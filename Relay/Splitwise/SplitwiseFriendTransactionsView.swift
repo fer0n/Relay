@@ -24,6 +24,7 @@ struct SplitwiseFriendTransactionsView: View {
     /// tracks the same data that refreshes ContentView's balance card rather
     /// than staying frozen on the push-time snapshot.
     @State private var refreshedFriend: SplitwiseFriend?
+    @Namespace private var detailNamespace
 
     /// The freshest friend we have: the live-refreshed record if `load()` has
     /// run, otherwise the push-time snapshot.
@@ -44,6 +45,7 @@ struct SplitwiseFriendTransactionsView: View {
                         row(for: expense)
                     }
                     .cardRowBackground()
+                    .matchedTransitionSource(id: expense.id, in: detailNamespace)
                     .swipeActions {
                         Button("Delete", role: .destructive) {
                             Task { await deleteWithSwipe(expense) }
@@ -68,6 +70,7 @@ struct SplitwiseFriendTransactionsView: View {
             NavigationStack {
                 TransactionDetailView(source: .splitwiseExpense(expense, friendName: friend.shortName, onDelete: { try await delete(expense) }))
             }
+            .navigationTransition(.zoom(sourceID: expense.id, in: detailNamespace))
             .presentationBackground(Color.sheetBackgroundColor)
         }
         .alert("Couldn't Delete", isPresented: .init(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {

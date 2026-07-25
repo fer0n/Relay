@@ -114,6 +114,7 @@ extension ContentView {
                 NavigationStack {
                     TransactionDetailView(source: .draft(id: draft.id))
                 }
+                .navigationTransition(.zoom(sourceID: draft.id, in: detailNamespace))
                 .presentationBackground(Color.sheetBackgroundColor)
             }
             .sheet(item: $manualDraft, onDismiss: reloadMainListState) { draft in
@@ -139,6 +140,7 @@ extension ContentView {
                 NavigationStack {
                     TransactionDetailView(source: .history(entry))
                 }
+                .navigationTransition(.zoom(sourceID: entry.id, in: detailNamespace))
                 .presentationBackground(Color.sheetBackgroundColor)
             }
             .sheet(item: $importSheetContent) { content in

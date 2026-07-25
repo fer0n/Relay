@@ -74,6 +74,7 @@ struct ContentQuickLinksSection: View {
 struct ContentDraftsSection: View {
     let drafts: [TransactionDraft]
     let hasMore: Bool
+    let namespace: Namespace.ID
     let onContinue: (TransactionDraft) -> Void
     let onDismiss: (TransactionDraft) -> Void
 
@@ -86,6 +87,7 @@ struct ContentDraftsSection: View {
                     TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount)
                 }
                 .cardRowBackground()
+                .matchedTransitionSource(id: draft.id, in: namespace)
                 .swipeActions {
                     Button("Dismiss", role: .destructive) {
                         onDismiss(draft)
@@ -106,6 +108,7 @@ struct ContentDraftsSection: View {
 /// offering "Re-add" from a context menu.
 struct ContentRecentSection: View {
     let history: [TransactionHistoryEntry]
+    let namespace: Namespace.ID
     let onSelect: (TransactionHistoryEntry) -> Void
     let onReAdd: (TransactionHistoryEntry) -> Void
 
@@ -125,6 +128,7 @@ struct ContentRecentSection: View {
                     )
                 }
                 .cardRowBackground()
+                .matchedTransitionSource(id: entry.id, in: namespace)
                 .contextMenu {
                     Button {
                         onReAdd(entry)

@@ -34,6 +34,10 @@ struct ContentView: View {
     @State var selectedHistoryEntry: TransactionHistoryEntry?
     @State var showOnboarding = false
     @Namespace var addNamespace
+    /// Shared by every row that opens `TransactionDetailView` as a sheet (the
+    /// Drafts and Recent sections below) so the sheet zooms in from
+    /// whichever row was actually tapped.
+    @Namespace var detailNamespace
     @State var showAutomationTutorial = false
     /// Set by OnboardingView's "Setup" button, consumed once onboarding's
     /// sheet has actually finished dismissing — presenting the tutorial
@@ -193,6 +197,7 @@ struct ContentView: View {
                 ContentDraftsSection(
                     drafts: topDrafts,
                     hasMore: drafts.count > topDrafts.count,
+                    namespace: detailNamespace,
                     onContinue: { continueDraft = $0 },
                     onDismiss: { draft in
                         TransactionDraftGuard.complete(draft.id)
@@ -205,6 +210,7 @@ struct ContentView: View {
             if !history.isEmpty {
                 ContentRecentSection(
                     history: history,
+                    namespace: detailNamespace,
                     onSelect: { selectedHistoryEntry = $0 },
                     onReAdd: { startManualEntry(prefill: $0) }
                 )

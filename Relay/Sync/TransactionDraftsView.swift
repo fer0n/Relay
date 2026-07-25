@@ -15,6 +15,7 @@ import SwiftUI
 struct TransactionDraftsView: View {
     @State private var drafts: [TransactionDraft] = TransactionDraftStore.load()
     @State private var selectedDraft: TransactionDraft?
+    @Namespace private var detailNamespace
 
     var body: some View {
         List {
@@ -25,6 +26,7 @@ struct TransactionDraftsView: View {
                     TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount)
                 }
                 .cardRowBackground()
+                .matchedTransitionSource(id: draft.id, in: detailNamespace)
                 .swipeActions {
                     Button("Dismiss", role: .destructive) {
                         TransactionDraftGuard.complete(draft.id)
@@ -48,6 +50,7 @@ struct TransactionDraftsView: View {
             NavigationStack {
                 TransactionDetailView(source: .draft(id: draft.id))
             }
+            .navigationTransition(.zoom(sourceID: draft.id, in: detailNamespace))
             .presentationBackground(Color.sheetBackgroundColor)
         }
     }
