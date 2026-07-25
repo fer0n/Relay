@@ -108,6 +108,8 @@ struct SplitwiseBalanceCard: View {
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                    .contentTransition(.numericText())
+                    .animation(.default, value: friend.formattedBalanceText)
             }
 
             Spacer(minLength: 20)

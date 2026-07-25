@@ -20,10 +20,13 @@ struct SplitwiseFriendTransactionsView: View {
     @State private var loadError: String?
     @State private var selectedExpense: SplitwiseExpense?
     @State private var deleteError: String?
-    /// Set once `load()` re-fetches the friend list, so the subtitle balance
-    /// tracks the same data that refreshes ContentView's balance card rather
-    /// than staying frozen on the push-time snapshot.
+    /// Set once `load()` re-fetches the friend list, so the balance card at
+    /// the top tracks the same data that refreshes ContentView's own card
+    /// rather than staying frozen on the push-time snapshot.
     @State private var refreshedFriend: SplitwiseFriend?
+    /// When this friend's expenses were last live-fetched — passed to the
+    /// balance card's "Last refreshed …" line, same as ContentView's card.
+    @State private var lastRefreshedAt: Date?
     @Namespace private var detailNamespace
 
     /// The freshest friend we have: the live-refreshed record if `load()` has
@@ -32,6 +35,13 @@ struct SplitwiseFriendTransactionsView: View {
 
     var body: some View {
         List {
+            Section {
+                SplitwiseBalanceCard(friend: displayFriend, lastRefreshedAt: lastRefreshedAt)
+                    .frame(maxWidth: .infinity)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.backgroundColor)
+            }
+
             if expenses.isEmpty {
                 if let loadError {
                     Text(loadError)
@@ -55,12 +65,12 @@ struct SplitwiseFriendTransactionsView: View {
             }
         }
         .themedList(background: .backgroundColor)
-        .navigationTitle(friend.fullName)
-        .navigationSubtitle(Text(displayFriend.formattedBalanceText).foregroundStyle(displayFriend.balanceColor))
+        .contentMargins(.top, 0, for: .scrollContent)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await load(force: true) }
         .task {
             expenses = SplitwiseExpenseCacheStore.load(friendId: friend.id) ?? []
+            lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
             // Navigating away and back recreates this view, re-running
             // `.task`; load(force: false) throttles each fetch on its own
             // cache staleness so that doesn't hit the API on every visit.
@@ -133,6 +143,7 @@ struct SplitwiseFriendTransactionsView: View {
         if force || SplitwiseExpenseCacheStore.isStale(friendId: friend.id) {
             do {
                 expenses = try await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token)
+                lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
                 loadError = nil
             } catch {
                 loadError = "Couldn't load transactions."

@@ -39,6 +39,14 @@ nonisolated enum SplitwiseExpenseCacheStore {
         try? data.write(to: fileURL(friendId: friendId), options: .atomic)
     }
 
+    /// When `friendId`'s expenses were last successfully live-fetched, or nil
+    /// if never — shown as "… ago" at the bottom of
+    /// SplitwiseFriendTransactionsView, same as the friend cache's
+    /// `lastFetchedAt` on the balance card/grid.
+    static func lastFetchedAt(friendId: Int) -> Date? {
+        loadCache(friendId: friendId)?.fetchedAt
+    }
+
     static func fetch(friendId: Int, token: String) async throws -> [SplitwiseExpense] {
         try await CacheStore.fetch(load: { load(friendId: friendId) }, save: { save(friendId: friendId, $0) }) {
             try await SplitwiseService.fetchExpenses(friendId: friendId, token: token)
