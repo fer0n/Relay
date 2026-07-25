@@ -5,12 +5,11 @@
 
 import SwiftUI
 
-/// Live-updating "time ago" label built on `Date.fuzzyBucketed(to:)`. Ticks
-/// every second while the near-term buckets ("now", "less than 30s ago", …)
-/// are in play, then backs off to a coarser interval once
-/// RelativeDateTimeFormatter's minute/hour/day granularity takes over — so a
-/// label left on screen for a long time (e.g. an open detail sheet) doesn't
-/// keep invalidating the view graph every second.
+/// Live-updating "time ago" label built on `Date.fuzzyBucketed(to:)`. Refreshes
+/// exactly when the displayed string can change (the bucket boundaries) rather
+/// than on a fixed interval — so a freshly-refreshed label doesn't invalidate
+/// the view graph every second for a string that only changes three times in
+/// the first minute, and a label left on screen for a long time stays idle.
 struct FuzzyDateText: View {
     let date: Date
 
@@ -25,18 +24,40 @@ struct FuzzyDateText: View {
 }
 
 private struct FuzzyDateSchedule: TimelineSchedule {
-    /// The timestamp being displayed — ticks are paced by how long ago
+    /// The timestamp being displayed — boundaries are paced by how long ago
     /// *this* was, not by when the schedule itself started running.
     let anchor: Date
 
+    /// The next moment (strictly after `date`) at which `fuzzyBucketed`'s
+    /// output can change: the near-term bucket edges (10s / 50s / 60s), then
+    /// each whole minute, hour, and day measured from `anchor`. Ticking on
+    /// these instead of a fixed interval means one refresh per visible change.
+    private func nextBoundary(after date: Date) -> Date {
+        let elapsed = date.timeIntervalSince(anchor)
+        let boundary: TimeInterval
+        switch elapsed {
+        case ..<10: boundary = 10
+        case ..<50: boundary = 50
+        case ..<60: boundary = 60
+        case ..<3600: boundary = (floor(elapsed / 60) + 1) * 60
+        case ..<86400: boundary = (floor(elapsed / 3600) + 1) * 3600
+        default: boundary = (floor(elapsed / 86400) + 1) * 86400
+        }
+        return anchor.addingTimeInterval(boundary)
+    }
+
     func entries(from startDate: Date, mode: TimelineSchedule.Mode) -> AnyIterator<Date> {
         var next = startDate
+        var emittedStart = false
         return AnyIterator {
-            let date = next
-            let elapsed = date.timeIntervalSince(anchor)
-            let interval: TimeInterval = elapsed < 60 ? 1 : (elapsed < 3600 ? 30 : 60)
-            next = next.addingTimeInterval(interval)
-            return date
+            // Emit `startDate` itself first so the label renders immediately,
+            // then step to each successive bucket boundary.
+            if !emittedStart {
+                emittedStart = true
+                return startDate
+            }
+            next = nextBoundary(after: next)
+            return next
         }
     }
 }
