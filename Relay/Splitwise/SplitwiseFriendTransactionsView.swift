@@ -163,6 +163,6 @@ struct SplitwiseFriendTransactionsView: View {
 
 #Preview {
     NavigationStack {
-        SplitwiseFriendTransactionsView(friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: nil))
+        SplitwiseFriendTransactionsView(friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: nil, picture: nil))
     }
 }

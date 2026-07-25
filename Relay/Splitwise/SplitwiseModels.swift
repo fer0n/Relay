@@ -15,11 +15,24 @@ struct SplitwiseUser: Codable {
     let firstName: String
 }
 
+/// Sizes Splitwise returns for a user's avatar — each optionally nil, and the
+/// whole `picture` field itself is optional on `SplitwiseFriend`, so a friend
+/// with no photo (or a build predating this field) still decodes fine. Note
+/// the Optional alone is what buys that tolerance: it must NOT be written as
+/// `let picture: SplitwisePicture? = nil`, since the synthesized decoder skips
+/// immutable properties that already have a value and would never read the key.
+struct SplitwisePicture: Codable {
+    let small: String?
+    let medium: String?
+    let large: String?
+}
+
 struct SplitwiseFriend: Codable {
     let id: Int
     let firstName: String
     let lastName: String?
     let balance: [SplitwiseBalance]?
+    let picture: SplitwisePicture?
 
     /// Disambiguates friends sharing a first name (e.g. in the default
     /// friend picker in ContentView.swift).
@@ -53,6 +66,15 @@ struct SplitwiseFriend: Codable {
     var primaryBalance: (amount: Double, currencyCode: String)? {
         guard let balance = balance?.first, let amount = Double(balance.amount) else { return nil }
         return (amount, balance.currencyCode)
+    }
+
+    /// Prefers `medium` (matches the balance card's small avatar circle);
+    /// falls back to whichever other size Splitwise did include. Nil for a
+    /// friend with no `picture` at all, which the avatar view falls back on
+    /// with the plain "person.fill" placeholder.
+    var avatarURL: URL? {
+        guard let urlString = picture?.medium ?? picture?.small ?? picture?.large else { return nil }
+        return URL(string: urlString)
     }
 }
 

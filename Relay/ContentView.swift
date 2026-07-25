@@ -269,7 +269,7 @@ struct ContentView: View {
 private func seedPreviewData() {
     UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
 
-    let friend = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: "EUR", amount: "42.50")])
+    let friend = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: "EUR", amount: "42.50")], picture: nil)
     SplitwiseFriendCacheStore.save([friend])
     try? SplitwiseDefaultFriendStore.save(SplitwiseDefaultFriend(id: friend.id, firstName: friend.firstName, fullName: friend.fullName))
 

@@ -97,11 +97,7 @@ struct SplitwiseBalanceCard: View {
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center) {
-                Image(systemName: "person.fill")
-                    .font(iconFont)
-                    .foregroundStyle(.secondary)
-                    .frame(width: innerDiameter, height: innerDiameter)
-                    .background(Color.secondary.opacity(0.15), in: Circle())
+                SplitwiseAvatarView(url: friend.avatarURL, diameter: innerDiameter, iconFont: iconFont)
                     .padding(-iconNegativePadding)
 
                 Spacer(minLength: 8)
@@ -152,7 +148,7 @@ struct SplitwiseBalanceCard: View {
     List {
         Section {
             SplitwiseBalanceGrid(
-                friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: [SplitwiseBalance(currencyCode: "EUR", amount: "12.34")]),
+                friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: [SplitwiseBalance(currencyCode: "EUR", amount: "12.34")], picture: nil),
                 lastRefreshedAt: Date().addingTimeInterval(-320),
                 onTap: {}
             )
