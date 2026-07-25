@@ -246,6 +246,22 @@ private struct HistoryDetailContent: View {
                     .cardRowBackground()
                 }
             }
+
+            // Later automation runs recognised as this same purchase and
+            // dropped (see TransactionClaim) — the only place the dedupe is
+            // inspectable after the fact, and the merchant string each run
+            // was given is what shows whether the match was right. If one
+            // wasn't, "Re-add" on this row is the way to put it back.
+            if !entry.suppressed.isEmpty {
+                Section("Duplicates Skipped") {
+                    ForEach(entry.suppressed) { run in
+                        DraftDetailRow(icon: "link", title: "Also seen from", isEditable: false) {
+                            Text(run.merchant == entry.merchant ? run.source : "\(run.source) · \(run.merchant)")
+                        }
+                        .cardRowBackground()
+                    }
+                }
+            }
         }
         .bottomBarActionButton(isPresented: hasPayeeChanges, title: "Save", action: savePayee)
     }

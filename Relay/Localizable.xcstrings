@@ -79,6 +79,16 @@
         }
       }
     },
+    "%@ at %@ was already handled by \"%@\" %@ – skipped." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ at %2$@ was already handled by \"%3$@\" %4$@ – skipped."
+          }
+        }
+      }
+    },
     "%@ paid" : {
 
     },
@@ -367,6 +377,9 @@
           }
         }
       }
+    },
+    "Also seen from" : {
+
     },
     "Amount" : {
       "localizations" : {
@@ -897,6 +910,9 @@
         }
       }
     },
+    "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation." : {
+
+    },
     "Don't Split" : {
       "localizations" : {
         "de" : {
@@ -926,6 +942,12 @@
           }
         }
       }
+    },
+    "Duplicate Skipped" : {
+
+    },
+    "Duplicates Skipped" : {
+
     },
     "Enable Notifications" : {
       "localizations" : {
@@ -1948,6 +1970,9 @@
           }
         }
       }
+    },
+    "Source" : {
+
     },
     "Split" : {
       "localizations" : {

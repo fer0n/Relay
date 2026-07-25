@@ -27,6 +27,13 @@ struct TransactionSummaryRow: View {
     /// "· detail" suffix (e.g. a draft, where nothing's been chosen yet).
     var detail: String?
     var errorMessage: String?
+    /// How many later runs were recognised as this same purchase and dropped
+    /// (see TransactionClaim) — marks a row that stands in for more than one
+    /// automation run, rather than letting the dedupe happen invisibly. The
+    /// glyph has to survive alongside the service icons at caption size,
+    /// which rules out the merge arrows: they're an unreadable squiggle at
+    /// 11pt.
+    var suppressedCount: Int = 0
 
     var body: some View {
         HStack(spacing: 10) {
@@ -52,6 +59,9 @@ struct TransactionSummaryRow: View {
                     Image(systemName: service.systemImage)
                     if let secondaryService {
                         Image(systemName: secondaryService.systemImage)
+                    }
+                    if suppressedCount > 0 {
+                        Image(systemName: "link")
                     }
                     if let detail {
                         Text("· \(detail)")
@@ -90,6 +100,14 @@ struct TransactionSummaryRow: View {
             title: "Starbucks",
             amount: "-12.34",
             errorMessage: "No connection — will retry automatically."
+        )
+        TransactionSummaryRow(
+            service: .ynab,
+            date: Date().addingTimeInterval(-3600),
+            title: "Bakery",
+            amount: "-8.20",
+            detail: "Groceries",
+            suppressedCount: 1
         )
     }
 }

@@ -81,6 +81,32 @@ enum TransactionHistoryStore {
             logger.error("failed to save transaction history: \(String(describing: error), privacy: .public)")
         }
     }
+
+    /// Annotates an existing entry with runs that were recognised as the
+    /// same purchase and dropped (see TransactionClaim). Called both when a
+    /// duplicate arrives after the original committed, and by the original
+    /// itself at commit time to fold in duplicates that arrived while it was
+    /// still in flight. A no-op if the entry has since been trimmed away.
+    static func recordSuppressions(_ runs: [SuppressedRun], on entryId: UUID) {
+        guard !runs.isEmpty else { return }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        var entries = load()
+        guard let index = entries.firstIndex(where: { $0.id == entryId }) else {
+            logger.error("no history entry \(entryId.uuidString, privacy: .public) to attach suppressions to")
+            return
+        }
+        let known = Set(entries[index].suppressed.map(\.id))
+        entries[index].suppressed.append(contentsOf: runs.filter { !known.contains($0.id) })
+        do {
+            let data = try encoder.encode(entries)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            logger.error("failed to save transaction history: \(String(describing: error), privacy: .public)")
+        }
+    }
 }
 
 private extension TransactionHistoryEntry {
@@ -105,7 +131,9 @@ private extension TransactionHistoryEntry {
                 summary: newSummary,
                 payload: newPayload,
                 groupId: groupId,
-                split: Split(summary: summary, expense: expense)
+                split: Split(summary: summary, expense: expense),
+                merchant: merchant,
+                suppressed: suppressed
             )
         default:
             return nil

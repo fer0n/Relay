@@ -43,6 +43,15 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Card")
     var card: String
 
+    /// Which automation this run came from, so the same purchase arriving
+    /// twice can be recognised — the Wallet "Transaction" automation and an
+    /// iOS 27 notification automation on the bank app's push both fire for
+    /// the same in-person payment. Blank means "wallet", so automations
+    /// built before this parameter existed keep working untouched. Two runs
+    /// sharing a source are never merged (see TransactionClaim).
+    @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
+    var source: String?
+
     @Parameter(title: "Template", optionsProvider: TemplateOptionsProvider())
     var templateChoice: String?
 
@@ -104,11 +113,15 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     // works while omitted here. `splitwiseFriend`/`splitwiseFriendFallback`
     // are listed even though the "default friend" path never actively
     // requests a value — kept visible so a specific automation can still
-    // pick a friend by hand or opt into live asking. `card` is folded into
+    // pick a friend by hand or opt into live asking. `source` likewise: it's
+    // never requested at runtime, but a parameter left out of the summary
+    // isn't rendered in Shortcuts at all, and setting it by hand is the
+    // entire point of it. `card` is folded into
     // the main sentence since it's required. Shortcuts collapses the rest
     // under "Show More" rather than showing them inline.
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) at \(\.$merchant) with \(\.$card) to YNAB") {
+            \.$source
             \.$templateChoice
             \.$newTemplateName
             \.$payeeOverride
@@ -123,7 +136,54 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) card=\(card, privacy: .public)")
+        let claimSource = TransactionClaim.normalizedSource(source)
+        logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) card=\(card, privacy: .public) source=\(claimSource, privacy: .public)")
+
+        // Loaded up front so the duplicate check below can resolve `card` to
+        // a YNAB account id — matching on that rather than the raw string is
+        // what lets Wallet's "Visa ••1234" and a bank app's "DKB Visa" be
+        // recognised as the same account. Reused for the rest of perform()
+        // rather than re-read; nothing in between touches it.
+        var config = WalletTransactionConfigStore.load()
+
+        // Ahead of the draft guard and of any network call: a purchase the
+        // other automation already handled must leave behind no draft, no
+        // reminder, and no API request (which matters against YNAB's 200/hr
+        // cap, since wiring up a second automation roughly doubles the runs).
+        let claimId: UUID
+        switch TransactionClaimStore.claimOrSuppress(
+            TransactionClaim.Candidate(
+                source: claimSource,
+                destination: .ynab,
+                amount: amount,
+                accountId: config.cards[card],
+                merchant: merchant
+            )
+        ) {
+        case .suppressed(let suppression):
+            let dialog = WalletAutomationDialog.handleSuppression(suppression, successNotification: successNotification)
+            logger.log("perform() done — suppressed as duplicate of \(suppression.matched.source, privacy: .public)")
+            return .result(dialog: "\(dialog)")
+        case .claimed(let id):
+            claimId = id
+        }
+
+        // Resolves the claim exactly once, whichever way the run ends.
+        // Committed the moment the YNAB write lands rather than at the end
+        // of perform(): from that point there IS a transaction for a later
+        // duplicate to collide with, even if the optional split below never
+        // finishes. Abandoned in the catch, so a run that wrote nothing
+        // stops shadowing the other automation — which is precisely the
+        // safety net that case needs.
+        var claimResolved = false
+        func commitClaim(historyEntryId: UUID?) {
+            guard !claimResolved else { return }
+            claimResolved = true
+            let parked = TransactionClaimStore.commit(claimId, historyEntryId: historyEntryId)
+            if let historyEntryId {
+                TransactionHistoryStore.recordSuppressions(parked, on: historyEntryId)
+            }
+        }
 
         // The draft the safety-net reminder currently guards. Starts as the
         // .ynabWallet draft (the whole transaction is unfinished); once YNAB
@@ -152,7 +212,6 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             }
             logger.log("YNAB token present (len=\(token.count, privacy: .public))")
 
-            var config = WalletTransactionConfigStore.load()
             var changed = false
 
             // Uses the async `requestValue` API (suspend perform() in place, await
@@ -311,6 +370,12 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 config.cards[card] = account.id
                 accountId = account.id
                 changed = true
+                // The card wasn't mapped when the claim was written, so it
+                // went in without an account. Backfill it now that the user
+                // has picked one, so a sighting arriving during this run's
+                // remaining questions can still be rejected on a conflicting
+                // account rather than matching on amount and time alone.
+                TransactionClaimStore.setAccountId(account.id, for: claimId)
             }
 
             // The YNAB-side mappings (payee/template/card) are fully resolved
@@ -350,6 +415,13 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             let ynabOutcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payeeName)", groupId: walletGroupId)
             var dialog = WalletAutomationDialog.handleYNABOutcome(ynabOutcome, formattedAmount: formattedAmount, payeeName: payeeName, categoryId: categoryId)
             logger.log("YNAB result: \(dialog, privacy: .public)")
+
+            // There's a transaction now (or a queued one that will sync), so
+            // the claim stands regardless of how the split below goes. Only
+            // a `.created` write has recorded a history entry to hang
+            // suppressions off — a queued one records on sync, so
+            // newestEntryID() would name some earlier, unrelated transaction.
+            commitClaim(historyEntryId: ynabOutcome == .created ? TransactionHistoryStore.newestEntryID() : nil)
 
             // A template can carry a non-.never splitwiseOption from before
             // Splitwise was disconnected — treat as "never split" for this
@@ -535,6 +607,14 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             // user right away rather than waiting out the quiet-period window.
             if let activeDraftId {
                 await TransactionDraftGuard.fail(activeDraftId)
+            }
+            // No-op once the YNAB write has landed (the claim is already
+            // committed and the failure is only the split's); otherwise this
+            // run wrote nothing, so it must stop shadowing the other
+            // automation — which is exactly the case that safety net exists
+            // for.
+            if !claimResolved {
+                TransactionClaimStore.abandon(claimId)
             }
             throw error
         }

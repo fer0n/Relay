@@ -97,6 +97,55 @@ nonisolated enum WalletAutomationDialog {
         )
     }
 
+    /// Finishes off a run that turned out to be a purchase already added
+    /// through the other automation (see TransactionClaim): annotates the
+    /// entry it duplicates, optionally says so, and returns the dialog for
+    /// Shortcuts. Shared by both wallet intents, which reach this in exactly
+    /// the same way.
+    ///
+    /// The suppressed run leaves no draft and no reminder — that's the whole
+    /// point of dropping it — so this notification is the only trace the
+    /// user sees in the moment. It's still gated on the automation's
+    /// "Success Notification" switch: that switch is the user's "stop
+    /// buzzing me" control, and with both automations wired up a duplicate
+    /// arrives for nearly every purchase, so ignoring it here would be the
+    /// noisiest possible reading of it.
+    static func handleSuppression(
+        _ suppression: TransactionClaimStore.Suppression,
+        successNotification: Bool
+    ) -> String {
+        let matched = suppression.matched
+        // Only when the run this duplicates has already recorded something.
+        // While it's still in flight its suppressions ride along on the
+        // claim instead, and it folds them in when it commits.
+        if let historyEntryId = suppression.historyEntryId {
+            TransactionHistoryStore.recordSuppressions([suppression.run], on: historyEntryId)
+        }
+
+        // "Handled" rather than "added" because a suppressed run doesn't
+        // always shadow a written transaction: on the Splitwise-only path a
+        // deliberate "Don't Split" also claims the purchase, so that the
+        // second automation doesn't ask the same question over again. It has
+        // decided the purchase either way, which is what the user needs to
+        // know here.
+        let dialog = String(
+            format: String(localized: "%@ at %@ was already handled by \"%@\" %@ – skipped."),
+            suppression.run.amount.asMoneyString,
+            matched.merchant,
+            matched.source,
+            matched.claimedAt.formatted(.relative(presentation: .numeric))
+        )
+
+        if successNotification {
+            WalletCompletionNotification.postConfirmation(
+                title: String(localized: "Duplicate Skipped"),
+                dialog: dialog,
+                historyEntryID: suppression.historyEntryId
+            )
+        }
+        return dialog
+    }
+
     /// Records category usage on success and describes a YNAB write as a
     /// dialog string — shared by the standalone YNAB intent and both
     /// wallet-to-YNAB entry points, all of which use this exact wording.

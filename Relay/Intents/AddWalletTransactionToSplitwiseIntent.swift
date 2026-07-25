@@ -49,6 +49,12 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     @Parameter(title: "Amount")
     var amount: Double
 
+    /// Which automation this run came from — see the equivalent parameter
+    /// on AddWalletTransactionToYNABIntent. Blank means "wallet", so
+    /// automations built before this existed keep working untouched.
+    @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
+    var source: String?
+
     @Parameter(title: "Split With")
     var friendOverride: SplitwiseFriendEntity?
 
@@ -77,6 +83,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) Splitwise expense for \(\.$merchant)") {
+            \.$source
             \.$friendOverride
             \.$splitwiseFriendFallback
             \.$splitwiseOwnShare
@@ -87,7 +94,47 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public)")
+        let claimSource = TransactionClaim.normalizedSource(source)
+        logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) source=\(claimSource, privacy: .public)")
+
+        // Ahead of the draft guard and of any network call, so a purchase
+        // the other automation already handled leaves no draft, no reminder
+        // and no API request behind. No account id to match on here — this
+        // intent has no card parameter — which `matches` treats as "no
+        // signal" rather than as agreement, leaving amount and time to carry
+        // it.
+        let claimId: UUID
+        switch TransactionClaimStore.claimOrSuppress(
+            TransactionClaim.Candidate(
+                source: claimSource,
+                destination: .splitwise,
+                amount: amount,
+                accountId: nil,
+                merchant: merchant
+            )
+        ) {
+        case .suppressed(let suppression):
+            let dialog = WalletAutomationDialog.handleSuppression(suppression, successNotification: successNotification)
+            logger.log("perform() done — suppressed as duplicate of \(suppression.matched.source, privacy: .public)")
+            return .result(dialog: "\(dialog)")
+        case .claimed(let id):
+            claimId = id
+        }
+
+        // Resolves the claim exactly once, whichever way the run ends.
+        // Unlike the YNAB intent there's nothing committed ahead of the
+        // split — the expense *is* the transaction — so this only fires at
+        // the very end, either on a created/queued expense or on a
+        // deliberate "Don't Split".
+        var claimResolved = false
+        func commitClaim(historyEntryId: UUID?) {
+            guard !claimResolved else { return }
+            claimResolved = true
+            let parked = TransactionClaimStore.commit(claimId, historyEntryId: historyEntryId)
+            if let historyEntryId {
+                TransactionHistoryStore.recordSuppressions(parked, on: historyEntryId)
+            }
+        }
 
         let draftId = ensureCompletion
             ? TransactionDraftGuard.begin(.splitwiseWallet(merchant: merchant, amount: amount))
@@ -265,6 +312,11 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 if let draftId {
                     TransactionDraftGuard.complete(draftId)
                 }
+                // Nothing written, but the purchase *has* been decided on —
+                // commit rather than abandon so the other automation doesn't
+                // come back and ask the same split question a second time.
+                // No history entry exists to hang suppressions off, hence nil.
+                commitClaim(historyEntryId: nil)
                 let dialog = WalletAutomationDialog.splitwiseSkippedDialog(description: expenseDescription)
                 if successNotification {
                     WalletCompletionNotification.postConfirmation(dialog: dialog)
@@ -301,9 +353,13 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 if let draftId {
                     TransactionDraftGuard.complete(draftId)
                 }
+                let isQueued: Bool = if case .queued = outcome { true } else { false }
+                // A queued expense records its history entry only once it
+                // syncs, so newestEntryID() would name an earlier, unrelated
+                // one — commit without an entry to annotate in that case.
+                commitClaim(historyEntryId: isQueued ? nil : TransactionHistoryStore.newestEntryID())
                 let dialog = WalletAutomationDialog.splitwiseWalletDialog(outcome: outcome, formattedAmount: formattedAmount, description: expenseDescription)
                 if successNotification {
-                    let isQueued: Bool = if case .queued = outcome { true } else { false }
                     let content = WalletAutomationDialog.notificationContent(
                         isQueued: isQueued,
                         formattedAmount: formattedAmount,
@@ -333,6 +389,12 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             // that's certain, so nudge the user right away instead.
             if let draftId {
                 await TransactionDraftGuard.fail(draftId)
+            }
+            // Nothing was written, so this run must stop shadowing the other
+            // automation — that second sighting is the safety net for
+            // exactly this failure.
+            if !claimResolved {
+                TransactionClaimStore.abandon(claimId)
             }
             throw error
         }

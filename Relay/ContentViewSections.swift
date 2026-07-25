@@ -136,7 +136,8 @@ struct ContentRecentSection: View {
                         date: entry.createdAt,
                         title: entry.title,
                         amount: entry.formattedAmount,
-                        detail: entry.detail
+                        detail: entry.detail,
+                        suppressedCount: entry.suppressed.count
                     )
                 }
                 .cardRowBackground()

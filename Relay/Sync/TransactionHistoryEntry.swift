@@ -38,6 +38,19 @@ struct TransactionHistoryEntry: Codable, Identifiable {
     /// mapping for this merchant and write an edited payee back to
     /// WalletTransactionConfig.
     var merchant: String?
+    /// Later runs recognised as this same purchase arriving through a
+    /// second automation (Wallet vs. a bank notification) and therefore not
+    /// written — see TransactionClaim. They collapse into this entry rather
+    /// than becoming rows of their own, so re-adding this row is also the
+    /// "actually, add it anyway" escape hatch if a match was wrong.
+    ///
+    /// Non-optional with a default, which means the synthesized decoder
+    /// throws `keyNotFound` on entries written before this field existed and
+    /// `TransactionHistoryStore.load()` starts empty — a deliberate one-time
+    /// reset of at most `historyLimit` rows of re-add shortcuts, not worth a
+    /// tolerant decoder. (`WalletTransactionConfig` is the opposite case: it
+    /// holds mappings built up over months and does need one.)
+    var suppressed: [SuppressedRun] = []
 
     struct Split: Codable {
         let summary: String
