@@ -73,9 +73,9 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
     /// one arriving while the claim is still `inFlight` is parked in
     /// `suppressed` below and folded in when the entry is finally created.
     var historyEntryId: UUID?
-    /// The draft a `.awaitingConfirmation` run left for the user to approve,
-    /// so a later run that writes the transaction for real can clear it (see
-    /// `supersededConfirmations`). Nil in every other state.
+    /// The draft a `.awaitingConfirmation` run left for the user to approve or
+    /// finish, so a later run that writes the transaction for real can clear
+    /// it (see `supersededConfirmations`). Nil in every other state.
     var draftId: UUID?
     /// Runs suppressed against this one.
     var suppressed: [SuppressedRun] = []
@@ -85,12 +85,13 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
         /// question, so this is a live claim and still matchable.
         case inFlight
         case committed
-        /// The run deliberately wrote nothing because its automation has
-        /// "Require Confirmation" set, and left a draft behind instead. It
-        /// doesn't shadow a run that's going to write for real — the whole
-        /// point is that nothing has been added yet — but it does shadow
-        /// another confirmation-only run, so one purchase can't pile up two
-        /// drafts asking the same question.
+        /// The run deliberately wrote nothing and left a draft behind
+        /// instead — either because its automation has "Require Confirmation"
+        /// set, or because the merchant has no template yet and picking one
+        /// happens in the app. It doesn't shadow a run that's going to write
+        /// for real — the whole point is that nothing has been added yet — but
+        /// it does shadow another run that can only park a draft too, so one
+        /// purchase can't pile up two drafts asking the same question.
         case awaitingConfirmation
         /// The run ended without writing anything (an API failure, a
         /// dismissed question, the process killed). No longer matchable:
@@ -105,7 +106,7 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
     private func shadows(_ candidate: Candidate) -> Bool {
         switch state {
         case .inFlight, .committed: true
-        case .awaitingConfirmation: candidate.requireConfirmation
+        case .awaitingConfirmation: candidate.parksDraftOnly
         case .abandoned: false
         }
     }
@@ -149,10 +150,14 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
         var accountId: String?
         var merchant: String
         var occurredAt: Date = Date()
-        /// This run's "Require Confirmation" setting — it can't write on its
-        /// own, so an existing draft awaiting confirmation is already asking
-        /// its question for it (see `shadows`).
-        var requireConfirmation: Bool = false
+        /// Whether this run can only ever park a draft, rather than add the
+        /// transaction itself: its automation has "Require Confirmation" set,
+        /// or (on the YNAB path) the merchant has no template to file it under
+        /// and no usable one pinned, so it has to be set up in the app. Either
+        /// way a draft that's already waiting for the same purchase is asking
+        /// this run's question for it (see `shadows`), and a second draft
+        /// would only double up.
+        var parksDraftOnly: Bool = false
 
         var asSuppressedRun: SuppressedRun {
             SuppressedRun(source: source, merchant: merchant, amount: amount, occurredAt: occurredAt)

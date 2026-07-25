@@ -53,7 +53,7 @@ struct TransactionClaimMatchTests {
         at offset: TimeInterval = 0,
         accountId: String? = "acct-1",
         merchant: String = "Kartenzahlung ACME GMBH//BERLIN",
-        requireConfirmation: Bool = false
+        parksDraftOnly: Bool = false
     ) -> TransactionClaim.Candidate {
         TransactionClaim.Candidate(
             source: source,
@@ -62,7 +62,7 @@ struct TransactionClaimMatchTests {
             accountId: accountId,
             merchant: merchant,
             occurredAt: base.addingTimeInterval(offset),
-            requireConfirmation: requireConfirmation
+            parksDraftOnly: parksDraftOnly
         )
     }
 
@@ -203,19 +203,21 @@ struct TransactionClaimMatchTests {
         #expect(!Self.claim(state: .awaitingConfirmation).matches(Self.candidate(at: 60), window: Self.window))
     }
 
-    /// But a second confirm-only sighting can't write either, so letting it
-    /// through would only pile a second draft onto the same purchase.
+    /// But a second sighting that can only park a draft — "Require
+    /// Confirmation" set, or a merchant with no template to file it under —
+    /// can't write either, so letting it through would only pile a second
+    /// draft onto the same purchase.
     @Test
-    func awaitingConfirmationClaimShadowsAnotherConfirmOnlyRun() {
+    func awaitingConfirmationClaimShadowsAnotherDraftOnlyRun() {
         let claim = Self.claim(state: .awaitingConfirmation)
-        #expect(claim.matches(Self.candidate(at: 60, requireConfirmation: true), window: Self.window))
+        #expect(claim.matches(Self.candidate(at: 60, parksDraftOnly: true), window: Self.window))
     }
 
     /// The flag only relaxes `awaitingConfirmation`; a run that actually
-    /// wrote (or is about to) shadows a confirm-only sighting just the same.
+    /// wrote (or is about to) shadows a draft-only sighting just the same.
     @Test
-    func requireConfirmationDoesNotChangeMatchingAgainstWritingClaims() {
-        let confirming = Self.candidate(at: 60, requireConfirmation: true)
+    func parksDraftOnlyDoesNotChangeMatchingAgainstWritingClaims() {
+        let confirming = Self.candidate(at: 60, parksDraftOnly: true)
         #expect(Self.claim(state: .inFlight).matches(confirming, window: Self.window))
         #expect(Self.claim(state: .committed).matches(confirming, window: Self.window))
         #expect(!Self.claim(state: .abandoned).matches(confirming, window: Self.window))

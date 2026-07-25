@@ -95,6 +95,16 @@
         }
       }
     },
+    "%@ at %@ needs a template – waiting in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ bei %@ braucht eine Vorlage – wartet in Relay."
+          }
+        }
+      }
+    },
     "%@ at %@ needs confirmation – waiting in Relay." : {
       "localizations" : {
         "de" : {
@@ -123,6 +133,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ at %2$@ was already handled by \"%3$@\" %4$@ – skipped."
+          }
+        }
+      }
+    },
+    "%@ needs a template. Set it up in Relay?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ braucht eine Vorlage. In Relay einrichten?"
           }
         }
       }
@@ -576,16 +596,6 @@
         }
       }
     },
-    "Auto-Match Pattern" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto-Erkennungsmuster"
-          }
-        }
-      }
-    },
     "Auto-Match Rules" : {
       "localizations" : {
         "de" : {
@@ -652,16 +662,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kategorie"
-          }
-        }
-      }
-    },
-    "Category for %@?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kategorie für „%@“?"
           }
         }
       }
@@ -902,16 +902,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue erstellen"
-          }
-        }
-      }
-    },
-    "Create New Template" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Vorlage erstellen"
           }
         }
       }
@@ -1236,16 +1226,6 @@
         }
       }
     },
-    "If Split With Isn't Set" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Falls „Aufteilen mit“ nicht festgelegt"
-          }
-        }
-      }
-    },
     "If this run is interrupted before finishing, send a notification to continue it later." : {
       "localizations" : {
         "de" : {
@@ -1472,16 +1452,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Als gebucht markieren"
-          }
-        }
-      }
-    },
-    "Match other merchant names to %@ too? Enter text/regex, or leave blank to skip." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weitere Händlernamen %@ ebenfalls zuordnen? Text/Regex eingeben oder leer lassen zum Überspringen."
           }
         }
       }
@@ -1822,16 +1792,6 @@
         }
       }
     },
-    "Payee name for \"%@\"?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Empfängername für „%@“?"
-          }
-        }
-      }
-    },
     "Pending" : {
       "localizations" : {
         "de" : {
@@ -2072,6 +2032,16 @@
         }
       }
     },
+    "Set Up in Relay" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Relay einrichten"
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "de" : {
@@ -2198,16 +2168,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aufteilen"
-          }
-        }
-      }
-    },
-    "Split %@ expenses with Splitwise?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ Ausgaben mit Splitwise aufteilen?"
           }
         }
       }
@@ -2438,16 +2398,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vorlagenname"
-          }
-        }
-      }
-    },
-    "Template name?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorlagenname?"
           }
         }
       }

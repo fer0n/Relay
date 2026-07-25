@@ -159,9 +159,10 @@ enum TransactionClaimStore {
         return result
     }
 
-    /// Marks a run that deliberately wrote nothing because its automation
-    /// requires confirmation, and records the draft it left behind so a
-    /// later real write can clear it.
+    /// Marks a run that deliberately wrote nothing — its automation requires
+    /// confirmation, or the merchant has no template and has to be set up in
+    /// the app — and records the draft it left behind so a later real write
+    /// can clear it.
     static func awaitConfirmation(_ id: UUID, draftId: UUID?) {
         lock.lock()
         defer { lock.unlock() }

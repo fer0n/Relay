@@ -113,28 +113,6 @@
         }
       }
     },
-    "Match other merchant names to %@ too? Enter text/regex, or leave blank to skip." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weitere Händlernamen %@ ebenfalls zuordnen? Text/Regex eingeben oder leer lassen zum Überspringen."
-          }
-        }
-      }
-    },
-    "Split %@ expenses with Splitwise?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ Ausgaben mit Splitwise aufteilen?"
-          }
-        }
-      }
-    },
     "Split %@ expenses with which friend?" : {
       "localizations" : {
         "de" : {
@@ -185,16 +163,6 @@
         }
       }
     },
-    "Splitwise Friend Fallback" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Freund-Fallback"
-          }
-        }
-      }
-    },
     "Splitwise Split Option" : {
       "localizations" : {
         "de" : {
@@ -211,27 +179,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Splitwise-Vorlageneinstellung"
-          }
-        }
-      }
-    },
-    "Template name?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorlagenname?"
-          }
-        }
-      }
-    },
-    "Use Default Friend" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Standardfreund verwenden"
           }
         }
       }

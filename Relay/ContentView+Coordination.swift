@@ -32,8 +32,13 @@ extension ContentView {
                 }
             }
             // A tapped draft notification opens the draft as a sheet,
-            // resetting whatever else was on the stack first.
-            .onChange(of: draftRouter.pendingDraftID) { _, newValue in
+            // resetting whatever else was on the stack first. `initial: true`
+            // covers the id having been set before this view existed:
+            // AddWalletTransactionToYNABIntent sets it right after asking iOS
+            // to bring Relay forward, which on a cold launch can beat the
+            // first render — a plain onChange would miss it and the hand-off
+            // would land on the main screen.
+            .onChange(of: draftRouter.pendingDraftID, initial: true) { _, newValue in
                 guard let newValue else { return }
                 path = []
                 continueDraft = TransactionDraftStore.load().first { $0.id == newValue }

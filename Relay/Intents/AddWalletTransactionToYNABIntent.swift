@@ -8,19 +8,37 @@
 //  transaction's Merchant/Amount/Card magic variables directly — no more
 //  DataJar/Jayson/YNAB Toolkit dependency.
 //
-//  Splitwise mirrors the original: "Use Splitwise?" (always/manual/ask/
-//  never — see SplitwiseTemplateOption) is asked once per new template
-//  (right after choosing its category) and the choice is remembered on the
-//  template, same as category/account. "Ask" keeps prompting live on every
-//  future transaction for that merchant via `splitwiseRuntimeChoice`,
-//  mirroring the original's Ja/Manuell/Nein menu.
+//  Setting a template up is deliberately not done from here. A merchant
+//  that's already mapped runs straight through; an unknown one is asked the
+//  single question a Shortcuts prompt is any good at — "which template?" —
+//  and picking an existing one files the merchant under it right away. Every
+//  other setup question the original Shortcut chained together (a new
+//  template's name, its category, its Splitwise rule, a clean payee name,
+//  auto-match patterns) is a form's worth of input, and Relay already has
+//  that form: the run parks the purchase as a draft, posts a reminder, and
+//  ContinueWalletTransactionView finishes it. That's what keeps this intent's
+//  parameter list down to the things an automation actually wants to pin.
 //
-//  The Splitwise friend to split with is a separate question from whether
-//  to split at all: if the resolved template already has one set (e.g.
+//  A merchant filed here starts out with the raw merchant string as its
+//  payee; renaming it (and adding auto-match rules so sibling merchants
+//  reuse the name) happens in Relay's Templates screen, exactly as it does
+//  for AddWalletTransactionToSplitwiseIntent.
+//
+//  Splitwise still mirrors the original: "Use Splitwise?" (always/manual/
+//  ask/never — see SplitwiseTemplateOption) is a template setting, edited
+//  alongside the category in Relay. "Ask" keeps prompting live on every
+//  transaction for that merchant via `splitwiseRuntimeChoice`, mirroring the
+//  original's Ja/Manuell/Nein menu.
+//
+//  The Splitwise friend to split with is a separate question from whether to
+//  split at all, and this intent never asks it: the `splitwiseFriend`
+//  parameter wins, then the resolved template's own cached friend (e.g.
 //  configured in Templates, or shared with AddWalletTransactionToSplitwise
-//  Intent's template of the same name), that's used directly; otherwise
-//  this falls back to `splitwiseFriendFallback` (default friend or a live
-//  ask) exactly as before templates could carry a friend.
+//  Intent's template of the same name), then the app-wide default friend.
+//  With none of those the split is parked as a draft to finish in Relay —
+//  and an automation that would rather be asked in the moment sets
+//  Shortcuts' native "Ask Each Time" on "Split With", so there's no
+//  fallback parameter to model (same argument as SplitwiseSplitOption's).
 //
 
 import AppIntents
@@ -34,6 +52,13 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         "Adds a YNAB transaction from a Wallet transaction, remembering payee/category/account choices for next time."
     )
 
+    // Runs in the background like any wallet automation should — `.dynamic`
+    // only adds the *option* of asking to come forward mid-run, which this
+    // uses in exactly one place: handing an unmapped merchant over to the
+    // in-app form (see openDraftInRelay). Not `.foreground(.immediate)` like
+    // ImportSplitwiseFileIntent, whose whole purpose is the screen it opens.
+    static var supportedModes: IntentModes { [.background, .foreground(.dynamic)] }
+
     @Parameter(title: "Merchant")
     var merchant: String
 
@@ -42,6 +67,32 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
 
     @Parameter(title: "Card")
     var card: String
+
+    /// Which template an unmapped merchant is filed under, so an automation
+    /// that only ever sees one kind of purchase never has to be asked. Left
+    /// unset, the run asks live; set to `setUpInRelayOption` (or to a template
+    /// that no longer exists) the purchase is always handed to the app.
+    @Parameter(title: "Template", optionsProvider: TemplateOptionsProvider())
+    var templateChoice: String?
+
+    @Parameter(title: "Account")
+    var accountOverride: YNABAccountEntity?
+
+    /// Only used when the resolved template's Splitwise option is "Ask
+    /// Each Time" — the live per-transaction equivalent of the original's
+    /// Ja/Manuell/Nein menu.
+    @Parameter(title: "Split Transaction?")
+    var splitwiseRuntimeChoice: SplitwiseSplitOption?
+
+    /// Who to split with, when this automation's transactions always go to
+    /// the same person. Left unset, the resolved template's cached friend or
+    /// the app-wide default (`SplitwiseDefaultFriendStore`) is used; set
+    /// Shortcuts' own "Ask Each Time" on it to be asked instead.
+    @Parameter(title: "Split With")
+    var splitwiseFriend: SplitwiseFriendEntity?
+
+    @Parameter(title: "Your Share")
+    var splitwiseOwnShare: Double?
 
     /// Which automation this run came from, so the same purchase arriving
     /// twice can be recognised — the Wallet "Transaction" automation and an
@@ -62,45 +113,6 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Require Confirmation", description: "Never add to YNAB automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay.", default: false)
     var requireConfirmation: Bool
 
-    @Parameter(title: "Template", optionsProvider: TemplateOptionsProvider())
-    var templateChoice: String?
-
-    @Parameter(title: "Template Name")
-    var newTemplateName: String?
-
-    @Parameter(title: "Payee")
-    var payeeOverride: String?
-
-    @Parameter(title: "Auto-Match Pattern")
-    var autoMatchPattern: String?
-
-    @Parameter(title: "Category")
-    var categoryOverride: YNABCategoryEntity?
-
-    @Parameter(title: "Account")
-    var accountOverride: YNABAccountEntity?
-
-    @Parameter(title: "Split with Splitwise")
-    var splitwiseOptionOverride: SplitwiseTemplateOption?
-
-    @Parameter(title: "Split With")
-    var splitwiseFriend: SplitwiseFriendEntity?
-
-    /// What to do when `splitwiseFriend` is left unset: silently fall back
-    /// to `SplitwiseDefaultFriendStore`'s app-configured default (the
-    /// out-of-the-box behavior), or prompt live via requestDisambiguation.
-    @Parameter(title: "If Split With Isn't Set", default: .defaultFriend)
-    var splitwiseFriendFallback: SplitwiseFriendFallback
-
-    @Parameter(title: "Your Share")
-    var splitwiseOwnShare: Double?
-
-    /// Only used when the resolved template's Splitwise option is "Ask
-    /// Each Time" — the live per-transaction equivalent of the original's
-    /// Ja/Manuell/Nein menu.
-    @Parameter(title: "Split Transaction?")
-    var splitwiseRuntimeChoice: SplitwiseSplitOption?
-
     /// See TransactionDraftGuard: if this run gets interrupted (a follow-up
     /// question dismissed/timed out, the process killed by a screen lock)
     /// before the transaction is actually created, a local notification
@@ -115,34 +127,57 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     // Parameters requested at runtime via `$param.requestValue(...)` MUST
     // appear here: on iOS 18+ requestValue throws a connection error for a
     // parameter that isn't in parameterSummary (FB14828592, confirmed still
-    // present on iOS 26). That rules out hiding the free-text/number setup
-    // fields (newTemplateName, payeeOverride, autoMatchPattern,
-    // splitwiseOwnShare). The entity/enum setup fields (categoryOverride,
-    // accountOverride, splitwiseOptionOverride) are instead resolved with
-    // requestDisambiguation, which passes its candidate list inline and so
-    // works while omitted here. `splitwiseFriend`/`splitwiseFriendFallback`
-    // are listed even though the "default friend" path never actively
-    // requests a value — kept visible so a specific automation can still
-    // pick a friend by hand or opt into live asking. `source` likewise: it's
-    // never requested at runtime, but a parameter left out of the summary
-    // isn't rendered in Shortcuts at all, and setting it by hand is the
-    // entire point of it. `card` is folded into
-    // the main sentence since it's required. Shortcuts collapses the rest
-    // under "Show More" rather than showing them inline.
+    // present on iOS 26). That's `templateChoice`, `splitwiseRuntimeChoice`
+    // and `splitwiseOwnShare` — the three questions this intent still asks
+    // live, now that template setup has moved into the app. `accountOverride`
+    // is instead resolved with requestDisambiguation, which passes its
+    // candidate list inline and so works while omitted here. `splitwiseFriend`
+    // is never requested at runtime either, but a parameter left out of the
+    // summary isn't rendered in Shortcuts at all — and being settable (by hand,
+    // or via Shortcuts' native "Ask Each Time") is the entire point of it.
+    // `source` is listed for the same reason. `card` is folded into the main
+    // sentence since it's required. Shortcuts collapses the rest under "Show
+    // More" rather than showing them inline.
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) at \(\.$merchant) with \(\.$card) to YNAB") {
+            \.$templateChoice
+            \.$splitwiseRuntimeChoice
+            \.$splitwiseFriend
+            \.$splitwiseOwnShare
             \.$source
             \.$requireConfirmation
-            \.$templateChoice
-            \.$newTemplateName
-            \.$payeeOverride
-            \.$autoMatchPattern
-            \.$splitwiseFriend
-            \.$splitwiseFriendFallback
-            \.$splitwiseOwnShare
-            \.$splitwiseRuntimeChoice
             \.$ensureCompletion
             \.$successNotification
+        }
+    }
+
+    /// Asks iOS to bring Relay forward on the draft that was just parked, so
+    /// a merchant that needs setting up lands on the form instead of leaving
+    /// the user to find the reminder. Best-effort by design:
+    ///
+    /// - `canContinueInForeground` is false in the contexts where this can't
+    ///   work at all (a locked device, which is common enough — the Wallet
+    ///   automation fires seconds after a payment, phone already pocketed).
+    /// - iOS puts its own confirmation in front of the switch, so nothing
+    ///   yanks the user out of what they were doing without a tap.
+    /// - Any failure (declined, or refused outright) is swallowed rather than
+    ///   thrown: the draft and its reminder already exist, and turning a
+    ///   declined hand-off into a failed Shortcuts run would look like the
+    ///   transaction was lost.
+    private func openDraftInRelay(_ draftId: UUID, merchant: String) async {
+        guard systemContext.currentMode.canContinueInForeground else {
+            logger.log("can't continue in foreground — leaving the reminder to it")
+            return
+        }
+        do {
+            let prompt = String(format: String(localized: "%@ needs a template. Set it up in Relay?"), merchant)
+            try await continueInForeground(IntentDialog(stringLiteral: prompt))
+            await MainActor.run {
+                DraftNotificationRouter.shared.pendingDraftID = draftId
+            }
+            logger.log("continued in foreground on draft id=\(draftId.uuidString, privacy: .public)")
+        } catch {
+            logger.log("foreground hand-off declined or unavailable: \(String(describing: error), privacy: .public)")
         }
     }
 
@@ -157,6 +192,15 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         // rather than re-read; nothing in between touches it.
         var config = WalletTransactionConfigStore.load()
 
+        // Whether this run could file the transaction at all, or can only ever
+        // park a draft: an unmapped merchant has to be set up in the app,
+        // unless the automation pins a Template that already exists. Settled
+        // here, before the claim, so such a sighting defers to a draft that's
+        // already waiting for the same purchase instead of stacking a second
+        // one behind it (see TransactionClaim.Candidate.parksDraftOnly).
+        let canFileMerchant = config.resolvedMerchantInfo(for: merchant) != nil
+            || templateChoice.map { $0 != setUpInRelayOption && config.templates[$0] != nil } == true
+
         // Ahead of the draft guard and of any network call: a purchase the
         // other automation already handled must leave behind no draft, no
         // reminder, and no API request (which matters against YNAB's 200/hr
@@ -169,7 +213,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 amount: amount,
                 accountId: config.cards[card],
                 merchant: merchant,
-                requireConfirmation: requireConfirmation
+                parksDraftOnly: requireConfirmation || !canFileMerchant
             )
         ) {
         case .suppressed(let suppression):
@@ -266,6 +310,12 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 let resolvedTemplateChoice: String
                 if let templateChoice {
                     resolvedTemplateChoice = templateChoice
+                } else if config.templates.isEmpty {
+                    // Nothing to choose between — the only option the picker
+                    // could offer is the "set it up in Relay" sentinel, so
+                    // don't put a one-option question in front of the user.
+                    logger.log("no merchant match and no templates yet")
+                    resolvedTemplateChoice = setUpInRelayOption
                 } else {
                     logger.log("no merchant match — requesting template choice")
                     let prompt = String(format: String(localized: "Which template for \"%@\"?"), merchant)
@@ -273,103 +323,40 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                     touchDraft()
                 }
 
-                let templateName: String
-                let existingTemplate: WalletTransactionConfig.Template?
-                if resolvedTemplateChoice != createNewTemplateOption, let existing = config.templates[resolvedTemplateChoice] {
-                    templateName = resolvedTemplateChoice
-                    existingTemplate = existing
-                } else {
-                    let newName: String
-                    if let newTemplateName {
-                        newName = newTemplateName
-                    } else {
-                        logger.log("creating new template — requesting template name")
-                        newName = try await $newTemplateName.requestValue(IntentDialog(stringLiteral: String(localized: "Template name?")))
-                        touchDraft()
-                    }
-                    templateName = newName
-                    existingTemplate = config.templates[newName]
-                }
-
-                let resolvedPayeeName: String
-                if let payeeOverride {
-                    resolvedPayeeName = payeeOverride
-                } else {
-                    logger.log("template=\(templateName, privacy: .public) — requesting payee name")
-                    let prompt = String(format: String(localized: "Payee name for \"%@\"?"), merchant)
-                    resolvedPayeeName = try await $payeeOverride.requestValue(IntentDialog(stringLiteral: prompt))
-                    touchDraft()
-                }
-
-                let pattern: String
-                if let autoMatchPattern {
-                    pattern = autoMatchPattern
-                } else {
-                    logger.log("payeeName=\(resolvedPayeeName, privacy: .public) — requesting auto-match pattern")
-                    let prompt = String(
-                        format: String(localized: "Match other merchant names to %@ too? Enter text/regex, or leave blank to skip."),
-                        resolvedPayeeName
+                // Either the user asked for it to be set up in Relay, or the
+                // pinned Template names one that no longer exists — which also
+                // covers the old "Create New Template" sentinel still stored in
+                // an automation built before this, so nothing has to migrate.
+                // Both mean this run can't file the merchant on its own: park
+                // the purchase as a draft and let Relay's form ask the rest.
+                // Deliberately not gated on `ensureCompletion`, for the same
+                // reason as the requireConfirmation branch above — the draft
+                // *is* the outcome here, not a rescue for a run that might
+                // still finish, and turning it off would drop the transaction.
+                guard resolvedTemplateChoice != setUpInRelayOption,
+                      let template = config.templates[resolvedTemplateChoice] else {
+                    let handoff = WalletAutomationDialog.handleNeedsTemplate(
+                        claimId,
+                        payload: .ynabWallet(merchant: merchant, amount: amount, card: card),
+                        draftId: activeDraftId
                     )
-                    pattern = try await $autoMatchPattern.requestValue(IntentDialog(stringLiteral: prompt))
-                    touchDraft()
+                    await openDraftInRelay(handoff.draftId, merchant: merchant)
+                    logger.log("perform() done — no template for merchant, left a draft to finish in Relay")
+                    return .result(dialog: "\(handoff.dialog)")
                 }
-                logger.log("autoMatchPattern=\"\(pattern, privacy: .public)\"")
+                logger.log("filing merchant under template=\(resolvedTemplateChoice, privacy: .public)")
 
-                let resolvedCategoryId: String?
-                if let existingTemplate {
-                    resolvedCategoryId = existingTemplate.categoryId
-                } else {
-                    let category: YNABCategoryEntity
-                    if let categoryOverride {
-                        category = categoryOverride
-                    } else {
-                        logger.log("payeeName=\(resolvedPayeeName, privacy: .public) — requesting category")
-                        // requestDisambiguation (not requestValue) so this param
-                        // can stay out of parameterSummary — see the note there.
-                        let categories = try await YNABCategoryEntity.defaultQuery.suggestedEntities()
-                        category = try await $categoryOverride.requestDisambiguation(
-                            among: categories,
-                            dialog: IntentDialog(stringLiteral: String(format: String(localized: "Category for %@?"), templateName))
-                        )
-                        touchDraft()
-                    }
-                    resolvedCategoryId = category.id
+                // The raw merchant string becomes the payee. Cleaning that up —
+                // and adding the auto-match rule that makes sibling merchants
+                // reuse the tidy name — is template editing, done in Relay
+                // rather than asked here through a text prompt.
+                if config.linkMerchantIfChanged(merchant: merchant, payeeName: merchant, templateName: resolvedTemplateChoice) {
+                    changed = true
                 }
-
-                let resolvedSplitwiseOption: SplitwiseTemplateOption
-                if let existingTemplate {
-                    resolvedSplitwiseOption = existingTemplate.splitwiseOption
-                } else if SplitwiseAuthService.currentAccessToken == nil {
-                    // Don't ask a YNAB-only user to configure a Splitwise
-                    // setting for their new template.
-                    resolvedSplitwiseOption = .never
-                } else {
-                    if let splitwiseOptionOverride {
-                        resolvedSplitwiseOption = splitwiseOptionOverride
-                    } else {
-                        logger.log("categoryId=\(resolvedCategoryId ?? "nil", privacy: .public) — requesting Splitwise option")
-                        resolvedSplitwiseOption = try await $splitwiseOptionOverride.requestDisambiguation(
-                            among: [.ask, .always, .manual, .never],
-                            dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with Splitwise?"), templateName))
-                        )
-                        touchDraft()
-                    }
-                }
-
-                var template = existingTemplate ?? WalletTransactionConfig.Template(
-                    categoryId: resolvedCategoryId,
-                    splitwiseOption: resolvedSplitwiseOption
-                )
-                if !pattern.isEmpty {
-                    template.autoMatch.append(.init(pattern: pattern, payeeName: resolvedPayeeName))
-                }
-                config.templates[templateName] = template
-                config.merchants[merchant] = WalletTransactionConfig.MerchantInfo(payeeName: resolvedPayeeName, templateName: templateName)
-                payeeName = resolvedPayeeName
-                categoryId = resolvedCategoryId
-                splitwiseOption = resolvedSplitwiseOption
+                payeeName = merchant
+                categoryId = template.categoryId
+                splitwiseOption = template.splitwiseOption
                 templateFriend = template.splitwiseFriend
-                changed = true
             }
 
             let accountId: String
@@ -482,15 +469,14 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             // another: a single run must never leave two reminders (ynab +
             // splitwise) able to fire at once. The result is a recoverable
             // Splitwise-only reminder (YNAB is already done), not a YNAB re-do.
-            // Resolve the friend as far as possible without asking, up front,
-            // so it's on hand both for the split-choice notification and for a
-            // background completion; a live ask still happens below when
-            // neither an override, the template, nor the app default applies.
-            var resolvedFriend: SplitwiseFriendEntity? = splitwiseFriend
+            // Resolve the friend up front, so it's on hand both for the
+            // split-choice notification and for a background completion. Never
+            // asked here: the parameter wins, then the template's cached
+            // friend, then the app-wide default — and with none of those the
+            // split is parked below for Relay to finish.
+            let resolvedFriend: SplitwiseFriendEntity? = splitwiseFriend
                 ?? templateFriend.map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
-                ?? (splitwiseFriendFallback == .defaultFriend
-                    ? SplitwiseDefaultFriendStore.load().map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
-                    : nil)
+                ?? SplitwiseDefaultFriendStore.load().map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
 
             if let activeDraftId {
                 TransactionDraftGuard.transition(activeDraftId, to: .splitwiseWallet(merchant: merchant, amount: amount))
@@ -559,23 +545,13 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 return .result(dialog: "\(dialog)")
             }
 
-            // Friend still unresolved (fallback was .ask, or nothing
-            // configured) — ask live now that we know we're splitting.
-            if resolvedFriend == nil, splitwiseFriendFallback == .ask {
-                logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) — requesting Splitwise friend")
-                let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
-                resolvedFriend = try await $splitwiseFriend.requestDisambiguation(
-                    among: friends,
-                    dialog: IntentDialog(stringLiteral: String(localized: "Split with which Splitwise friend?"))
-                )
-                touchDraft()
-            }
-
             guard let friend = resolvedFriend else {
-                // No friend to split with and no live-ask path — leave the
-                // Splitwise-only draft and nudge the user to finish it in
-                // Relay (which resolves the merchant back to this same
-                // template and just needs a friend picked).
+                // Nothing configured to split with — leave the Splitwise-only
+                // draft and nudge the user to finish it in Relay (which
+                // resolves the merchant back to this same template and just
+                // needs a friend picked). An automation that would rather be
+                // asked in the moment can set Shortcuts' own "Ask Each Time"
+                // on "Split With", which needs no parameter here.
                 logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) but no friend available")
                 if let activeDraftId {
                     await TransactionDraftGuard.fail(activeDraftId)

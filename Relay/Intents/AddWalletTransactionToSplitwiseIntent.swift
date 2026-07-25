@@ -49,6 +49,22 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     @Parameter(title: "Amount")
     var amount: Double
 
+    /// Only used when the resolved template's split option is "Ask Each
+    /// Time" — the live per-transaction equivalent of the original's
+    /// Ja/Manuell/Nein menu.
+    @Parameter(title: "Split Transaction?")
+    var splitwiseRuntimeChoice: SplitwiseSplitOption?
+
+    /// Who to split with, when this automation's expenses always go to the
+    /// same person. Left unset, the merchant template's cached friend or the
+    /// app-wide default (`SplitwiseDefaultFriendStore`) is used, and only a
+    /// merchant with neither is asked live.
+    @Parameter(title: "Split With")
+    var friendOverride: SplitwiseFriendEntity?
+
+    @Parameter(title: "Your Share", description: "Only used when Split is Manual")
+    var splitwiseOwnShare: Double?
+
     /// Which automation this run came from — see the equivalent parameter
     /// on AddWalletTransactionToYNABIntent. Blank means "wallet", so
     /// automations built before this existed keep working untouched.
@@ -61,21 +77,6 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     /// symmetric so both wallet automations can be wired up the same way.
     @Parameter(title: "Require Confirmation", description: "Never add to Splitwise automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay.", default: false)
     var requireConfirmation: Bool
-
-    @Parameter(title: "Split With")
-    var friendOverride: SplitwiseFriendEntity?
-
-    @Parameter(title: "If Split With Isn't Set", default: .defaultFriend)
-    var splitwiseFriendFallback: SplitwiseFriendFallback
-
-    @Parameter(title: "Your Share", description: "Only used when Split is Manual")
-    var splitwiseOwnShare: Double?
-
-    /// Only used when the resolved template's split option is "Ask Each
-    /// Time" — the live per-transaction equivalent of the original's
-    /// Ja/Manuell/Nein menu.
-    @Parameter(title: "Split Transaction?")
-    var splitwiseRuntimeChoice: SplitwiseSplitOption?
 
     /// See TransactionDraftGuard: if this run gets interrupted (a follow-up
     /// question dismissed/timed out, the process killed by a screen lock)
@@ -90,12 +91,11 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) Splitwise expense for \(\.$merchant)") {
+            \.$splitwiseRuntimeChoice
+            \.$friendOverride
+            \.$splitwiseOwnShare
             \.$source
             \.$requireConfirmation
-            \.$friendOverride
-            \.$splitwiseFriendFallback
-            \.$splitwiseOwnShare
-            \.$splitwiseRuntimeChoice
             \.$ensureCompletion
             \.$successNotification
         }
@@ -119,7 +119,10 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 amount: amount,
                 accountId: nil,
                 merchant: merchant,
-                requireConfirmation: requireConfirmation
+                // An unknown merchant is auto-filed under the default
+                // Splitwise template, so nothing but "Require Confirmation"
+                // can stop this run from adding the expense itself.
+                parksDraftOnly: requireConfirmation
             )
         ) {
         case .suppressed(let suppression):
@@ -181,7 +184,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             let friend: SplitwiseFriendEntity
             if let friendOverride {
                 friend = friendOverride
-            } else if splitwiseFriendFallback == .defaultFriend, let defaultFriend = SplitwiseDefaultFriendStore.load() {
+            } else if let defaultFriend = SplitwiseDefaultFriendStore.load() {
                 logger.log("using app-wide default Splitwise friend")
                 friend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
             } else {

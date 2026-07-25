@@ -189,6 +189,39 @@ nonisolated enum WalletAutomationDialog {
         )
     }
 
+    /// Finishes off a run that stopped because the merchant it was handed has
+    /// no template to file it under: nothing is written, the purchase is
+    /// parked as a draft, and the claim records it so a later run that does
+    /// write clears it (same bookkeeping as an awaiting-confirmation draft —
+    /// see `handleAwaitingConfirmation` — since both are sightings that
+    /// deliberately added nothing).
+    ///
+    /// `draftId` is the draft the run's "Ensure Completion" guard already
+    /// began, if any; the same one is reused rather than a second one started.
+    ///
+    /// No "success notification" gate, for the same reason as
+    /// `handleAwaitingConfirmation`: the reminder isn't a courtesy ping about
+    /// something that happened, it's the prompt telling the user the
+    /// transaction is sitting in Relay waiting on them.
+    ///
+    /// Returns the draft's id alongside the dialog so the caller can offer to
+    /// jump straight into it (see the intent's `continueInForeground` call)
+    /// rather than leaving the reminder as the only way back.
+    static func handleNeedsTemplate(
+        _ claimId: UUID,
+        payload: TransactionDraft.Payload,
+        draftId: UUID?
+    ) -> (dialog: String, draftId: UUID) {
+        let resolvedDraftId = TransactionDraftGuard.beginNeedsTemplate(payload, existing: draftId)
+        TransactionClaimStore.awaitConfirmation(claimId, draftId: resolvedDraftId)
+        let dialog = String(
+            format: String(localized: "%@ at %@ needs a template – waiting in Relay."),
+            payload.amount.asMoneyString,
+            payload.merchant
+        )
+        return (dialog, resolvedDraftId)
+    }
+
     /// The Splitwise flavour of `handleAwaitingConfirmation`.
     ///
     /// When the merchant's template is set to "Ask Each Time", the split

@@ -15,10 +15,14 @@
 //  and clears the draft once the transaction actually finishes (created,
 //  queued, or a deliberate "don't split").
 //
-//  beginAwaitingConfirmation() is the one entry point that isn't about an
-//  interrupted run: it's used when an automation has "Require Confirmation"
-//  set and so was never going to write on its own. Same draft, same
-//  tap-to-finish screen — only the reminder's wording differs.
+//  beginAwaitingConfirmation() and beginNeedsTemplate() are the two entry
+//  points that aren't about an interrupted run: the first is used when an
+//  automation has "Require Confirmation" set and so was never going to write
+//  on its own, the second when the merchant has no template yet and setting
+//  one up belongs in the app. Same draft, same tap-to-finish screen, and the
+//  needs-a-template one reuses the ordinary reminder wording too; only the
+//  confirmation gets its own, since it asks a question ("Add it?") rather
+//  than reporting something unfinished.
 //
 //  There's no way to resume a suspended App Intent perform() call — if a
 //  follow-up question gets dismissed or the process is killed outright
@@ -88,6 +92,37 @@ enum TransactionDraftGuard {
         // splitActions follows the armed context, so this schedules straight
         // into the Split Equally / Manually / Don't Split reminder.
         let draft = create(payload, context: context)
+        scheduleNotification(for: draft)
+        return draft.id
+    }
+
+    /// Starts — or takes over — a draft for a purchase the automation
+    /// deliberately won't file on its own, because the merchant has no
+    /// template yet: picking or creating one (with its category, split rule
+    /// and payee naming) is a form's worth of questions, and that form lives
+    /// in Relay rather than in a chain of Shortcuts prompts.
+    ///
+    /// `existing` is the draft the run's "Ensure Completion" guard already
+    /// began, when it has one — reused rather than completed-and-replaced so
+    /// the whole run stays in a single reminder slot and can't surface two
+    /// notifications.
+    ///
+    /// Left on the usual quiet-period delay rather than fired at once, unlike
+    /// `fail()`: the intent asks to continue in the foreground straight after
+    /// this (see AddWalletTransactionToYNABIntent), so the reminder is the
+    /// fallback for that being declined — or impossible, e.g. on a locked
+    /// device — not the first thing the user should see. It can still land
+    /// while the form is open if the draft is left sitting there, which is
+    /// the intended fail-safe: `complete()` clears it on submit.
+    ///
+    /// Carries the plain "Transaction Incomplete / tap to continue" wording
+    /// rather than one of its own: that's exactly what this is, only with a
+    /// known reason, and the reason is the first thing the form shows anyway.
+    @discardableResult
+    static func beginNeedsTemplate(_ payload: TransactionDraft.Payload, existing: UUID?) -> UUID {
+        let draft = existing.flatMap { id in TransactionDraftStore.load().first { $0.id == id } }
+            ?? create(payload)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [draft.id.uuidString])
         scheduleNotification(for: draft)
         return draft.id
     }

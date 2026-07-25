@@ -64,9 +64,9 @@ struct TemplateEditView: View {
 
     /// The app-wide default (Settings' DefaultSplitwiseFriendRow) — leaving
     /// this template's own friend unset doesn't mean "split with no one",
-    /// it means "use this" (see AddWalletTransactionToYNABIntent's
-    /// splitwiseFriendFallback), so the picker/footer below should say so
-    /// instead of showing a bare "None".
+    /// it means "use this" (it's the last step of both wallet intents'
+    /// friend resolution), so the picker/footer below should say so instead
+    /// of showing a bare "None".
     private let defaultFriend: SplitwiseDefaultFriend?
 
     /// Snapshot of the loaded state, compared against `currentDraft` in
