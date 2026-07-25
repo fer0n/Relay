@@ -18,7 +18,7 @@ import Observation
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "DraftNotificationRouter")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "DraftNotificationRouter")
 
 @MainActor
 @Observable

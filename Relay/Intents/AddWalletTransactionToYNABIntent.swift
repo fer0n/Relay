@@ -26,7 +26,7 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "WalletTransaction")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransaction")
 
 nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to YNAB"
@@ -399,7 +399,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             // Shared by the YNAB write and any Splitwise split below so the
             // two fold into one combined history entry rather than two rows.
             let walletGroupId = UUID()
-            let milliunits = -Int((amount * 1000).rounded()) // outflow: negative milliunits
+            let milliunits = -Int((amount * Const.milliunitsPerUnit).rounded()) // outflow: negative milliunits
             let transaction = YNABTransactionRequest(
                 accountId: accountId,
                 date: YNABService.todayDateString(),
@@ -407,7 +407,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 payeeName: payeeName,
                 categoryId: categoryId,
                 memo: nil,
-                cleared: "uncleared",
+                cleared: Const.YNAB.uncleared,
                 approved: true
             )
             let formattedAmount = amount.asMoneyString

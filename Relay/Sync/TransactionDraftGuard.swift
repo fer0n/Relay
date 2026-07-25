@@ -32,7 +32,7 @@ import Foundation
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "TransactionDraftGuard")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDraftGuard")
 
 enum TransactionDraftGuard {
     /// How long a run can go quiet (no question answered, no completion)

@@ -96,14 +96,14 @@ nonisolated enum SplitwiseExpenseHelper {
             }
         }
 
-        let costCents = Int((amount * 100).rounded())
-        let ownShareCents = ownShare.map { Int(($0 * 100).rounded()) } ?? costCents / 2
+        let costCents = Int((amount * Const.centsPerUnit).rounded())
+        let ownShareCents = ownShare.map { Int(($0 * Const.centsPerUnit).rounded()) } ?? costCents / 2
         let friendShareCents = costCents - ownShareCents
 
         let expense = SplitwiseExpenseRequest(
             costCents: costCents,
             description: description,
-            currencyCode: "EUR",
+            currencyCode: Const.currencyCode,
             payerUserId: user.id,
             payerOwedCents: ownShareCents,
             friendUserId: friend.id,
@@ -128,8 +128,8 @@ nonisolated enum SplitwiseExpenseHelper {
             // just posted live should be reflected immediately, same as
             // SplitwiseFriendTransactionsView.delete(_:) does after a delete.
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token) }
-            let ownAmount = (Double(ownShareCents) / 100).asMoneyString
-            let friendAmount = (Double(friendShareCents) / 100).asMoneyString
+            let ownAmount = (Double(ownShareCents) / Const.centsPerUnit).asMoneyString
+            let friendAmount = (Double(friendShareCents) / Const.centsPerUnit).asMoneyString
             return .created(shareSummary: "You: \(ownAmount), \(friend.firstName): \(friendAmount)")
         case .queued:
             // Nothing posted live (offline/queued for later), so there's

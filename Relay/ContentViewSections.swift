@@ -56,7 +56,7 @@ struct ContentQuickLinksSection: View {
     var body: some View {
         Section {
             NavigationLink(value: ContentRoute.templates) {
-                RowLabel(title: "Templates", systemImage: "doc.on.doc")
+                RowLabel(title: "Templates", systemImage: Const.Symbol.template)
             }
             NavigationLink(value: ContentRoute.settings) {
                 RowLabel(title: "Settings", systemImage: "switch.2")
@@ -67,10 +67,10 @@ struct ContentQuickLinksSection: View {
         if splitwiseConnected {
             Section("Splitwise") {
                 NavigationLink(value: ContentRoute.splitwiseBalances) {
-                    RowLabel(title: "Balances", systemImage: "person.2.fill")
+                    RowLabel(title: "Balances", systemImage: Const.Symbol.friends)
                 }
                 NavigationLink(value: ContentRoute.splitwiseActivity) {
-                    RowLabel(title: "Activity", systemImage: "bell.fill")
+                    RowLabel(title: "Activity", systemImage: Const.Symbol.activity)
                 }
             }
             .cardRowBackground()
@@ -102,13 +102,13 @@ struct ContentDraftsSection: View {
                     Button(role: .destructive) {
                         onDismiss(draft)
                     } label: {
-                        Image(systemName: "trash.fill")
+                        Image(systemName: Const.Symbol.delete)
                     }
                 }
             }
             if hasMore {
                 NavigationLink(value: ContentRoute.transactionDrafts) {
-                    RowLabel(title: "Show All", systemImage: "square.and.pencil")
+                    RowLabel(title: "Show All", systemImage: Const.Symbol.drafts)
                 }
                 .cardRowBackground()
             }

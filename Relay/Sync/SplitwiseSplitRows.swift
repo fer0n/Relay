@@ -53,7 +53,7 @@ struct SplitwiseFriendPickerRow: View {
 
     var body: some View {
         DraftDetailRow(
-            icon: "person.2.fill",
+            icon: Const.Symbol.friends,
             title: "Split With",
             isIncomplete: isIncomplete,
             isEditable: resolvedFriendName == nil

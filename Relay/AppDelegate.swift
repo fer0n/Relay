@@ -24,7 +24,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 final class QuickActionSceneDelegate: NSObject, UIWindowSceneDelegate {
-    static let newTransactionShortcutType = "com.octabits.relay.newTransaction"
+    /// Must stay in sync with the `UIApplicationShortcutItemType` declared in
+    /// Info.plist.
+    static let newTransactionShortcutType = "\(Const.bundleID).newTransaction"
 
     /// Cold launch — the shortcut item arrives as connection options rather
     /// than a `performActionFor` call.

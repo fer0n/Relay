@@ -20,7 +20,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "TransactionClaimStore")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionClaimStore")
 
 enum TransactionClaimStore {
     /// How far apart two sightings of the same purchase can be. The Wallet

@@ -4,7 +4,7 @@
 //
 //  Friend avatar for SplitwiseBalanceCard — loads through RemoteImageCache
 //  (memory + disk, so it doesn't re-download every time a card appears) and
-//  falls back to the plain "person.fill" placeholder while loading, on
+//  falls back to the plain `Const.Symbol.person` placeholder while loading, on
 //  failure, or when the friend has no picture at all.
 //
 
@@ -32,7 +32,7 @@ struct SplitwiseAvatarView: View {
                     .frame(width: diameter, height: diameter)
                     .clipShape(Circle())
             } else {
-                Image(systemName: "person.fill")
+                Image(systemName: Const.Symbol.person)
                     .font(iconFont)
                     .foregroundStyle(.secondary)
                     .frame(width: diameter, height: diameter)

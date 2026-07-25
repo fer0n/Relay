@@ -6,6 +6,9 @@
 import AppIntents
 
 struct RelayShortcuts: AppShortcutsProvider {
+    // The icon names below stay inline literals rather than `Const.Symbol`
+    // references: `AppShortcut.systemImageName` is compile-time evaluated by
+    // AppIntents and rejects anything that isn't a literal.
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: AddYNABTransactionIntent(),

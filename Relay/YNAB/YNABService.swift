@@ -58,9 +58,9 @@ nonisolated enum YNABService {
 
     static func createTransaction(_ transaction: YNABTransactionRequest, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("plans/default/transactions"))
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
+        request.setValue(Const.HTTP.jsonContentType, forHTTPHeaderField: Const.HTTP.contentTypeHeader)
         request.httpBody = try encoder.encode(YNABTransactionEnvelope(transaction: transaction))
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -73,9 +73,9 @@ nonisolated enum YNABService {
     /// call against the 200-req/hour rate limit, regardless of size.
     static func createTransactions(_ transactions: [YNABTransactionRequest], token: String) async throws -> YNABBulkImportResult {
         var request = URLRequest(url: baseURL.appendingPathComponent("plans/default/transactions"))
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
+        request.setValue(Const.HTTP.jsonContentType, forHTTPHeaderField: Const.HTTP.contentTypeHeader)
         request.httpBody = try encoder.encode(YNABBulkTransactionEnvelope(transactions: transactions))
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -89,7 +89,7 @@ nonisolated enum YNABService {
 
     private static func get(_ path: String, token: String) async throws -> Data {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
         return data
@@ -103,7 +103,7 @@ nonisolated enum YNABService {
         case 401:
             throw YNABAPIError.unauthorized
         case 429:
-            let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
+            let retryAfter = http.value(forHTTPHeaderField: Const.HTTP.retryAfterHeader).flatMap(TimeInterval.init)
             throw YNABAPIError.rateLimited(retryAfter: retryAfter)
         default:
             throw YNABAPIError.server(status: http.statusCode)

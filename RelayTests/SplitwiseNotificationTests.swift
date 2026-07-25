@@ -220,7 +220,7 @@ struct SplitwiseActivityItemTests {
         let items = SplitwiseActivityItem.items(for: decoded.notifications)
 
         #expect(items.count == 1)
-        #expect(items.first?.systemImage == "bell.fill")
+        #expect(items.first?.systemImage == Const.Symbol.activity)
         #expect(items.first?.restorableExpenseId == nil)
         #expect(String(try #require(items.first).content.characters) == "new thing")
     }

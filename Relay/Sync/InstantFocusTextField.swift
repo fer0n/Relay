@@ -96,7 +96,7 @@ struct InstantFocusTextField: UIViewRepresentable {
             let bar = UIToolbar()
             bar.tintColor = .label
             let dismiss = UIBarButtonItem(
-                image: UIImage(systemName: "chevron.down"),
+                image: UIImage(systemName: Const.Symbol.dismissKeyboard),
                 style: .plain,
                 target: self,
                 action: #selector(dismissKeyboard)

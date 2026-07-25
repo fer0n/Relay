@@ -65,7 +65,7 @@ nonisolated enum FileImportRowBuilder {
         }
 
         let drafts: [Draft] = rows.compactMap { row in
-            let milliunits = Int((row.amount * 1000).rounded())
+            let milliunits = Int((row.amount * Const.milliunitsPerUnit).rounded())
             guard milliunits != 0 else { return nil }
             return Draft(dateString: DateFormatter.yyyyMMdd.string(from: row.date), milliunits: milliunits, row: row)
         }.sorted { "\($0.milliunits):\($0.dateString)" < "\($1.milliunits):\($1.dateString)" }
@@ -98,10 +98,10 @@ extension FileImportRow {
         YNABTransactionRequest(
             accountId: accountId,
             date: DateFormatter.yyyyMMdd.string(from: date),
-            amount: Int((amount * 1000).rounded()),
+            amount: Int((amount * Const.milliunitsPerUnit).rounded()),
             payeeName: payeeName,
             memo: includeMemos ? memo.map { String($0.prefix(200)) } : nil,
-            cleared: "cleared",
+            cleared: Const.YNAB.cleared,
             approved: false,
             importId: String("YNAB:\(id)".prefix(36))
         )

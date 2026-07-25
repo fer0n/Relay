@@ -13,7 +13,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "CardsMappingView")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "CardsMappingView")
 
 struct CardsMappingView: View {
     @Environment(\.dismiss) private var dismiss
@@ -57,7 +57,7 @@ struct CardsMappingView: View {
                 Section {
                     ForEach(sortedCards, id: \.self) { card in
                         DraftDetailRow(
-                            icon: "creditcard.fill",
+                            icon: Const.Symbol.account,
                             title: "\(card)",
                             isIncomplete: mappings[card] == nil
                         ) {

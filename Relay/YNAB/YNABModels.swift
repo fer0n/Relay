@@ -105,7 +105,7 @@ nonisolated struct YNABBulkImportResult: Codable {
     /// `duplicatesLine` for the rest.
     var summaryLine: String {
         if transactions.count == 1, let transaction = transactions.first {
-            let amount = Double(transaction.amount) / 1000
+            let amount = Double(transaction.amount) / Const.milliunitsPerUnit
             let formattedAmount = amount.asMoneyString
             if let payeeName = transaction.payeeName, !payeeName.isEmpty {
                 return "\(formattedAmount), \(payeeName)"

@@ -11,7 +11,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "FileImportConfigStore")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "FileImportConfigStore")
 
 nonisolated struct FileImportConfig: Codable {
     nonisolated struct HeaderMapping: Codable {

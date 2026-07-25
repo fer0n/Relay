@@ -150,7 +150,7 @@ struct SplitwiseBalanceCard: View {
     List {
         Section {
             SplitwiseBalanceGrid(
-                friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: [SplitwiseBalance(currencyCode: "EUR", amount: "12.34")], picture: nil),
+                friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: [SplitwiseBalance(currencyCode: Const.currencyCode, amount: "12.34")], picture: nil),
                 lastRefreshedAt: Date().addingTimeInterval(-320),
                 onTap: {}
             )

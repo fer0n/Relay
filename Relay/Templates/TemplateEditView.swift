@@ -14,7 +14,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "TemplateEditView")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TemplateEditView")
 
 /// Everything Save actually persists, in one place, so "has anything
 /// changed?" is a single Equatable comparison instead of a field-by-field
@@ -137,7 +137,7 @@ struct TemplateEditView: View {
                 }
 
                 if ynabAuth.isAuthenticated {
-                    DraftDetailRow(icon: "tag.fill", title: "Category") {
+                    DraftDetailRow(icon: Const.Symbol.category, title: "Category") {
                         if isLoadingCategories {
                             ProgressView()
                         } else {
@@ -208,7 +208,7 @@ struct TemplateEditView: View {
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
                     } label: {
-                        Image(systemName: "trash.fill")
+                        Image(systemName: Const.Symbol.delete)
                     }
                 }
             }

@@ -17,7 +17,7 @@ import Foundation
 import Observation
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "SplitwiseAuthService")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "SplitwiseAuthService")
 
 @MainActor
 @Observable
@@ -100,8 +100,8 @@ final class SplitwiseAuthService {
         // oauth/token directly — the Worker is the only place holding
         // client_secret.
         var request = URLRequest(url: URL(string: OAuthConfig.oauthRelayBaseURL + "/splitwise/token")!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.jsonContentType, forHTTPHeaderField: Const.HTTP.contentTypeHeader)
 
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: ["code": code])

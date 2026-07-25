@@ -24,7 +24,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "TransactionDetailView")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDetailView")
 
 struct TransactionDetailView: View {
     enum Source {
@@ -199,7 +199,7 @@ private struct HistoryDetailContent: View {
             date: entry.createdAt
         ) {
             Section {
-                DraftDetailRow(icon: "text.alignleft", title: entry.service.titleFieldLabel, isEditable: false) {
+                DraftDetailRow(icon: Const.Symbol.titleField, title: entry.service.titleFieldLabel, isEditable: false) {
                     Text(entry.title)
                 }
                 .cardRowBackground()
@@ -209,7 +209,7 @@ private struct HistoryDetailContent: View {
                 // same value at creation time, but the Payee field here edits
                 // the merchant's *go-forward* mapping, not this frozen entry.
                 if entry.service == .splitwise, let info = linkedInfo {
-                    DraftDetailRow(icon: "doc.on.doc", title: "Template", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.template, title: "Template", isEditable: false) {
                         Text(info.templateName)
                     }
                     .cardRowBackground()
@@ -224,14 +224,14 @@ private struct HistoryDetailContent: View {
                 }
 
                 if let categoryName = entry.categoryName {
-                    DraftDetailRow(icon: "tag.fill", title: "Category", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.category, title: "Category", isEditable: false) {
                         Text(categoryName)
                     }
                     .cardRowBackground()
                 }
 
                 if let accountName = entry.accountName {
-                    DraftDetailRow(icon: "creditcard.fill", title: "Account", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.account, title: "Account", isEditable: false) {
                         Text(accountName)
                     }
                     .cardRowBackground()
@@ -240,7 +240,7 @@ private struct HistoryDetailContent: View {
 
             if let splitSummary = entry.splitSummary {
                 Section("Split") {
-                    DraftDetailRow(icon: "person.2.fill", title: "With", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.friends, title: "With", isEditable: false) {
                         Text(splitSummary)
                     }
                     .cardRowBackground()
@@ -255,7 +255,7 @@ private struct HistoryDetailContent: View {
             if !entry.suppressed.isEmpty {
                 Section("Duplicates Skipped") {
                     ForEach(entry.suppressed) { run in
-                        DraftDetailRow(icon: "link", title: "Also seen from", isEditable: false) {
+                        DraftDetailRow(icon: Const.Symbol.duplicateSkipped, title: "Also seen from", isEditable: false) {
                             Text(run.merchant == entry.merchant ? run.source : "\(run.source) · \(run.merchant)")
                         }
                         .cardRowBackground()
@@ -301,7 +301,7 @@ private struct SplitwiseExpenseDetailContent: View {
     }
 
     private var payerDetailLine: (icon: String, text: String)? {
-        expense.payerName(friendName: friendName).map { ("creditcard.fill", $0) }
+        expense.payerName(friendName: friendName).map { (Const.Symbol.account, $0) }
     }
 
     var body: some View {
@@ -315,7 +315,7 @@ private struct SplitwiseExpenseDetailContent: View {
             onDestroy: delete
         ) {
             Section {
-                DraftDetailRow(icon: "text.alignleft", title: "Description", isEditable: false) {
+                DraftDetailRow(icon: Const.Symbol.titleField, title: "Description", isEditable: false) {
                     Text(expense.description)
                 }
                 .cardRowBackground()
@@ -323,14 +323,14 @@ private struct SplitwiseExpenseDetailContent: View {
 
             Section("Split") {
                 ForEach(expense.paidBreakdown(friendName: friendName)) { paid in
-                    DraftDetailRow(icon: "creditcard.fill", title: "\(paid.name) paid", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.account, title: "\(paid.name) paid", isEditable: false) {
                         Text(paid.amount.formatted(.currency(code: expense.currencyCode)))
                     }
                     .cardRowBackground()
                 }
 
                 ForEach(expense.shareBreakdown(friendName: friendName)) { share in
-                    DraftDetailRow(icon: "person.fill", title: "\(share.name)", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.person, title: "\(share.name)", isEditable: false) {
                         Text(share.amount.formatted(.currency(code: expense.currencyCode)))
                     }
                     .cardRowBackground()
@@ -369,13 +369,13 @@ private struct PendingDetailContent: View {
             onDestroy: discard
         ) {
             Section {
-                DraftDetailRow(icon: "text.alignleft", title: operation.service.titleFieldLabel, isEditable: false) {
+                DraftDetailRow(icon: Const.Symbol.titleField, title: operation.service.titleFieldLabel, isEditable: false) {
                     Text(operation.payload.title)
                 }
                 .cardRowBackground()
 
                 if let detail = operation.payload.detail {
-                    DraftDetailRow(icon: operation.service == .ynab ? "tag.fill" : "person.2.fill", title: operation.service == .ynab ? "Category" : "With", isEditable: false) {
+                    DraftDetailRow(icon: operation.service == .ynab ? Const.Symbol.category : Const.Symbol.friends, title: operation.service == .ynab ? "Category" : "With", isEditable: false) {
                         Text(detail)
                     }
                     .cardRowBackground()
@@ -384,7 +384,7 @@ private struct PendingDetailContent: View {
 
             if let lastError = operation.lastError {
                 Section("Last Error") {
-                    DraftDetailRow(icon: "exclamationmark.triangle.fill", title: "Attempt \(operation.attemptCount)", isEditable: false) {
+                    DraftDetailRow(icon: Const.Symbol.syncError, title: "Attempt \(operation.attemptCount)", isEditable: false) {
                         Text(lastError)
                     }
                     .cardRowBackground()
@@ -425,7 +425,7 @@ private struct PendingDetailContent: View {
             amount: -12340,
             payeeName: "Coffee Shop",
             categoryId: nil,
-            cleared: "cleared",
+            cleared: Const.YNAB.cleared,
             approved: true
         ))
     )

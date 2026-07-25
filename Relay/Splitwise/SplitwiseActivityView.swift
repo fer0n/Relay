@@ -165,7 +165,7 @@ struct SplitwiseActivityItem: Identifiable {
             return SplitwiseActivityItem(
                 id: notification.id,
                 createdAt: notification.createdAt,
-                systemImage: notification.kind?.systemImage ?? "bell.fill",
+                systemImage: notification.kind?.systemImage ?? Const.Symbol.activity,
                 content: SplitwiseNotificationContent.attributedString(from: notification.content),
                 restorableExpenseId: restorableExpenseId
             )

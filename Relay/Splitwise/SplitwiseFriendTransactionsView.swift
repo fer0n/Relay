@@ -75,7 +75,7 @@ struct SplitwiseFriendTransactionsView: View {
                         Button {
                             expensePendingDelete = expense
                         } label: {
-                            Image(systemName: "trash.fill")
+                            Image(systemName: Const.Symbol.delete)
                         }
                         .tint(.red)
                     }

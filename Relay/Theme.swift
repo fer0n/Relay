@@ -305,7 +305,7 @@ extension View {
                         Button {
                             isFocused.wrappedValue = false
                         } label: {
-                            Image(systemName: "chevron.down")
+                            Image(systemName: Const.Symbol.dismissKeyboard)
                         }
                         .buttonStyle(.plain)
                     }

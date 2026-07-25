@@ -52,7 +52,7 @@ struct TransactionSummaryRow: View {
                     .fontWeight(.semibold)
                 HStack(spacing: 4) {
                     if errorMessage != nil {
-                        Image(systemName: "exclamationmark.triangle.fill")
+                        Image(systemName: Const.Symbol.syncError)
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -61,7 +61,7 @@ struct TransactionSummaryRow: View {
                         Image(systemName: secondaryService.systemImage)
                     }
                     if suppressedCount > 0 {
-                        Image(systemName: "link")
+                        Image(systemName: Const.Symbol.duplicateSkipped)
                     }
                     if let detail {
                         Text("· \(detail)")

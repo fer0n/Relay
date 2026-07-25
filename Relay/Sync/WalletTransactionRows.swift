@@ -22,7 +22,7 @@ struct TemplatePickerRow: View {
     var isIncomplete: Bool = false
 
     var body: some View {
-        DraftDetailRow(icon: "doc.on.doc", title: "Template", isIncomplete: isIncomplete) {
+        DraftDetailRow(icon: Const.Symbol.template, title: "Template", isIncomplete: isIncomplete) {
             Menu {
                 Button("Create New", action: onCreateNew)
                 if !templates.isEmpty { Divider() }
@@ -50,7 +50,7 @@ struct AccountPickerRow: View {
 
     var body: some View {
         DraftDetailRow(
-            icon: "creditcard.fill",
+            icon: Const.Symbol.account,
             title: "\(cardName)",
             isIncomplete: selection == nil,
             isEditable: !isResolved
@@ -106,7 +106,7 @@ struct PayeeFieldRow: View {
 
     var body: some View {
         DraftDetailRow(
-            icon: "text.alignleft",
+            icon: Const.Symbol.titleField,
             title: title,
             isIncomplete: !allowsEmpty && text.trimmingCharacters(in: .whitespaces).isEmpty
         ) {
@@ -190,7 +190,7 @@ struct CategoryPickerRow: View {
     @Binding var selection: String?
 
     var body: some View {
-        DraftDetailRow(icon: "tag.fill", title: "Category", isIncomplete: selection == nil) {
+        DraftDetailRow(icon: Const.Symbol.category, title: "Category", isIncomplete: selection == nil) {
             if isLoading {
                 ProgressView()
             } else {

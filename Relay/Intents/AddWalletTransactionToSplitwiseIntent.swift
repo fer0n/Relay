@@ -35,7 +35,7 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "WalletTransactionSplitwise")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransactionSplitwise")
 
 nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to Splitwise"

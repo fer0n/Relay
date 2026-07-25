@@ -10,7 +10,7 @@ import Foundation
 import UserNotifications
 import os
 
-private let walletCompletionLogger = Logger(subsystem: "com.octabits.relay", category: "WalletCompletionNotification")
+private let walletCompletionLogger = Logger(subsystem: Const.loggerSubsystem, category: "WalletCompletionNotification")
 
 enum WalletCompletionNotification {
     /// `historyEntryID`, when set, is the id of the just-recorded

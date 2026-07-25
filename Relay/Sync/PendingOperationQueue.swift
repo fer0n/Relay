@@ -22,7 +22,7 @@ import SwiftUI
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "PendingOperationQueue")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "PendingOperationQueue")
 
 @MainActor
 @Observable

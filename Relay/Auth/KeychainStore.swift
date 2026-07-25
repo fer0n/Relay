@@ -7,7 +7,7 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static let service = "com.octabits.relay"
+    private static let service = Const.keychainService
 
     /// `AfterFirstUnlock` rather than the default `WhenUnlocked`: the wallet
     /// App Intents run in the background (no `openAppWhenRun`), so they can

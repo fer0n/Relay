@@ -46,12 +46,12 @@ struct DraftDetailRow<Content: View>: View {
 #Preview {
     List {
         Section {
-            DraftDetailRow(icon: "text.alignleft", title: "Description") {
+            DraftDetailRow(icon: Const.Symbol.titleField, title: "Description") {
                 Text("Grocery Store")
             }
             .cardRowBackground()
 
-            DraftDetailRow(icon: "doc.on.doc", title: "Template") {
+            DraftDetailRow(icon: Const.Symbol.template, title: "Template") {
                 Text("New")
             }
             .cardRowBackground()

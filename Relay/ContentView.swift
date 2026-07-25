@@ -111,7 +111,7 @@ struct ContentView: View {
                     Button {
                         startManualEntry(prefill: nil)
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: Const.Symbol.add)
                             .font(.title2)
                             .fontWeight(.bold)
                             .padding(18)
@@ -173,7 +173,7 @@ struct ContentView: View {
 
             if pendingQueue.operations.count > 0 {
                 NavigationLink(value: ContentRoute.pendingQueue) {
-                    RowLabel(title: "Pending", systemImage: "arrow.triangle.2.circlepath", badge: pendingQueue.operations.count)
+                    RowLabel(title: "Pending", systemImage: Const.Symbol.pending, badge: pendingQueue.operations.count)
                 }
                 .cardRowBackground()
                 .transition(.contentRow)
@@ -183,7 +183,7 @@ struct ContentView: View {
                 Button {
                     importSheetContent = .review
                 } label: {
-                    RowLabel(title: "File Import", systemImage: "doc.badge.plus", badge: fileImportCount)
+                    RowLabel(title: "File Import", systemImage: Const.Symbol.fileImport, badge: fileImportCount)
                 }
                 .cardRowBackground()
                 .transition(.contentRow)
@@ -296,7 +296,7 @@ struct ContentView: View {
 private func seedPreviewData() {
     UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
 
-    let friend = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: "EUR", amount: "42.50")], picture: nil)
+    let friend = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: Const.currencyCode, amount: "42.50")], picture: nil)
     SplitwiseFriendCacheStore.save([friend])
     try? SplitwiseDefaultFriendStore.save(SplitwiseDefaultFriend(id: friend.id, firstName: friend.firstName, fullName: friend.fullName))
 
@@ -326,7 +326,7 @@ private func seedPreviewData() {
             summary: "12.00 at Bakery",
             attemptCount: 1,
             lastError: "No connection — will retry automatically.",
-            payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-22", amount: -12000, payeeName: "Bakery", categoryId: "cat-dining", cleared: "cleared", approved: true)),
+            payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-22", amount: -12000, payeeName: "Bakery", categoryId: "cat-dining", cleared: Const.YNAB.cleared, approved: true)),
             groupId: nil
         ),
     ])
@@ -334,16 +334,16 @@ private func seedPreviewData() {
     let groupId = UUID()
     TransactionHistoryStore.record(
         summary: "45.00 at Restaurant",
-        payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-21", amount: -45000, payeeName: "Restaurant", categoryId: "cat-dining", cleared: "cleared", approved: true)),
+        payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-21", amount: -45000, payeeName: "Restaurant", categoryId: "cat-dining", cleared: Const.YNAB.cleared, approved: true)),
         groupId: groupId
     )
     TransactionHistoryStore.record(
         summary: "Alex: 22.50 €",
-        payload: .splitwiseExpense(SplitwiseExpenseRequest(costCents: 4500, description: "Restaurant", currencyCode: "EUR", payerUserId: 999, payerOwedCents: 2250, friendUserId: friend.id, friendOwedCents: 2250, date: nil)),
+        payload: .splitwiseExpense(SplitwiseExpenseRequest(costCents: 4500, description: "Restaurant", currencyCode: Const.currencyCode, payerUserId: 999, payerOwedCents: 2250, friendUserId: friend.id, friendOwedCents: 2250, date: nil)),
         groupId: groupId
     )
     TransactionHistoryStore.record(
         summary: "12.34 at Coffee Shop",
-        payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-20", amount: -12340, payeeName: "Coffee Shop", categoryId: "cat-groceries", cleared: "cleared", approved: true))
+        payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-20", amount: -12340, payeeName: "Coffee Shop", categoryId: "cat-groceries", cleared: Const.YNAB.cleared, approved: true))
     )
 }

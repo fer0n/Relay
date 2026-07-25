@@ -26,7 +26,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "SharedFileImportView")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "SharedFileImportView")
 
 struct SharedFileImportView: View {
     /// Set when reached fresh from the Share Sheet; nil when reopening an
@@ -272,7 +272,7 @@ struct SharedFileImportView: View {
         List {}
             .themedList(background: .sheetBackgroundColor)
             .overlay {
-                EmptyListBackground(systemName: "doc.badge.plus")
+                EmptyListBackground(systemName: Const.Symbol.fileImport)
             }
     }
 
@@ -304,7 +304,7 @@ struct SharedFileImportView: View {
                     )
                 } else {
                     accountRow
-                    DraftDetailRow(icon: "text.alignleft", title: "Include Memos") {
+                    DraftDetailRow(icon: Const.Symbol.titleField, title: "Include Memos") {
                         Toggle("Include Memos", isOn: $includeMemos)
                             .labelsHidden()
                     }
@@ -399,7 +399,7 @@ struct SharedFileImportView: View {
 
     private var accountRow: some View {
         DraftDetailRow(
-            icon: "creditcard.fill",
+            icon: Const.Symbol.account,
             title: "Account",
             isIncomplete: staging != nil && selectedAccountId == nil
         ) {
@@ -451,7 +451,7 @@ struct SharedFileImportView: View {
                     .font(.system(size: 6))
                     .foregroundStyle(.orange)
             }
-            Text(row.amount, format: .currency(code: "EUR"))
+            Text(row.amount, format: .currency(code: Const.currencyCode))
                 .font(.body)
                 .monospacedDigit()
         }

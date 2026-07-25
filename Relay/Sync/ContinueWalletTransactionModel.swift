@@ -18,7 +18,7 @@
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "ContinueWalletTransactionModel")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "ContinueWalletTransactionModel")
 
 @MainActor
 @Observable
@@ -243,7 +243,7 @@ final class ContinueWalletTransactionModel {
     private func applyPrefill(_ entry: TransactionHistoryEntry) {
         switch entry.payload {
         case .ynabTransaction(let transaction):
-            amountText = (abs(Double(transaction.amount)) / 1000).asMoneyString
+            amountText = (abs(Double(transaction.amount)) / Const.milliunitsPerUnit).asMoneyString
             payeeText = transaction.payeeName
             // Left editable (accountResolved stays false, the AccountPickerRow's
             // default) rather than shown as a static label, unlike a
@@ -251,7 +251,7 @@ final class ContinueWalletTransactionModel {
             selectedAccountId = transaction.accountId
             selectedCategoryId = transaction.categoryId
         case .splitwiseExpense(let expense):
-            amountText = (Double(expense.costCents) / 100).asMoneyString
+            amountText = (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
             payeeText = expense.description
         }
 
@@ -274,7 +274,7 @@ final class ContinueWalletTransactionModel {
             splitwiseRuntimeChoice = .always
         } else {
             splitwiseRuntimeChoice = .manual
-            ownShareText = String(Double(splitExpense.payerOwedCents) / 100)
+            ownShareText = String(Double(splitExpense.payerOwedCents) / Const.centsPerUnit)
         }
     }
 
@@ -804,7 +804,7 @@ final class ContinueWalletTransactionModel {
             friend = nil
         }
 
-        let milliunits = -Int((amount * 1000).rounded())
+        let milliunits = -Int((amount * Const.milliunitsPerUnit).rounded())
         let transaction = YNABTransactionRequest(
             accountId: accountId,
             date: YNABService.todayDateString(),
@@ -812,7 +812,7 @@ final class ContinueWalletTransactionModel {
             payeeName: finalPayeeName,
             categoryId: finalCategoryId,
             memo: nil,
-            cleared: "uncleared",
+            cleared: Const.YNAB.uncleared,
             approved: true
         )
         let formattedAmount = amount.asMoneyString

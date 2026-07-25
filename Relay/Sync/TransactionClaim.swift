@@ -184,6 +184,6 @@ private extension Double {
     /// Doubles, where `==` on two values that both display as 12.34 is not
     /// reliable.
     func isSameAmount(as other: Double) -> Bool {
-        Int((self * 100).rounded()) == Int((other * 100).rounded())
+        Int((self * Const.centsPerUnit).rounded()) == Int((other * Const.centsPerUnit).rounded())
     }
 }

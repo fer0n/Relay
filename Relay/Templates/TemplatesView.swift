@@ -14,7 +14,7 @@ import AppIntents
 import SwiftUI
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "TemplatesView")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TemplatesView")
 
 struct TemplatesView: View {
     @State private var splitwiseAuth = SplitwiseAuthService()
@@ -69,7 +69,7 @@ struct TemplatesView: View {
                 NavigationLink {
                     TemplateEditView(templateName: nil, onSave: { _ in reload() }, onDelete: reload)
                 } label: {
-                    Image(systemName: "plus")
+                    Image(systemName: Const.Symbol.add)
                 }
             }
         }

@@ -29,7 +29,7 @@ import Observation
 import Security
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "YNABAuthService")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "YNABAuthService")
 
 @MainActor
 @Observable
@@ -215,8 +215,8 @@ final class YNABAuthService {
     /// directly — the Worker is the only place holding client_secret.
     private nonisolated static func requestToken(path: String, bodyParams: [String: String]) async throws -> YNABTokenResponse {
         var request = URLRequest(url: URL(string: OAuthConfig.oauthRelayBaseURL + path)!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.jsonContentType, forHTTPHeaderField: Const.HTTP.contentTypeHeader)
         request.httpBody = try JSONSerialization.data(withJSONObject: bodyParams)
 
         let (data, response) = try await URLSession.shared.data(for: request)

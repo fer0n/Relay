@@ -6,7 +6,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "TransactionDraftStore")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDraftStore")
 
 enum TransactionDraftStore {
     private static let fileURL = ApplicationSupportFile.url("transaction-drafts.json")

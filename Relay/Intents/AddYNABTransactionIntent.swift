@@ -89,7 +89,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
         }
 
         // Expenses are outflows in YNAB: stored as negative milliunits.
-        let milliunits = -Int((amount * 1000).rounded())
+        let milliunits = -Int((amount * Const.milliunitsPerUnit).rounded())
         let transaction = YNABTransactionRequest(
             accountId: account.id,
             date: YNABService.todayDateString(),
@@ -97,7 +97,7 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
             payeeName: payee,
             categoryId: category?.id,
             memo: memo,
-            cleared: cleared ? "cleared" : "uncleared",
+            cleared: cleared ? Const.YNAB.cleared : Const.YNAB.uncleared,
             approved: true
         )
         let formattedAmount = amount.asMoneyString

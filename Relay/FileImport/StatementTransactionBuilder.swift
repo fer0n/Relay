@@ -46,7 +46,7 @@ nonisolated enum StatementTransactionBuilder {
                 skipped += 1
                 continue
             }
-            let milliunits = Int((row.amount * 1000).rounded())
+            let milliunits = Int((row.amount * Const.milliunitsPerUnit).rounded())
             guard milliunits != 0 else {
                 skipped += 1
                 continue
@@ -78,7 +78,7 @@ nonisolated enum StatementTransactionBuilder {
                 amount: draft.milliunits,
                 payeeName: draft.payeeName,
                 memo: draft.memo,
-                cleared: "cleared",
+                cleared: Const.YNAB.cleared,
                 approved: false,
                 importId: String(importId.prefix(36))
             ))

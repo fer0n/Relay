@@ -12,7 +12,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.octabits.relay", category: "LegacySplitwiseConfigMigration")
+private let logger = Logger(subsystem: Const.loggerSubsystem, category: "LegacySplitwiseConfigMigration")
 
 enum LegacySplitwiseConfigMigration {
     private static let fileURL = ApplicationSupportFile.url("splitwise-wallet-transaction-config.json")

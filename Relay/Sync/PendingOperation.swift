@@ -53,9 +53,9 @@ extension PendingOperation.Payload {
     var formattedAmount: String {
         switch self {
         case .ynabTransaction(let transaction):
-            abs(Double(transaction.amount) / 1000).asMoneyString
+            abs(Double(transaction.amount) / Const.milliunitsPerUnit).asMoneyString
         case .splitwiseExpense(let expense):
-            (Double(expense.costCents) / 100).asMoneyString
+            (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
         }
     }
 
@@ -70,7 +70,7 @@ extension PendingOperation.Payload {
             return YNABCategoryCacheStore.load()?.first { $0.id == categoryId }?.name
         case .splitwiseExpense(let expense):
             guard let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == expense.friendUserId }) else { return nil }
-            let share = (Double(expense.friendOwedCents) / 100).formatted(.currency(code: expense.currencyCode))
+            let share = (Double(expense.friendOwedCents) / Const.centsPerUnit).formatted(.currency(code: expense.currencyCode))
             return "\(friend.firstName): \(share)"
         }
     }

@@ -80,8 +80,8 @@ struct SplitwiseBalancesView: View {
 }
 
 #Preview {
-    let friend1 = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: "EUR", amount: "42.50")], picture: nil)
-    let friend2 = SplitwiseFriend(id: 2, firstName: "Sam", lastName: nil, balance: [SplitwiseBalance(currencyCode: "EUR", amount: "-12.00")], picture: nil)
+    let friend1 = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: Const.currencyCode, amount: "42.50")], picture: nil)
+    let friend2 = SplitwiseFriend(id: 2, firstName: "Sam", lastName: nil, balance: [SplitwiseBalance(currencyCode: Const.currencyCode, amount: "-12.00")], picture: nil)
     SplitwiseFriendCacheStore.save([friend1, friend2])
     return NavigationStack {
         SplitwiseBalancesView()

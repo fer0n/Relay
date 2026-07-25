@@ -77,9 +77,9 @@ nonisolated enum SplitwiseService {
 
     static func createExpense(_ expense: SplitwiseExpenseRequest, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("create_expense"))
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
+        request.setValue(Const.HTTP.jsonContentType, forHTTPHeaderField: Const.HTTP.contentTypeHeader)
         request.httpBody = try JSONSerialization.data(withJSONObject: expense.asJSONObject)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -98,8 +98,8 @@ nonisolated enum SplitwiseService {
     /// endpoint — used by the detail sheet in SplitwiseFriendTransactionsView.
     static func deleteExpense(id: Int, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("delete_expense/\(id)"))
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
     }
@@ -111,8 +111,8 @@ nonisolated enum SplitwiseService {
     /// `success` flag, so a 2xx alone isn't enough here.
     static func undeleteExpense(id: Int, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("undelete_expense/\(id)"))
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
 
@@ -134,7 +134,7 @@ nonisolated enum SplitwiseService {
             components.queryItems = queryItems
         }
         var request = URLRequest(url: components.url!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
         return data
@@ -148,7 +148,7 @@ nonisolated enum SplitwiseService {
         case 401:
             throw SplitwiseAPIError.unauthorized
         case 429:
-            let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
+            let retryAfter = http.value(forHTTPHeaderField: Const.HTTP.retryAfterHeader).flatMap(TimeInterval.init)
             throw SplitwiseAPIError.rateLimited(retryAfter: retryAfter)
         default:
             throw SplitwiseAPIError.server(status: http.statusCode)

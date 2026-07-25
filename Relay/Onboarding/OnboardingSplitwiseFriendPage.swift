@@ -64,7 +64,7 @@ struct OnboardingSplitwiseFriendPage: View {
                     .foregroundStyle(.primary)
                 Spacer()
                 if selectedFriend?.id == friend.id {
-                    Image(systemName: "checkmark")
+                    Image(systemName: Const.Symbol.checkmark)
                         .foregroundStyle(Color.accentColor)
                         .fontWeight(.semibold)
                 }

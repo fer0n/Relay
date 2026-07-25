@@ -71,7 +71,7 @@ struct SplitwiseFriend: Codable {
     /// Prefers `medium` (matches the balance card's small avatar circle);
     /// falls back to whichever other size Splitwise did include. Nil for a
     /// friend with no `picture` at all, which the avatar view falls back on
-    /// with the plain "person.fill" placeholder.
+    /// with the plain `Const.Symbol.person` placeholder.
     var avatarURL: URL? {
         guard let urlString = picture?.medium ?? picture?.small ?? picture?.large else { return nil }
         return URL(string: urlString)
@@ -129,7 +129,7 @@ struct SplitwiseExpenseRequest: Codable {
     }
 
     private static func decimalString(_ cents: Int) -> String {
-        String(format: "%.2f", Double(cents) / 100)
+        String(format: "%.2f", Double(cents) / Const.centsPerUnit)
     }
 }
 

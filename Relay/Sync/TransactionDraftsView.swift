@@ -32,7 +32,7 @@ struct TransactionDraftsView: View {
                         TransactionDraftGuard.complete(draft.id)
                         drafts.removeAll { $0.id == draft.id }
                     } label: {
-                        Image(systemName: "trash.fill")
+                        Image(systemName: Const.Symbol.delete)
                     }
                 }
             }
@@ -41,7 +41,7 @@ struct TransactionDraftsView: View {
         .background {
             Color.backgroundColor
             if drafts.isEmpty {
-                EmptyListBackground(systemName: "square.and.pencil")
+                EmptyListBackground(systemName: Const.Symbol.drafts)
             }
         }
         .navigationTitle("Transaction Drafts")

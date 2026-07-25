@@ -115,7 +115,7 @@ extension TransactionHistoryEntry {
             return nil
         }
         guard let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == request.friendUserId }) else { return nil }
-        let share = (Double(request.friendOwedCents) / 100).formatted(.currency(code: request.currencyCode))
+        let share = (Double(request.friendOwedCents) / Const.centsPerUnit).formatted(.currency(code: request.currencyCode))
         return "\(friend.firstName): \(share)"
     }
 }

@@ -40,7 +40,7 @@ struct BackupImportExportSection: View {
                     // "Exported." line into the section — a self-clearing
                     // success tick.
                     if didExport {
-                        Image(systemName: "checkmark")
+                        Image(systemName: Const.Symbol.checkmark)
                             .foregroundStyle(.green)
                             .transition(.opacity.combined(with: .scale))
                     }
