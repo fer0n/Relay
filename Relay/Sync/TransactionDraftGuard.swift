@@ -15,6 +15,11 @@
 //  and clears the draft once the transaction actually finishes (created,
 //  queued, or a deliberate "don't split").
 //
+//  beginAwaitingConfirmation() is the one entry point that isn't about an
+//  interrupted run: it's used when an automation has "Require Confirmation"
+//  set and so was never going to write on its own. Same draft, same
+//  tap-to-finish screen — only the reminder's wording differs.
+//
 //  There's no way to resume a suspended App Intent perform() call — if a
 //  follow-up question gets dismissed or the process is killed outright
 //  (screen locked, a Shortcuts prompt timing out), that execution is simply
@@ -43,7 +48,56 @@ enum TransactionDraftGuard {
 
     @discardableResult
     static func begin(_ payload: TransactionDraft.Payload) -> UUID {
-        let draft = TransactionDraft(id: UUID(), startedAt: Date(), payload: payload)
+        let draft = create(payload)
+        scheduleNotification(for: draft)
+        return draft.id
+    }
+
+    /// Starts a draft for a purchase Relay deliberately won't add on its own,
+    /// because the automation that saw it has "Require Confirmation" set.
+    ///
+    /// The draft here isn't a safety net for a run that might not finish —
+    /// it *is* the outcome, and the reminder asks for approval rather than
+    /// nudging the user to finish something. It's still scheduled at the
+    /// usual quiet-period delay rather than immediately, which doubles as a
+    /// grace window for the other automation to arrive and supersede it (see
+    /// TransactionClaim.supersededConfirmations).
+    @discardableResult
+    static func beginAwaitingConfirmation(_ payload: TransactionDraft.Payload, source: String) -> UUID {
+        let draft = create(payload)
+        scheduleNotification(
+            for: draft,
+            title: String(localized: "Confirm Transaction"),
+            body: String(localized: "\(draft.summary), seen by \"\(source)\". Add it?"),
+            categoryIdentifier: WalletConfirmNotification.categoryIdentifier,
+            splitActions: false
+        )
+        return draft.id
+    }
+
+    /// Starts a draft whose reminder is the split question itself, rather
+    /// than a plain nudge that leads to it. Used when an automation requires
+    /// confirmation and the merchant is already set to ask how to split: on
+    /// the Splitwise path that question doubles as the confirmation, since
+    /// "Don't Split" means nothing gets created at all.
+    @discardableResult
+    static func beginAwaitingSplitChoice(
+        _ payload: TransactionDraft.Payload,
+        context: TransactionDraft.PendingSplitContext
+    ) -> UUID {
+        // splitActions follows the armed context, so this schedules straight
+        // into the Split Equally / Manually / Don't Split reminder.
+        let draft = create(payload, context: context)
+        scheduleNotification(for: draft)
+        return draft.id
+    }
+
+    private static func create(
+        _ payload: TransactionDraft.Payload,
+        context: TransactionDraft.PendingSplitContext? = nil
+    ) -> TransactionDraft {
+        var draft = TransactionDraft(id: UUID(), startedAt: Date(), payload: payload)
+        draft.pendingSplitContext = context
         var drafts = TransactionDraftStore.load()
         drafts.append(draft)
         do {
@@ -51,8 +105,7 @@ enum TransactionDraftGuard {
         } catch {
             logger.error("failed to save transaction draft: \(String(describing: error), privacy: .public)")
         }
-        scheduleNotification(for: draft)
-        return draft.id
+        return draft
     }
 
     /// Pushes the reminder deadline back out to `fireDelay` from now —
@@ -98,11 +151,27 @@ enum TransactionDraftGuard {
         return choice
     }
 
+    /// Poses the split question as a notification in its own right, with no
+    /// perform() waiting on the answer — used when a background "Add" from a
+    /// confirmation reminder got the transaction in but left the split still
+    /// to decide. Nothing to disarm here, unlike askSplitChoice: the reminder
+    /// *is* the question, and answering it (WalletDraftCompletion) completes
+    /// the draft outright. Fires promptly, since it's the direct response to
+    /// a button the user just pressed.
+    static func askSplitChoiceViaNotification(_ id: UUID, context: TransactionDraft.PendingSplitContext) {
+        armSplitChoice(id, context: context, delay: 1)
+    }
+
     /// Saves the expense description + resolved friend onto the draft and
     /// reschedules its reminder carrying the split quick-reply actions. Also
     /// resets the quiet-period timer, since the user is now being actively
-    /// prompted. Private — always paired with disarm via askSplitChoice.
-    private static func armSplitChoice(_ id: UUID, context: TransactionDraft.PendingSplitContext) {
+    /// prompted. Private — reached either paired with disarm via
+    /// askSplitChoice, or standalone via askSplitChoiceViaNotification.
+    private static func armSplitChoice(
+        _ id: UUID,
+        context: TransactionDraft.PendingSplitContext,
+        delay: TimeInterval = fireDelay
+    ) {
         var drafts = TransactionDraftStore.load()
         guard let index = drafts.firstIndex(where: { $0.id == id }) else { return }
         drafts[index].pendingSplitContext = context
@@ -112,7 +181,7 @@ enum TransactionDraftGuard {
             logger.error("failed to save split context on draft: \(String(describing: error), privacy: .public)")
         }
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id.uuidString])
-        scheduleNotification(for: drafts[index])
+        scheduleNotification(for: drafts[index], delay: delay)
     }
 
     /// Clears the armed split context once the split choice has been answered.
@@ -225,7 +294,9 @@ enum TransactionDraftGuard {
     private static func scheduleNotification(
         for draft: TransactionDraft,
         delay: TimeInterval = fireDelay,
+        title: String? = nil,
         body: String? = nil,
+        categoryIdentifier: String? = nil,
         splitActions: Bool? = nil
     ) {
         guard NotificationsPreferenceStore.isEnabled else { return }
@@ -248,7 +319,10 @@ enum TransactionDraftGuard {
                 content.body = String(localized: "Split this expense?")
             }
         } else {
-            content.title = String(localized: "Transaction Incomplete")
+            if let categoryIdentifier {
+                content.categoryIdentifier = categoryIdentifier
+            }
+            content.title = title ?? String(localized: "Transaction Incomplete")
             content.body = body ?? String(localized: "\(draft.summary). Tap to continue.")
         }
 

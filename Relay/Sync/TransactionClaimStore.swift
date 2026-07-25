@@ -114,21 +114,73 @@ enum TransactionClaimStore {
         return .claimed(claim.id)
     }
 
-    /// Marks a run as having actually written its transaction, and returns
-    /// any runs suppressed against it while it was still in flight so the
-    /// caller can fold them into the history entry it just created.
+    /// What a committing run has to clean up after itself, beyond its own
+    /// transaction — see `commit`.
+    struct CommitResult {
+        /// Runs to record as "also seen from …" on the history entry this
+        /// run just created: those suppressed against it while it was still
+        /// in flight, plus any confirmation-only sightings it supersedes.
+        var suppressed: [SuppressedRun] = []
+        /// Drafts left by those superseded sightings. The transaction they
+        /// were asking about now exists, so they're stale and the caller
+        /// clears them.
+        var supersededDraftIds: [UUID] = []
+    }
+
+    /// Marks a run as having actually written its transaction, and reports
+    /// what that write invalidates elsewhere in the ledger.
     @discardableResult
-    static func commit(_ id: UUID, historyEntryId: UUID?) -> [SuppressedRun] {
+    static func commit(_ id: UUID, historyEntryId: UUID?) -> CommitResult {
         lock.lock()
         defer { lock.unlock() }
 
         var claims = load()
-        guard let index = claims.firstIndex(where: { $0.id == id }) else { return [] }
+        guard let index = claims.firstIndex(where: { $0.id == id }) else { return CommitResult() }
         claims[index].state = .committed
         claims[index].historyEntryId = historyEntryId
-        let parked = claims[index].suppressed
+
+        var result = CommitResult(suppressed: claims[index].suppressed)
+
+        // Confirmation-only runs stood aside for this one on the assumption
+        // that it would write; now that it has, their drafts are asking to
+        // add a transaction that already exists. Retired to `.abandoned` so
+        // a second commit in the same window can't adopt them twice.
+        for superseded in TransactionClaim.supersededConfirmations(in: claims, by: claims[index], window: matchWindow) {
+            guard let supersededIndex = claims.firstIndex(where: { $0.id == superseded.id }) else { continue }
+            claims[supersededIndex].state = .abandoned
+            result.suppressed.append(superseded.asSuppressedRun)
+            if let draftId = superseded.draftId {
+                result.supersededDraftIds.append(draftId)
+            }
+            logger.log("superseded awaiting-confirmation \(superseded.source, privacy: .public) run")
+        }
+
         save(claims)
-        return parked
+        return result
+    }
+
+    /// Marks a run that deliberately wrote nothing because its automation
+    /// requires confirmation, and records the draft it left behind so a
+    /// later real write can clear it.
+    static func awaitConfirmation(_ id: UUID, draftId: UUID?) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var claims = load()
+        guard let index = claims.firstIndex(where: { $0.id == id }) else { return }
+        claims[index].state = .awaitingConfirmation
+        claims[index].draftId = draftId
+        save(claims)
+    }
+
+    /// The claim a draft came from, if it's still in the ledger — lets the
+    /// user's approval of that draft be treated as the claim finally writing
+    /// its transaction, so the other automation arriving late in the window
+    /// is suppressed rather than adding it a second time.
+    static func claimId(forDraft draftId: UUID) -> UUID? {
+        lock.lock()
+        defer { lock.unlock() }
+        return load().first { $0.draftId == draftId }?.id
     }
 
     /// Marks a run as having ended without writing anything, so it stops

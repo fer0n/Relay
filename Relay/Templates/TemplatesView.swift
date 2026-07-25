@@ -131,7 +131,16 @@ private struct CardsMappingRow: View {
         HStack {
             VStack(alignment: .leading) {
                 Text("Cards Mapping")
-                Text("\(cardCount) card\(cardCount == 1 ? "" : "s")")
+                // Pluralised through the string catalog (a "one"/"other"
+                // variation per language), not with an inline "s" suffix:
+                // that trick bakes English pluralisation into the format
+                // string, leaving the translation a "%lld card%@" with a
+                // stray placeholder no other language can use. `^[…](inflect:
+                // true)` would be the tidier source, but Apple's automatic
+                // grammatical agreement only covers a handful of languages
+                // and silently falls back to the uninflected form elsewhere —
+                // "2 Karte" — which isn't worth the two lines it saves.
+                Text("\(cardCount) cards")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -166,7 +175,7 @@ private struct TemplateRow: View {
         if splitwiseConnected, template.isSplitwiseDefault {
             parts.append(String(localized: "Default"))
         }
-        parts.append("\(template.autoMatch.count) rule\(template.autoMatch.count == 1 ? "" : "s")")
+        parts.append(String(localized: "\(template.autoMatch.count) rules"))
         if splitwiseConnected, template.splitwiseOption != .never {
             parts.append(template.splitwiseOption.label)
         }

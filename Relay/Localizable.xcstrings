@@ -79,8 +79,46 @@
         }
       }
     },
+    "%@ at %@ – waiting on your split choice." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ bei %@ – wartet auf deine Aufteilung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ at %2$@ – waiting on your split choice."
+          }
+        }
+      }
+    },
+    "%@ at %@ needs confirmation – waiting in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ bei %@ muss bestätigt werden – wartet in Relay."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ at %2$@ needs confirmation – waiting in Relay."
+          }
+        }
+      }
+    },
     "%@ at %@ was already handled by \"%@\" %@ – skipped." : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ bei %@ wurde bereits von „%@“ %@ verarbeitet – übersprungen."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
@@ -90,7 +128,30 @@
       }
     },
     "%@ paid" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat bezahlt"
+          }
+        }
+      }
+    },
+    "%@, seen by \"%@\". Add it?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, erkannt von „%@“. Hinzufügen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, seen by \"%2$@\". Add it?"
+          }
+        }
+      }
     },
     "%@. Couldn't finish automatically — tap to complete in Relay." : {
       "localizations" : {
@@ -115,12 +176,82 @@
     "%lld" : {
       "shouldTranslate" : false
     },
-    "%lld card%@" : {
+    "%lld cards" : {
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Karte"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Karten"
+                }
+              }
+            }
+          }
+        },
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld card%2$@"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld rules" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Regel"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Regeln"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rule"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rules"
+                }
+              }
+            }
           }
         }
       }
@@ -136,10 +267,24 @@
       }
     },
     "1 min ago" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vor 1 Min."
+          }
+        }
+      }
     },
     "30s ago" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vor 30 Sek."
+          }
+        }
+      }
     },
     "Access Tokens" : {
       "localizations" : {
@@ -162,7 +307,24 @@
       }
     },
     "Activity" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivität"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinzufügen"
+          }
+        }
+      }
     },
     "Add ${amount} at ${merchant} with ${card} to YNAB" : {
       "localizations" : {
@@ -275,7 +437,14 @@
       }
     },
     "Add to %@" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu %@ hinzufügen"
+          }
+        }
+      }
     },
     "Add Transaction" : {
       "localizations" : {
@@ -313,17 +482,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "YNAB-Transaktion hinzufügen"
-          }
-        }
-      }
-    },
-    "Added %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hinzugefügt %@"
           }
         }
       }
@@ -379,7 +537,14 @@
       }
     },
     "Also seen from" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch erkannt von"
+          }
+        }
+      }
     },
     "Amount" : {
       "localizations" : {
@@ -442,7 +607,14 @@
       }
     },
     "Balances" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salden"
+          }
+        }
+      }
     },
     "Both" : {
       "localizations" : {
@@ -554,6 +726,16 @@
         }
       }
     },
+    "Confirm Transaction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktion bestätigen"
+          }
+        }
+      }
+    },
     "Connect" : {
       "localizations" : {
         "de" : {
@@ -655,26 +837,11 @@
       }
     },
     "Couldn't Delete" : {
-
-    },
-    "Couldn't Re-add" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte nicht erneut hinzugefügt werden"
-          }
-        }
-      }
-    },
-    "Couldn't re-add the transaction." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Transaktion konnte nicht erneut hinzugefügt werden."
+            "value" : "Löschen fehlgeschlagen"
           }
         }
       }
@@ -690,7 +857,14 @@
       }
     },
     "Couldn't Restore" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederherstellen fehlgeschlagen"
+          }
+        }
+      }
     },
     "Create a New Shortcut" : {
       "localizations" : {
@@ -763,7 +937,14 @@
       }
     },
     "Default" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
+          }
+        }
+      }
     },
     "Delete" : {
       "localizations" : {
@@ -795,19 +976,15 @@
         }
       }
     },
-    "Delete this draft?" : {
-      "extractionState" : "stale",
+    "Delete this expense?" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diesen Entwurf löschen?"
+            "value" : "Diese Ausgabe löschen?"
           }
         }
       }
-    },
-    "Delete this expense?" : {
-
     },
     "Delete this template?" : {
       "localizations" : {
@@ -825,17 +1002,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beschreibung"
-          }
-        }
-      }
-    },
-    "Description for \"%@\"?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beschreibung für „%@“?"
           }
         }
       }
@@ -911,7 +1077,14 @@
       }
     },
     "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterscheidet diese Automatisierung von anderen, die für denselben Einkauf auslösen, z. B. „wallet“ statt „bank notification“. Für die Wallet-Automatisierung leer lassen."
+          }
+        }
+      }
     },
     "Don't Split" : {
       "localizations" : {
@@ -944,10 +1117,24 @@
       }
     },
     "Duplicate Skipped" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplikat übersprungen"
+          }
+        }
+      }
     },
     "Duplicates Skipped" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übersprungene Duplikate"
+          }
+        }
+      }
     },
     "Enable Notifications" : {
       "localizations" : {
@@ -985,6 +1172,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alles ist bereit"
+          }
+        }
+      }
+    },
+    "Expense Added" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgabe hinzugefügt"
           }
         }
       }
@@ -1055,17 +1252,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Falls diese Ausführung unterbrochen wird, eine Mitteilung senden, um sie später fortzusetzen."
-          }
-        }
-      }
-    },
-    "If you already use the YNAB Toolkit Shortcut, you can migrate its automation data into Relay." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wenn du bereits den YNAB Toolkit-Kurzbefehl verwendest, kannst du dessen Automatisierungsdaten in Relay übertragen."
           }
         }
       }
@@ -1360,6 +1546,26 @@
         }
       }
     },
+    "Never add to Splitwise automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie automatisch zu Splitwise hinzufügen. Ein Einkauf, den eine andere Automatisierung bereits verarbeitet hat, wird wie gewohnt übersprungen; alles andere wird als Entwurf zum Bestätigen in Relay gespeichert."
+          }
+        }
+      }
+    },
+    "Never add to YNAB automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie automatisch zu YNAB hinzufügen. Ein Einkauf, den eine andere Automatisierung bereits verarbeitet hat, wird wie gewohnt übersprungen; alles andere wird als Entwurf zum Bestätigen in Relay gespeichert."
+          }
+        }
+      }
+    },
     "Next" : {
       "localizations" : {
         "de" : {
@@ -1376,17 +1582,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wenn du das nächste Mal mit Apple Pay bezahlst, wird Relay automatisch ausgeführt und die Transaktion hinzugefügt oder dich bei Bedarf um weitere Eingaben bitten."
-          }
-        }
-      }
-    },
-    "No" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nein"
           }
         }
       }
@@ -1482,7 +1677,14 @@
       }
     },
     "Now" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt"
+          }
+        }
+      }
     },
     "OK" : {
       "localizations" : {
@@ -1640,17 +1842,6 @@
         }
       }
     },
-    "Pending Queue" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausstehende Vorgänge"
-          }
-        }
-      }
-    },
     "Pending Transactions" : {
       "localizations" : {
         "de" : {
@@ -1662,7 +1853,14 @@
       }
     },
     "Please check your connection and try again." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitte prüfe deine Verbindung und versuche es erneut."
+          }
+        }
+      }
     },
     "Pulls buckets and merchants straight out of the old \"YNAB Toolkit\" Shortcut's DataJar storage." : {
       "localizations" : {
@@ -1670,17 +1868,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Holt Kategorien und Händler direkt aus dem DataJar-Speicher des alten „YNAB Toolkit“-Kurzbefehls."
-          }
-        }
-      }
-    },
-    "Queued %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eingereiht %@"
           }
         }
       }
@@ -1765,8 +1952,25 @@
         }
       }
     },
+    "Require Confirmation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bestätigung erforderlich"
+          }
+        }
+      }
+    },
     "Restore" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederherstellen"
+          }
+        }
+      }
     },
     "Retry" : {
       "localizations" : {
@@ -1909,7 +2113,14 @@
       }
     },
     "Shared Expenses" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geteilte Ausgaben"
+          }
+        }
+      }
     },
     "Shortcut Error" : {
       "localizations" : {
@@ -1972,7 +2183,14 @@
       }
     },
     "Source" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quelle"
+          }
+        }
+      }
     },
     "Split" : {
       "localizations" : {
@@ -2334,17 +2552,6 @@
         }
       }
     },
-    "Using YNAB Toolkit?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "YNAB Toolkit im Einsatz?"
-          }
-        }
-      }
-    },
     "Wallet transactions from these exact merchant names go straight to this template. Edit the payee name, swipe to unlink one, or use the arrow to move one to a different template." : {
       "localizations" : {
         "de" : {
@@ -2411,17 +2618,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mit"
-          }
-        }
-      }
-    },
-    "Yes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ja"
           }
         }
       }

@@ -35,6 +35,20 @@ struct TransactionDraft: Codable, Identifiable {
         /// half) so ContinueWalletTransactionView can prefill it
         /// instead of asking again. nil when the share isn't known yet.
         case splitwiseWallet(merchant: String, amount: Double, ownShare: Double? = nil)
+
+        var merchant: String {
+            switch self {
+            case .ynabWallet(let merchant, _, _): merchant
+            case .splitwiseWallet(let merchant, _, _): merchant
+            }
+        }
+
+        var amount: Double {
+            switch self {
+            case .ynabWallet(_, let amount, _): amount
+            case .splitwiseWallet(_, let amount, _): amount
+            }
+        }
     }
 
     /// Everything a background split-completion needs beyond the payload's
@@ -71,19 +85,9 @@ struct TransactionDraft: Codable, Identifiable {
         }
     }
 
-    var merchant: String {
-        switch payload {
-        case .ynabWallet(let merchant, _, _): merchant
-        case .splitwiseWallet(let merchant, _, _): merchant
-        }
-    }
+    var merchant: String { payload.merchant }
 
-    var amount: Double {
-        switch payload {
-        case .ynabWallet(_, let amount, _): amount
-        case .splitwiseWallet(_, let amount, _): amount
-        }
-    }
+    var amount: Double { payload.amount }
 
     /// Only ever set on `.splitwiseWallet` — an already-known manual split
     /// amount carried forward from the run that created this draft.

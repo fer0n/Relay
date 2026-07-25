@@ -29,7 +29,8 @@ struct TransactionClaimMatchTests {
         at offset: TimeInterval = 0,
         accountId: String? = "acct-1",
         merchant: String = "ACME",
-        state: TransactionClaim.State = .inFlight
+        state: TransactionClaim.State = .inFlight,
+        draftId: UUID? = nil
     ) -> TransactionClaim {
         TransactionClaim(
             id: UUID(),
@@ -40,7 +41,8 @@ struct TransactionClaimMatchTests {
             accountId: accountId,
             merchant: merchant,
             state: state,
-            historyEntryId: nil
+            historyEntryId: nil,
+            draftId: draftId
         )
     }
 
@@ -50,7 +52,8 @@ struct TransactionClaimMatchTests {
         amount: Double = 12.34,
         at offset: TimeInterval = 0,
         accountId: String? = "acct-1",
-        merchant: String = "Kartenzahlung ACME GMBH//BERLIN"
+        merchant: String = "Kartenzahlung ACME GMBH//BERLIN",
+        requireConfirmation: Bool = false
     ) -> TransactionClaim.Candidate {
         TransactionClaim.Candidate(
             source: source,
@@ -58,7 +61,8 @@ struct TransactionClaimMatchTests {
             amount: amount,
             accountId: accountId,
             merchant: merchant,
-            occurredAt: base.addingTimeInterval(offset)
+            occurredAt: base.addingTimeInterval(offset),
+            requireConfirmation: requireConfirmation
         )
     }
 
@@ -188,6 +192,71 @@ struct TransactionClaimMatchTests {
     @Test
     func abandonedClaimDoesNotMatch() {
         #expect(!Self.claim(state: .abandoned).matches(Self.candidate(at: 60), window: Self.window))
+    }
+
+    /// The point of "Require Confirmation": the run parked a draft and added
+    /// nothing, so an automation that *can* write has to be let through —
+    /// otherwise the purchase would sit unapproved forever while every
+    /// subsequent sighting was dropped as a duplicate of it.
+    @Test
+    func awaitingConfirmationClaimDoesNotShadowAWritingRun() {
+        #expect(!Self.claim(state: .awaitingConfirmation).matches(Self.candidate(at: 60), window: Self.window))
+    }
+
+    /// But a second confirm-only sighting can't write either, so letting it
+    /// through would only pile a second draft onto the same purchase.
+    @Test
+    func awaitingConfirmationClaimShadowsAnotherConfirmOnlyRun() {
+        let claim = Self.claim(state: .awaitingConfirmation)
+        #expect(claim.matches(Self.candidate(at: 60, requireConfirmation: true), window: Self.window))
+    }
+
+    /// The flag only relaxes `awaitingConfirmation`; a run that actually
+    /// wrote (or is about to) shadows a confirm-only sighting just the same.
+    @Test
+    func requireConfirmationDoesNotChangeMatchingAgainstWritingClaims() {
+        let confirming = Self.candidate(at: 60, requireConfirmation: true)
+        #expect(Self.claim(state: .inFlight).matches(confirming, window: Self.window))
+        #expect(Self.claim(state: .committed).matches(confirming, window: Self.window))
+        #expect(!Self.claim(state: .abandoned).matches(confirming, window: Self.window))
+    }
+
+    // MARK: - Superseding a parked confirmation
+
+    @Test
+    func committedRunSupersedesAMatchingConfirmationDraft() {
+        let parked = Self.claim(source: "bank notification", at: 0, state: .awaitingConfirmation, draftId: UUID())
+        let writer = Self.claim(source: "wallet", at: 120, state: .committed)
+        let superseded = TransactionClaim.supersededConfirmations(in: [parked, writer], by: writer, window: Self.window)
+        #expect(superseded.map(\.id) == [parked.id])
+    }
+
+    /// Same guards as the match rule — a parked draft is only answered by a
+    /// run looking at the same purchase.
+    @Test
+    func supersedingRespectsTheSameGuardsAsMatching() {
+        let writer = Self.claim(source: "wallet", at: 120, state: .committed)
+        let sameSource = Self.claim(source: "wallet", at: 0, state: .awaitingConfirmation)
+        let otherAmount = Self.claim(source: "bank notification", amount: 99.99, at: 0, state: .awaitingConfirmation)
+        let tooOld = Self.claim(source: "bank notification", at: -(Self.window * 2), state: .awaitingConfirmation)
+        let otherAccount = Self.claim(source: "bank notification", at: 0, accountId: "acct-2", state: .awaitingConfirmation)
+        let claims = [sameSource, otherAmount, tooOld, otherAccount, writer]
+        #expect(TransactionClaim.supersededConfirmations(in: claims, by: writer, window: Self.window).isEmpty)
+    }
+
+    /// Only parked confirmations are adopted: an abandoned run's draft is a
+    /// genuine safety net for a run that failed, and a committed one has its
+    /// own history entry.
+    @Test
+    func supersedingIgnoresClaimsInEveryOtherState() {
+        let writer = Self.claim(source: "wallet", at: 120, state: .committed)
+        let claims = [
+            Self.claim(source: "bank notification", at: 0, state: .inFlight),
+            Self.claim(source: "bank notification", at: 0, state: .committed),
+            Self.claim(source: "bank notification", at: 0, state: .abandoned),
+            writer,
+        ]
+        #expect(TransactionClaim.supersededConfirmations(in: claims, by: writer, window: Self.window).isEmpty)
     }
 
     // MARK: - Selecting among several claims

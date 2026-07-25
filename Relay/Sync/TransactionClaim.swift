@@ -73,6 +73,10 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
     /// one arriving while the claim is still `inFlight` is parked in
     /// `suppressed` below and folded in when the entry is finally created.
     var historyEntryId: UUID?
+    /// The draft a `.awaitingConfirmation` run left for the user to approve,
+    /// so a later run that writes the transaction for real can clear it (see
+    /// `supersededConfirmations`). Nil in every other state.
+    var draftId: UUID?
     /// Runs suppressed against this one.
     var suppressed: [SuppressedRun] = []
 
@@ -81,6 +85,13 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
         /// question, so this is a live claim and still matchable.
         case inFlight
         case committed
+        /// The run deliberately wrote nothing because its automation has
+        /// "Require Confirmation" set, and left a draft behind instead. It
+        /// doesn't shadow a run that's going to write for real — the whole
+        /// point is that nothing has been added yet — but it does shadow
+        /// another confirmation-only run, so one purchase can't pile up two
+        /// drafts asking the same question.
+        case awaitingConfirmation
         /// The run ended without writing anything (an API failure, a
         /// dismissed question, the process killed). No longer matchable:
         /// the second automation is the safety net for exactly this case
@@ -88,16 +99,19 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
         case abandoned
     }
 
-    /// Whether this claim can still shadow an incoming run. An abandoned
-    /// run wrote nothing, so there's nothing to duplicate.
-    var isActive: Bool {
+    /// Whether this claim's state lets it shadow `candidate` at all — the
+    /// half of the match that's about what each run *did*, as opposed to
+    /// `isSamePurchase`, which is about what they're both looking at.
+    private func shadows(_ candidate: Candidate) -> Bool {
         switch state {
         case .inFlight, .committed: true
+        case .awaitingConfirmation: candidate.requireConfirmation
         case .abandoned: false
         }
     }
 
-    /// Whether `candidate` is the same real-world purchase as this claim.
+    /// Whether `candidate` is the same real-world purchase as this claim,
+    /// ignoring what either run did about it.
     ///
     /// Amount must be exactly equal (to the cent) — deliberately strict.
     /// A tolerance band would let two genuinely different purchases in the
@@ -105,8 +119,7 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
     /// (a foreign-currency charge, where Wallet reports the transaction
     /// currency and the bank push the converted amount) is rare enough to
     /// be worth an occasional duplicate.
-    func matches(_ candidate: Candidate, window: TimeInterval) -> Bool {
-        guard isActive else { return false }
+    private func isSamePurchase(as candidate: Candidate, window: TimeInterval) -> Bool {
         guard destination == candidate.destination else { return false }
         guard !source.matchesSource(candidate.source) else { return false }
         guard amount.isSameAmount(as: candidate.amount) else { return false }
@@ -120,6 +133,11 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
         return true
     }
 
+    /// Whether an incoming run should be dropped in favour of this claim.
+    func matches(_ candidate: Candidate, window: TimeInterval) -> Bool {
+        shadows(candidate) && isSamePurchase(as: candidate, window: window)
+    }
+
     /// The inputs a starting run is matched on, before it becomes a claim
     /// of its own. Separate from `TransactionClaim` so `matches` can't
     /// accidentally be handed a persisted claim's `state`/`suppressed`
@@ -131,10 +149,35 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
         var accountId: String?
         var merchant: String
         var occurredAt: Date = Date()
+        /// This run's "Require Confirmation" setting — it can't write on its
+        /// own, so an existing draft awaiting confirmation is already asking
+        /// its question for it (see `shadows`).
+        var requireConfirmation: Bool = false
 
         var asSuppressedRun: SuppressedRun {
             SuppressedRun(source: source, merchant: merchant, amount: amount, occurredAt: occurredAt)
         }
+    }
+
+    /// How this claim would present itself if it were the incoming run —
+    /// lets a claim be matched back against the ledger (see
+    /// `supersededConfirmations`).
+    var asCandidate: Candidate {
+        Candidate(
+            source: source,
+            destination: destination,
+            amount: amount,
+            accountId: accountId,
+            merchant: merchant,
+            occurredAt: claimedAt
+        )
+    }
+
+    /// This claim as a "also seen from …" record on someone else's history
+    /// entry — used when a writing run adopts the drafts of the
+    /// confirmation-only sightings it supersedes.
+    var asSuppressedRun: SuppressedRun {
+        SuppressedRun(source: source, merchant: merchant, amount: amount, occurredAt: claimedAt)
     }
 }
 
@@ -155,6 +198,24 @@ extension TransactionClaim {
         claims
             .filter { $0.matches(candidate, window: window) }
             .min { abs($0.claimedAt.timeIntervalSince(candidate.occurredAt)) < abs($1.claimedAt.timeIntervalSince(candidate.occurredAt)) }
+    }
+
+    /// The confirmation-only sightings that `claim` — a run that just wrote
+    /// the transaction for real — answers on their behalf.
+    ///
+    /// This is the mirror image of `matches`: an `awaitingConfirmation` claim
+    /// deliberately stands aside for a run that can actually write, which
+    /// would otherwise leave its draft sitting there asking to add a
+    /// transaction that now exists. The writing run adopts them instead —
+    /// dropping their drafts and folding them into its history entry, so the
+    /// user ends up with the same single collapsed row either way round.
+    static func supersededConfirmations(
+        in claims: [TransactionClaim],
+        by claim: TransactionClaim,
+        window: TimeInterval
+    ) -> [TransactionClaim] {
+        let candidate = claim.asCandidate
+        return claims.filter { $0.state == .awaitingConfirmation && $0.isSamePurchase(as: candidate, window: window) }
     }
 
     /// The source recorded when a shortcut leaves the parameter blank —

@@ -146,6 +146,112 @@ nonisolated enum WalletAutomationDialog {
         return dialog
     }
 
+    /// Marks a run's claim as having written its transaction, and applies
+    /// what that costs the rest of the ledger: the runs suppressed against it
+    /// are recorded on the entry it just created, and any draft left by a
+    /// confirmation-only sighting of the same purchase is cleared, since the
+    /// transaction it was asking about now exists.
+    ///
+    /// `historyEntryId` is nil when the write only *queued* — the entry is
+    /// recorded on sync, so there's nothing to annotate yet. The superseded
+    /// drafts still go, because the transaction is on its way regardless.
+    static func commitClaim(_ claimId: UUID, historyEntryId: UUID?) {
+        let result = TransactionClaimStore.commit(claimId, historyEntryId: historyEntryId)
+        if let historyEntryId {
+            TransactionHistoryStore.recordSuppressions(result.suppressed, on: historyEntryId)
+        }
+        for draftId in result.supersededDraftIds {
+            TransactionDraftGuard.complete(draftId)
+        }
+    }
+
+    /// Finishes off a run whose automation requires confirmation and that
+    /// found nothing to confirm: nothing is written, the purchase is parked
+    /// as a draft, and the claim records the draft so a later real write can
+    /// clear it. Returns the dialog for Shortcuts.
+    ///
+    /// No "success notification" gate here — the draft reminder isn't a
+    /// courtesy ping about something that already happened, it's the only
+    /// prompt for the approval the whole parameter exists to require. It
+    /// still respects the app-wide notifications switch, via
+    /// TransactionDraftGuard.
+    static func handleAwaitingConfirmation(
+        _ claimId: UUID,
+        payload: TransactionDraft.Payload,
+        source: String
+    ) -> String {
+        let draftId = TransactionDraftGuard.beginAwaitingConfirmation(payload, source: source)
+        TransactionClaimStore.awaitConfirmation(claimId, draftId: draftId)
+        return String(
+            format: String(localized: "%@ at %@ needs confirmation – waiting in Relay."),
+            payload.amount.asMoneyString,
+            payload.merchant
+        )
+    }
+
+    /// The Splitwise flavour of `handleAwaitingConfirmation`.
+    ///
+    /// When the merchant's template is set to "Ask Each Time", the split
+    /// question already *is* a confirmation: on this path the expense is the
+    /// whole transaction, so "Don't Split" means nothing gets created at all
+    /// — exactly what Discard would do. Asking "Add or Discard?" first would
+    /// just make the user answer two questions in a row about one purchase,
+    /// so the draft goes straight to the split-choice reminder.
+    ///
+    /// Everything else still gets the ordinary Add/Discard reminder: a
+    /// template with a fixed split setting, an unknown merchant, or a
+    /// disconnected Splitwise account all mean no second question is coming
+    /// that could stand in for the confirmation.
+    static func handleAwaitingSplitwiseConfirmation(
+        _ claimId: UUID,
+        merchant: String,
+        amount: Double,
+        source: String
+    ) -> String {
+        let payload = TransactionDraft.Payload.splitwiseWallet(merchant: merchant, amount: amount)
+        let config = WalletTransactionConfigStore.load()
+        let info = config.resolvedMerchantInfo(for: merchant)
+        let template = info.flatMap { config.templates[$0.templateName] }
+
+        guard template?.splitwiseOption == .ask, SplitwiseAuthService.currentAccessToken != nil else {
+            return handleAwaitingConfirmation(claimId, payload: payload, source: source)
+        }
+
+        // A nil friend is allowed through rather than falling back to
+        // Add/Discard: "Don't Split" still resolves the draft without one,
+        // and the other two answers land on the same finish-in-app nudge
+        // they would anyway (see WalletDraftCompletion).
+        let description = info?.payeeName ?? merchant
+        let friend = friendWithoutAsking(template: template)
+        let draftId = TransactionDraftGuard.beginAwaitingSplitChoice(
+            payload,
+            context: TransactionDraft.PendingSplitContext(
+                description: description,
+                friendId: friend?.id,
+                friendFirstName: friend?.firstName,
+                friendFullName: friend?.fullName
+            )
+        )
+        TransactionClaimStore.awaitConfirmation(claimId, draftId: draftId)
+        return String(
+            format: String(localized: "%@ at %@ – waiting on your split choice."),
+            amount.asMoneyString,
+            description
+        )
+    }
+
+    /// The friend to split with as far as saved state can settle it: the
+    /// template's cached one, else the app-wide default. Nil means the
+    /// question genuinely can't be answered without asking.
+    static func friendWithoutAsking(template: WalletTransactionConfig.Template?) -> SplitwiseFriendEntity? {
+        if let cached = template?.splitwiseFriend {
+            return SplitwiseFriendEntity(id: cached.id, firstName: cached.firstName, fullName: cached.fullName)
+        }
+        return SplitwiseDefaultFriendStore.load().map {
+            SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName)
+        }
+    }
+
     /// Records category usage on success and describes a YNAB write as a
     /// dialog string — shared by the standalone YNAB intent and both
     /// wallet-to-YNAB entry points, all of which use this exact wording.

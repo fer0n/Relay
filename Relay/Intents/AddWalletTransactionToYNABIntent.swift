@@ -52,6 +52,16 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
     var source: String?
 
+    /// Turns this automation into a read-only one: it can confirm a purchase
+    /// another automation already handled, but it can never add a transaction
+    /// by itself — an unrecognised purchase becomes a draft to approve
+    /// instead. Intended for a notification-driven automation, where the
+    /// trigger is a push from the bank app rather than a payment the user
+    /// definitely made: without this, anything the notification filter lets
+    /// through lands in YNAB unseen.
+    @Parameter(title: "Require Confirmation", description: "Never add to YNAB automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay.", default: false)
+    var requireConfirmation: Bool
+
     @Parameter(title: "Template", optionsProvider: TemplateOptionsProvider())
     var templateChoice: String?
 
@@ -122,6 +132,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) at \(\.$merchant) with \(\.$card) to YNAB") {
             \.$source
+            \.$requireConfirmation
             \.$templateChoice
             \.$newTemplateName
             \.$payeeOverride
@@ -157,7 +168,8 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                 destination: .ynab,
                 amount: amount,
                 accountId: config.cards[card],
-                merchant: merchant
+                merchant: merchant,
+                requireConfirmation: requireConfirmation
             )
         ) {
         case .suppressed(let suppression):
@@ -166,6 +178,22 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
             return .result(dialog: "\(dialog)")
         case .claimed(let id):
             claimId = id
+        }
+
+        // Nothing to confirm — so on a confirm-only automation this purchase
+        // stops here as a draft, no questions asked and no YNAB call made.
+        // Deliberately not gated on `ensureCompletion`: that switch is about
+        // rescuing a run that might not finish, whereas here the draft *is*
+        // the finished outcome and turning it off would silently drop the
+        // transaction altogether.
+        if requireConfirmation {
+            let dialog = WalletAutomationDialog.handleAwaitingConfirmation(
+                claimId,
+                payload: .ynabWallet(merchant: merchant, amount: amount, card: card),
+                source: claimSource
+            )
+            logger.log("perform() done — nothing to confirm, left a draft to approve")
+            return .result(dialog: "\(dialog)")
         }
 
         // Resolves the claim exactly once, whichever way the run ends.
@@ -179,10 +207,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         func commitClaim(historyEntryId: UUID?) {
             guard !claimResolved else { return }
             claimResolved = true
-            let parked = TransactionClaimStore.commit(claimId, historyEntryId: historyEntryId)
-            if let historyEntryId {
-                TransactionHistoryStore.recordSuppressions(parked, on: historyEntryId)
-            }
+            WalletAutomationDialog.commitClaim(claimId, historyEntryId: historyEntryId)
         }
 
         // The draft the safety-net reminder currently guards. Starts as the

@@ -4,6 +4,12 @@
     "Add a Splitwise expense in ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Splitwise-Ausgabe in ${applicationName} hinzufügen"
+          }
+        },
         "en" : {
           "stringSet" : {
             "state" : "new",
@@ -18,6 +24,12 @@
     "Add a transaction in ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaktion in ${applicationName} hinzufügen"
+          }
+        },
         "en" : {
           "stringSet" : {
             "state" : "new",
@@ -64,6 +76,12 @@
     "Import a file to ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei in ${applicationName} importieren"
+          }
+        },
         "en" : {
           "stringSet" : {
             "state" : "new",
@@ -78,6 +96,12 @@
     "Import a file to Splitwise in ${applicationName}" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei zu Splitwise in ${applicationName} importieren"
+          }
+        },
         "en" : {
           "stringSet" : {
             "state" : "new",

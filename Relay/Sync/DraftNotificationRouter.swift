@@ -65,7 +65,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     func start() {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        center.setNotificationCategories([WalletSplitNotification.category])
+        center.setNotificationCategories([WalletSplitNotification.category, WalletConfirmNotification.category])
     }
 
     nonisolated func userNotificationCenter(
@@ -99,12 +99,13 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     }
 
     /// Routes a draft-notification response: a plain tap opens the draft as
-    /// before, while a split-choice action tries to finish the transaction in
-    /// the background (WalletDraftCompletion), only falling back to opening
-    /// the app when it can't.
+    /// before, while a split-choice or confirm action tries to finish the
+    /// transaction in the background (WalletDraftCompletion /
+    /// WalletDraftConfirmation), only falling back to opening the app when
+    /// it can't.
     private func handleDraftResponse(id: UUID, actionIdentifier: String, replyText: String?) async {
         logger.log("draft response id=\(id.uuidString, privacy: .public) action=\(actionIdentifier, privacy: .public)")
-        
+
         guard let draft = TransactionDraftStore.load().first(where: { $0.id == id }) else {
             // Already completed/dismissed since the notification fired — if
             // it's a default tap for a successfully-completed transaction,
@@ -112,7 +113,36 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
             // non-existent draft.
             return
         }
-        
+
+        // Answers to a "Confirm Transaction" reminder, i.e. a purchase Relay
+        // saw but deliberately didn't add (see WalletConfirmNotification).
+        switch actionIdentifier {
+        case WalletConfirmNotification.discardAction:
+            // The claim behind it is deliberately left alone: it doesn't
+            // shadow an automation that can actually write, so saying no here
+            // doesn't block the purchase from being added properly later.
+            TransactionDraftGuard.complete(id)
+            logger.log("discarded unconfirmed draft id=\(id.uuidString, privacy: .public)")
+            return
+        case WalletConfirmNotification.addAction:
+            switch await WalletDraftConfirmation.confirm(draft) {
+            case .completed(let title, let dialog):
+                WalletCompletionNotification.postConfirmation(title: title, dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
+            case .followUpPosted:
+                // The split question took over this draft's reminder slot —
+                // adding a "done" banner on top would contradict it.
+                break
+            case .needsApp:
+                // Something still has to be chosen, and a background action
+                // doesn't bring Relay forward, so pendingDraftID alone
+                // wouldn't reach the user.
+                TransactionDraftGuard.notifyNeedsApp(id)
+            }
+            return
+        default:
+            break
+        }
+
         let splitAction: SplitwiseSplitOption
         switch actionIdentifier {
         case WalletSplitNotification.equallyAction:

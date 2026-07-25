@@ -55,6 +55,13 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
     var source: String?
 
+    /// See the equivalent parameter on AddWalletTransactionToYNABIntent.
+    /// Less pressing here — a stray Splitwise expense is more visible, and
+    /// more easily deleted, than a stray line in a budget — but kept
+    /// symmetric so both wallet automations can be wired up the same way.
+    @Parameter(title: "Require Confirmation", description: "Never add to Splitwise automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay.", default: false)
+    var requireConfirmation: Bool
+
     @Parameter(title: "Split With")
     var friendOverride: SplitwiseFriendEntity?
 
@@ -84,6 +91,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) Splitwise expense for \(\.$merchant)") {
             \.$source
+            \.$requireConfirmation
             \.$friendOverride
             \.$splitwiseFriendFallback
             \.$splitwiseOwnShare
@@ -110,7 +118,8 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 destination: .splitwise,
                 amount: amount,
                 accountId: nil,
-                merchant: merchant
+                merchant: merchant,
+                requireConfirmation: requireConfirmation
             )
         ) {
         case .suppressed(let suppression):
@@ -119,6 +128,23 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             return .result(dialog: "\(dialog)")
         case .claimed(let id):
             claimId = id
+        }
+
+        // Nothing to confirm — so on a confirm-only automation this expense
+        // stops here as a draft. See the equivalent branch in
+        // AddWalletTransactionToYNABIntent for why `ensureCompletion` isn't
+        // consulted. Which reminder that draft gets depends on the merchant's
+        // template: an "ask each time" one is posed as the split question
+        // directly, since that already asks for the confirmation.
+        if requireConfirmation {
+            let dialog = WalletAutomationDialog.handleAwaitingSplitwiseConfirmation(
+                claimId,
+                merchant: merchant,
+                amount: amount,
+                source: claimSource
+            )
+            logger.log("perform() done — nothing to confirm, left a draft to approve")
+            return .result(dialog: "\(dialog)")
         }
 
         // Resolves the claim exactly once, whichever way the run ends.
@@ -130,10 +156,7 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
         func commitClaim(historyEntryId: UUID?) {
             guard !claimResolved else { return }
             claimResolved = true
-            let parked = TransactionClaimStore.commit(claimId, historyEntryId: historyEntryId)
-            if let historyEntryId {
-                TransactionHistoryStore.recordSuppressions(parked, on: historyEntryId)
-            }
+            WalletAutomationDialog.commitClaim(claimId, historyEntryId: historyEntryId)
         }
 
         let draftId = ensureCompletion
