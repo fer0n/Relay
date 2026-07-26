@@ -171,6 +171,8 @@ struct ContentView: View {
                     opensAutomationTutorialAfterSettings = true
                 }
             )
+        case .howRelayWorks:
+            HowRelayWorksView()
         }
     }
 

@@ -64,7 +64,7 @@ struct SettingsView: View {
             LegacyMigrationShortcutSection(migration: migration)
 
             Section {
-                NavigationLink(value: SettingsRoute.howRelayWorks) {
+                NavigationLink(value: ContentRoute.howRelayWorks) {
                     RowLabel(title: "How Relay Works")
                 }
             } footer: {
@@ -90,12 +90,6 @@ struct SettingsView: View {
         .themedList(background: .backgroundColor)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: SettingsRoute.self) { route in
-            switch route {
-            case .howRelayWorks:
-                HowRelayWorksView()
-            }
-        }
         .legacyMigrationCallback(migration, openURL: openURL)
         .alert(
             "Couldn't Connect to YNAB",
@@ -143,10 +137,6 @@ struct SettingsView: View {
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
     }
-}
-
-private enum SettingsRoute: Hashable {
-    case howRelayWorks
 }
 
 #Preview {

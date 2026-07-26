@@ -19,4 +19,5 @@ enum ContentRoute: Hashable {
     case splitwiseBalances
     case splitwiseActivity
     case settings
+    case howRelayWorks
 }
