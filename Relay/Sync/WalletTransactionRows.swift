@@ -182,6 +182,24 @@ struct PayeeFieldRow: View {
     }
 }
 
+/// The optional YNAB memo. A plain text field with no suggestion bar —
+/// unlike the payee, a memo is one-off free text rather than a name that
+/// repeats and is worth autocompleting. When the transaction is also split,
+/// this same text is appended to the Splitwise description ("<Payee>:
+/// <memo>"), so the two sides carry the same note.
+struct MemoFieldRow: View {
+    @Binding var text: String
+
+    var body: some View {
+        DraftDetailRow(icon: "note.text", title: "Memo") {
+            TextField("Optional", text: $text)
+                .multilineTextAlignment(.trailing)
+                .submitLabel(.done)
+        }
+        .cardRowBackground()
+    }
+}
+
 /// The optional YNAB category for the transaction — a loading spinner while
 /// categories load, otherwise a live picker.
 struct CategoryPickerRow: View {

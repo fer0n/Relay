@@ -1706,6 +1706,16 @@
         }
       }
     },
+    "Optional" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional"
+          }
+        }
+      }
+    },
     "Parsed %lld transactions from %@." : {
       "localizations" : {
         "de" : {

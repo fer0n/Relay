@@ -71,6 +71,12 @@ final class ContinueWalletTransactionModel {
     /// its placeholder mirrors `splitwisePayeeName`. Unused for YNAB drafts;
     /// a manual Splitwise entry keeps its single field bound to `payeeText`.
     var descriptionText = ""
+    /// The YNAB memo, shown only in `.ynab` mode (YNAB, plus an optional
+    /// Splitwise split — the "Both" option on a manual entry). Optional:
+    /// blank means no memo. When the transaction is also split, it's
+    /// appended to the Splitwise description too — see `splitDescription`.
+    /// Unused in `.splitwise` mode, which has its own Description field.
+    var memoText = ""
     /// Raw amount text — only used for a manual entry (isManual); a
     /// shortcut-started draft's amount comes fixed from the payload.
     var amountText = ""
@@ -257,6 +263,7 @@ final class ContinueWalletTransactionModel {
             // shortcut-resolved card mapping — a re-add should be reviewable.
             selectedAccountId = transaction.accountId
             selectedCategoryId = transaction.categoryId
+            memoText = transaction.memo ?? ""
         case .splitwiseExpense(let expense):
             amountText = (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
             payeeText = expense.description
@@ -373,6 +380,29 @@ final class ContinueWalletTransactionModel {
 
     var resolvedFriendName: String? {
         templateHasFriend ? templateFriend?.fullName : nil
+    }
+
+    /// The YNAB payee — the trimmed Payee field. Only meaningful in `.ynab`
+    /// mode; the Splitwise side has `splitwisePayeeName`, which falls back to
+    /// the merchant.
+    var ynabPayeeName: String {
+        payeeText.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// The transaction's memo, or nil when the field was left blank (YNAB
+    /// treats a missing memo and an empty one the same, so send nothing).
+    var ynabMemo: String? {
+        let trimmed = memoText.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// The description for the Splitwise half of a `.ynab`-mode transaction:
+    /// the payee on its own, or "<Payee>: <memo>" once a memo is typed, so
+    /// the expense carries the same note as the YNAB memo rather than just
+    /// the bare payee name.
+    var splitDescription: String {
+        guard let ynabMemo else { return ynabPayeeName }
+        return "\(ynabPayeeName): \(ynabMemo)"
     }
 
     /// The payee name a Splitwise expense stores for its merchant — the typed
@@ -757,7 +787,7 @@ final class ContinueWalletTransactionModel {
         var config = WalletTransactionConfigStore.load()
         var configChanged = false
 
-        let trimmedPayee = payeeText.trimmingCharacters(in: .whitespaces)
+        let trimmedPayee = ynabPayeeName
         guard !trimmedPayee.isEmpty else {
             errorMessage = "Payee name can't be empty."
             return false
@@ -829,7 +859,7 @@ final class ContinueWalletTransactionModel {
             amount: milliunits,
             payeeName: finalPayeeName,
             categoryId: finalCategoryId,
-            memo: nil,
+            memo: ynabMemo,
             cleared: Const.YNAB.uncleared,
             approved: true
         )
@@ -840,7 +870,9 @@ final class ContinueWalletTransactionModel {
         let groupId = (action != .never && friend != nil) ? UUID() : nil
 
         async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(finalPayeeName)", groupId: groupId)
-        async let splitDialogFragment = createSplitIfNeeded(friend: friend, description: finalPayeeName, amount: amount, action: action, ownShare: ownShare, groupId: groupId)
+        // The split's description carries the memo too ("<Payee>: <memo>"),
+        // unlike the YNAB side where payee and memo are separate fields.
+        async let splitDialogFragment = createSplitIfNeeded(friend: friend, description: splitDescription, amount: amount, action: action, ownShare: ownShare, groupId: groupId)
 
         do {
             let outcome = try await ynabOutcome

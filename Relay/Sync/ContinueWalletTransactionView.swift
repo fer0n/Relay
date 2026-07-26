@@ -136,6 +136,7 @@ struct ContinueWalletTransactionView: View {
                         categories: model.categories,
                         selection: $model.selectedCategoryId
                     )
+                    MemoFieldRow(text: $model.memoText)
                 } else {
                     // Splitwise-primary: a shortcut draft splits the one field
                     // into Payee (the merchant's clean name, stored on the
