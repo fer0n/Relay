@@ -63,7 +63,12 @@ nonisolated enum TransactionHistoryStore {
         var entries = load()
         if let groupId,
            let index = entries.firstIndex(where: { $0.groupId == groupId }),
-           let merged = entries[index].merging(summary: summary, payload: payload) {
+           var merged = entries[index].merging(summary: summary, payload: payload) {
+            // Both halves of a wallet run pass the same merchant, so this only
+            // fills in an entry whose first-landing half had none to give.
+            if merged.merchant == nil {
+                merged.merchant = merchant
+            }
             entries[index] = merged
         } else {
             entries.insert(

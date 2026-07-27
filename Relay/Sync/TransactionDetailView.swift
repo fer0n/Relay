@@ -192,11 +192,24 @@ private struct HistoryDetailContent: View {
         return !trimmed.isEmpty && trimmed != info.payeeName
     }
 
+    /// What the automation was actually handed, which the Payee/Description
+    /// row below is only the tidied-up form of — often the same string (a
+    /// merchant filed under a template starts out as its own payee), and
+    /// shown either way. Sits under the amount rather than in the card: it's
+    /// what this entry *was*, like Splitwise's "Paid by", not another field
+    /// of it. Nil for a manual/re-add entry, or one recorded before
+    /// `merchant` was.
+    private var merchantDetailLine: (icon: String, text: String)? {
+        guard let merchant = entry.merchant, !merchant.isEmpty else { return nil }
+        return ("storefront", merchant)
+    }
+
     var body: some View {
         ReadOnlyDetailContent(
             amount: entry.formattedAmount,
             serviceIcons: [entry.service.systemImage] + (entry.secondaryService.map { [$0.systemImage] } ?? []),
-            date: entry.createdAt
+            date: entry.createdAt,
+            detailLine: merchantDetailLine
         ) {
             Section {
                 DraftDetailRow(icon: Const.Symbol.titleField, title: entry.service.titleFieldLabel, isEditable: false) {

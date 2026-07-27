@@ -50,12 +50,18 @@ nonisolated enum WalletAutomationDialog {
     /// a Splitwise failure only ever shows up as a note in the dialog, it
     /// never fails the whole run — the YNAB write already succeeded or
     /// queued by the time this is worth calling.
+    ///
+    /// `merchant` is the same string the YNAB half was recorded with: the two
+    /// writes fold into one history entry, and whichever of them lands first
+    /// is the one that sets its `merchant` — so under `async let` both halves
+    /// have to carry it or a lost race drops it.
     static func splitDialogFragment(
         amount: Double,
         description: String,
         friend: SplitwiseFriendEntity,
         ownShare: Double?,
-        groupId: UUID? = nil
+        groupId: UUID? = nil,
+        merchant: String? = nil
     ) async -> (fragment: String, isQueued: Bool) {
         do {
             let outcome = try await SplitwiseExpenseHelper.addExpense(
@@ -63,7 +69,8 @@ nonisolated enum WalletAutomationDialog {
                 description: description,
                 friend: friend,
                 ownShare: ownShare,
-                groupId: groupId
+                groupId: groupId,
+                merchant: merchant
             )
             switch outcome {
             case .created(let shareSummary):

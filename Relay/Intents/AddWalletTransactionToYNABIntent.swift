@@ -424,7 +424,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             )
             let formattedAmount = amount.asMoneyString
             logger.log("creating YNAB transaction: accountId=\(accountId, privacy: .public) amountMilliunits=\(milliunits, privacy: .public) payee=\(payeeName, privacy: .public) categoryId=\(categoryId ?? "nil", privacy: .public)")
-            let ynabOutcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payeeName)", groupId: walletGroupId)
+            let ynabOutcome = try await PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(payeeName)", groupId: walletGroupId, merchant: merchant)
             var dialog = WalletAutomationDialog.handleYNABOutcome(ynabOutcome, formattedAmount: formattedAmount, payeeName: payeeName, categoryId: categoryId)
             logger.log("YNAB result: \(dialog, privacy: .public)")
 
@@ -577,7 +577,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             }
 
             let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
-            let split = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare, groupId: walletGroupId)
+            let split = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare, groupId: walletGroupId, merchant: merchant)
             logger.log("Splitwise split result: \(split.fragment, privacy: .public)")
             dialog += split.fragment
 

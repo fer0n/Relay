@@ -99,7 +99,8 @@ nonisolated enum WalletDraftConfirmation {
                 transaction,
                 token: token,
                 summary: "\(formattedAmount) at \(info.payeeName)",
-                groupId: groupId
+                groupId: groupId,
+                merchant: merchant
             )
         } catch {
             // A real API failure — leave the draft so the app can retry it
@@ -126,7 +127,8 @@ nonisolated enum WalletDraftConfirmation {
                 description: info.payeeName,
                 friend: friend!,
                 ownShare: nil,
-                groupId: groupId
+                groupId: groupId,
+                merchant: merchant
             ).fragment
         case .always, .manual, .ask:
             // The split still needs an answer (which way to split, how much,

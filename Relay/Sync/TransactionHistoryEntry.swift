@@ -34,9 +34,10 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     /// created by a wallet automation run rather than a manual/re-add entry.
     /// Nil for those, and for any entry recorded before this field existed
     /// (Optional decodes to nil for a missing key, no tolerant init needed).
-    /// Lets the confirmation detail view resolve the current Payee/Template
-    /// mapping for this merchant and write an edited payee back to
-    /// WalletTransactionConfig.
+    /// Shown under the amount in the detail view — the one place it appears,
+    /// deliberately not in the summary rows — and lets that view resolve the
+    /// current Payee/Template mapping for this merchant and write an edited
+    /// payee back to WalletTransactionConfig.
     var merchant: String?
     /// Later runs recognised as this same purchase arriving through a
     /// second automation (Wallet vs. a bank notification) and therefore not

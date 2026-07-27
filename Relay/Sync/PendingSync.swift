@@ -24,15 +24,16 @@ nonisolated enum PendingSync {
         _ transaction: YNABTransactionRequest,
         token: String,
         summary: String,
-        groupId: UUID? = nil
+        groupId: UUID? = nil,
+        merchant: String? = nil
     ) async throws -> PendingSyncOutcome {
         do {
             try await retryOnConnectivityFailure { try await YNABService.createTransaction(transaction, token: token) }
-            TransactionHistoryStore.record(summary: summary, payload: .ynabTransaction(transaction), groupId: groupId)
+            TransactionHistoryStore.record(summary: summary, payload: .ynabTransaction(transaction), groupId: groupId, merchant: merchant)
             return .created
         } catch {
             guard error.isConnectivityFailure else { throw YNABIntentError.from(error) }
-            await PendingOperationQueue.shared.enqueue(.ynabTransaction(transaction), summary: summary, groupId: groupId)
+            await PendingOperationQueue.shared.enqueue(.ynabTransaction(transaction), summary: summary, groupId: groupId, merchant: merchant)
             return .queued
         }
     }

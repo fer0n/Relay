@@ -869,10 +869,10 @@ final class ContinueWalletTransactionModel {
         // one) so the two fold into a single combined history entry.
         let groupId = (action != .never && friend != nil) ? UUID() : nil
 
-        async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(finalPayeeName)", groupId: groupId)
+        async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(finalPayeeName)", groupId: groupId, merchant: isManual ? nil : merchant)
         // The split's description carries the memo too ("<Payee>: <memo>"),
         // unlike the YNAB side where payee and memo are separate fields.
-        async let splitDialogFragment = createSplitIfNeeded(friend: friend, description: splitDescription, amount: amount, action: action, ownShare: ownShare, groupId: groupId)
+        async let splitDialogFragment = createSplitIfNeeded(friend: friend, description: splitDescription, amount: amount, action: action, ownShare: ownShare, groupId: groupId, merchant: isManual ? nil : merchant)
 
         do {
             let outcome = try await ynabOutcome
@@ -892,10 +892,11 @@ final class ContinueWalletTransactionModel {
         amount: Double,
         action: SplitwiseSplitOption,
         ownShare: Double?,
-        groupId: UUID?
+        groupId: UUID?,
+        merchant: String?
     ) async -> String? {
         guard action != .never, let friend else { return nil }
-        return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, friend: friend, ownShare: ownShare, groupId: groupId).fragment
+        return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, friend: friend, ownShare: ownShare, groupId: groupId, merchant: merchant).fragment
     }
 
     private func submitSplitwise() async -> Bool {
