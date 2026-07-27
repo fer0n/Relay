@@ -35,6 +35,14 @@ struct AutoMatchRulesSection: View {
                     TextField("Payee Name", text: $rules[index].payeeName)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .submitLabel(.done)
+                        // Pattern mirrors the payee name until the user edits
+                        // the pattern directly (making it differ from the
+                        // payee name), at which point it's decoupled for good.
+                        .onChange(of: rules[index].payeeName) { oldValue, newValue in
+                            if rules[index].pattern == oldValue {
+                                rules[index].pattern = newValue
+                            }
+                        }
                     Divider()
                     TextField("Text or regex", text: $rules[index].pattern)
                         .frame(maxWidth: .infinity, alignment: .leading)
