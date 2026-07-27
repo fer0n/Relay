@@ -354,9 +354,11 @@ enum TransactionDraftGuard {
                 content.body = String(localized: "Split this expense?")
             }
         } else {
-            if let categoryIdentifier {
-                content.categoryIdentifier = categoryIdentifier
-            }
+            // Falls back to the plain reminder's own Discard-only category
+            // when the caller doesn't carry one of its own (e.g.
+            // beginAwaitingConfirmation passing WalletConfirmNotification's,
+            // which already has Add/Discard).
+            content.categoryIdentifier = categoryIdentifier ?? WalletIncompleteNotification.categoryIdentifier
             content.title = title ?? String(localized: "Transaction Incomplete")
             content.body = body ?? String(localized: "\(draft.summary). Tap to continue.")
         }

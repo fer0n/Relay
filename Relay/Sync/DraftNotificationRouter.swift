@@ -65,7 +65,11 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     func start() {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        center.setNotificationCategories([WalletSplitNotification.category, WalletConfirmNotification.category])
+        center.setNotificationCategories([
+            WalletSplitNotification.category,
+            WalletConfirmNotification.category,
+            WalletIncompleteNotification.category
+        ])
     }
 
     nonisolated func userNotificationCenter(
@@ -117,12 +121,15 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         // Answers to a "Confirm Transaction" reminder, i.e. a purchase Relay
         // saw but deliberately didn't add (see WalletConfirmNotification).
         switch actionIdentifier {
-        case WalletConfirmNotification.discardAction:
+        case WalletConfirmNotification.discardAction, WalletIncompleteNotification.discardAction:
             // The claim behind it is deliberately left alone: it doesn't
             // shadow an automation that can actually write, so saying no here
             // doesn't block the purchase from being added properly later.
+            // Safe on the plain "Transaction Incomplete" reminder for the same
+            // reason: whatever it's protecting is still unwritten (see
+            // WalletIncompleteNotification).
             TransactionDraftGuard.complete(id)
-            logger.log("discarded unconfirmed draft id=\(id.uuidString, privacy: .public)")
+            logger.log("discarded draft id=\(id.uuidString, privacy: .public)")
             return
         case WalletConfirmNotification.addAction:
             switch await WalletDraftConfirmation.confirm(draft) {
