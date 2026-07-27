@@ -130,7 +130,7 @@ nonisolated enum SplitwiseExpenseHelper {
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token) }
             let ownAmount = (Double(ownShareCents) / Const.centsPerUnit).asMoneyString
             let friendAmount = (Double(friendShareCents) / Const.centsPerUnit).asMoneyString
-            return .created(shareSummary: "You: \(ownAmount), \(friend.firstName): \(friendAmount)")
+            return .created(shareSummary: "You: \(ownAmount); \(friend.firstName): \(friendAmount)")
         case .queued:
             // Nothing posted live (offline/queued for later), so there's
             // nothing new to refresh yet — PendingSync will actually create
