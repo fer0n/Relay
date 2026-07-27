@@ -18,7 +18,7 @@ import Observation
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "DraftNotificationRouter")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "DraftNotificationRouter")
 
 @MainActor
 @Observable
@@ -72,11 +72,23 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         ])
     }
 
-    nonisolated func userNotificationCenter(
+    /// The `async` half of the delegate requirement rather than the
+    /// completion-handler one: `UNNotificationResponse` and the handler are
+    /// both non-Sendable, so the old shape had to smuggle them into a
+    /// `Task { @MainActor }` — a data race by the strict-concurrency rules.
+    /// Here `response` never leaves the main actor, since the system calls the
+    /// delegate there to begin with.
+    ///
+    /// Deliberately main-actor isolated (i.e. *not* `nonisolated`): the system
+    /// runs the hidden completion handler when this returns, on whatever
+    /// executor this function finished on, and that handler tears down the
+    /// notification's UI — off the main thread it throws
+    /// "Call must be made on main thread". A `nonisolated` version resumes on
+    /// the generic executor after any `await`, so every tap crashed.
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
+        didReceive response: UNNotificationResponse
+    ) async {
         let identifier = response.notification.request.identifier
         let actionIdentifier = response.actionIdentifier
         let replyText = (response as? UNTextInputNotificationResponse)?.userText
@@ -84,21 +96,32 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         // confirmed, so its tap opens that entry's detail view rather than
         // resolving to nothing (its identifier is a throwaway UUID).
         let historyEntryID = response.notification.request.content.userInfo["historyEntryID"] as? String
-        Task { @MainActor in
-            if identifier == PendingOperationQueue.reminderNotificationID {
-                DraftNotificationRouter.shared.pendingQueueReminderTapped = true
-            } else if let historyEntryID, let id = UUID(uuidString: historyEntryID) {
-                DraftNotificationRouter.shared.pendingHistoryEntryID = id
-            } else if let id = UUID(uuidString: identifier) {
-                await DraftNotificationRouter.shared.handleDraftResponse(
-                    id: id,
-                    actionIdentifier: actionIdentifier,
-                    replyText: replyText
-                )
-            } else {
-                logger.error("notification identifier wasn't recognized: \(identifier, privacy: .public)")
-            }
-            completionHandler()
+        await route(
+            identifier: identifier,
+            actionIdentifier: actionIdentifier,
+            replyText: replyText,
+            historyEntryID: historyEntryID
+        )
+    }
+
+    private func route(
+        identifier: String,
+        actionIdentifier: String,
+        replyText: String?,
+        historyEntryID: String?
+    ) async {
+        if identifier == PendingOperationQueue.reminderNotificationID {
+            pendingQueueReminderTapped = true
+        } else if let historyEntryID, let id = UUID(uuidString: historyEntryID) {
+            pendingHistoryEntryID = id
+        } else if let id = UUID(uuidString: identifier) {
+            await handleDraftResponse(
+                id: id,
+                actionIdentifier: actionIdentifier,
+                replyText: replyText
+            )
+        } else {
+            logger.error("notification identifier wasn't recognized: \(identifier, privacy: .public)")
         }
     }
 
@@ -183,8 +206,10 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
 
     /// Shows the notification even while Relay is already in the
     /// foreground — otherwise a fired reminder would be silently dropped if
-    /// the user happened to have the app open.
-    nonisolated func userNotificationCenter(
+    /// the user happened to have the app open. Main-actor isolated for the
+    /// same reason as `didReceive` above: the system's completion handler runs
+    /// wherever this returns.
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {

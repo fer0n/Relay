@@ -17,7 +17,7 @@
 import AppIntents
 import Foundation
 
-extension SplitwiseSplitOption {
+nonisolated extension SplitwiseSplitOption {
     /// Plain-text label for Relay's own SwiftUI screens, derived from
     /// `caseDisplayRepresentations` — mirrors SplitwiseTemplateOption.label
     /// in TemplatesView.swift.

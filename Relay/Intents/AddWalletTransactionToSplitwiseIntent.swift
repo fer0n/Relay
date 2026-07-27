@@ -35,9 +35,9 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransactionSplitwise")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransactionSplitwise")
 
-nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
+struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to Splitwise"
     static let description = IntentDescription(
         "Adds a Splitwise expense from a Wallet transaction, remembering friend/split choices for next time."
@@ -323,9 +323,9 @@ nonisolated struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                         let splitDescription = expenseDescription.trimmingCharacters(in: .whitespacesAndNewlines)
                         let prompt: String
                         if splitDescription.isEmpty {
-                            prompt = String(localized: "Split this transaction with Splitwise?", table: "AppShortcuts")
+                            prompt = String(localized: "Split this transaction with Splitwise?")
                         } else {
-                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?", table: "AppShortcuts"), splitDescription)
+                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?"), splitDescription)
                         }
                         return try await $splitwiseRuntimeChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     }

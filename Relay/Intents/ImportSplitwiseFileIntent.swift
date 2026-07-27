@@ -17,7 +17,7 @@ import AppIntents
 import Foundation
 import UniformTypeIdentifiers
 
-nonisolated struct ImportSplitwiseFileIntent: AppIntent {
+struct ImportSplitwiseFileIntent: AppIntent {
     static let title: LocalizedStringResource = "Import File to Splitwise"
     static let description = IntentDescription(
         "Parses a bank statement file (CSV or QIF) so you can pick which transactions to split equally with a Splitwise friend in Relay."

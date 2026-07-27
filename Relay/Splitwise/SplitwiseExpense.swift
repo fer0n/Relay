@@ -11,7 +11,7 @@
 
 import Foundation
 
-struct SplitwiseExpenseUser: Codable {
+nonisolated struct SplitwiseExpenseUser: Codable {
     let userId: Int
     let paidShare: String
     let netBalance: String
@@ -48,7 +48,7 @@ struct SplitwiseExpenseUser: Codable {
 /// by Splitwise's `get_expenses` response — distinct from the account-wide
 /// `SplitwiseUser`/`SplitwiseFriend` models in SplitwiseModels.swift, which
 /// aren't populated per-expense.
-struct SplitwiseExpenseParticipant: Codable {
+nonisolated struct SplitwiseExpenseParticipant: Codable {
     let firstName: String
     let lastName: String?
 
@@ -61,7 +61,7 @@ struct SplitwiseExpenseParticipant: Codable {
     }
 }
 
-struct SplitwiseExpense: Codable, Identifiable {
+nonisolated struct SplitwiseExpense: Codable, Identifiable {
     let id: Int
     let description: String
     let cost: String
@@ -71,11 +71,11 @@ struct SplitwiseExpense: Codable, Identifiable {
     let users: [SplitwiseExpenseUser]
 }
 
-struct SplitwiseExpensesResponse: Codable {
+nonisolated struct SplitwiseExpensesResponse: Codable {
     let expenses: [SplitwiseExpense]
 }
 
-extension SplitwiseExpense {
+nonisolated extension SplitwiseExpense {
     /// This device's signed share of the expense — positive if the signed-in
     /// Splitwise user is owed, negative if they owe — resolved against
     /// SplitwiseCurrentUserStore's cached user id. Nil if that's not cached

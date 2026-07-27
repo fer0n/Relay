@@ -6,9 +6,9 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "PendingOperationQueueStore")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "PendingOperationQueueStore")
 
-enum PendingOperationQueueStore {
+nonisolated enum PendingOperationQueueStore {
     private static let fileURL = ApplicationSupportFile.url("pending-operations.json")
 
     private static var decoder: JSONDecoder {

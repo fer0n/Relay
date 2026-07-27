@@ -11,7 +11,7 @@
 
 import AppIntents
 
-nonisolated struct AddSplitwiseExpenseIntent: AppIntent {
+struct AddSplitwiseExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Splitwise Expense"
     static let description = IntentDescription("Adds an expense split with a friend on Splitwise.")
 

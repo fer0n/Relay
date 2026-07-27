@@ -6,9 +6,9 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransactionConfigStore")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransactionConfigStore")
 
-enum WalletTransactionConfigStore {
+nonisolated enum WalletTransactionConfigStore {
     private static let fileURL = ApplicationSupportFile.url("wallet-transaction-config.json")
 
     static func load() -> WalletTransactionConfig {

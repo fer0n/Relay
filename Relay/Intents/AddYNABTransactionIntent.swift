@@ -16,7 +16,7 @@
 
 import AppIntents
 
-nonisolated struct AddYNABTransactionIntent: AppIntent {
+struct AddYNABTransactionIntent: AppIntent {
     static let title: LocalizedStringResource = "Add YNAB Transaction"
     static let description = IntentDescription("Adds an expense transaction to your YNAB plan.")
 
@@ -74,15 +74,18 @@ nonisolated struct AddYNABTransactionIntent: AppIntent {
         let effectiveSplitwiseOption = SplitwiseAuthService.currentAccessToken != nil ? splitwiseOption : .never
 
         // Resolve all needed values before the YNAB API call below: throwing
-        // requestValue re-runs perform() from the top, which would otherwise
-        // create a second, duplicate YNAB transaction.
+        // needsValueError re-runs perform() from the top, which would otherwise
+        // create a second, duplicate YNAB transaction. (The throwing
+        // `requestValue` this used to call is the same thing, deprecated as of
+        // iOS 26 in favour of this spelling; the async `requestValue` the
+        // wallet intents use is the other one, which suspends in place.)
         if effectiveSplitwiseOption != .never, splitwiseFriend == nil {
-            throw $splitwiseFriend.requestValue("Split with which Splitwise friend?")
+            throw $splitwiseFriend.needsValueError("Split with which Splitwise friend?")
         }
         if effectiveSplitwiseOption == .manual, splitwiseOwnShare == nil {
             let formattedAmount = amount.asMoneyString
             let friendName = splitwiseFriend?.firstName ?? "your friend"
-            throw $splitwiseOwnShare.requestValue("Your share of the \(formattedAmount) expense at \(payee), split with \(friendName)?")
+            throw $splitwiseOwnShare.needsValueError("Your share of the \(formattedAmount) expense at \(payee), split with \(friendName)?")
         }
         if effectiveSplitwiseOption == .manual, let splitwiseOwnShare {
             try SplitwiseExpenseHelper.validateOwnShare(splitwiseOwnShare, amount: amount)

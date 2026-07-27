@@ -12,9 +12,9 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "LegacySplitwiseConfigMigration")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "LegacySplitwiseConfigMigration")
 
-enum LegacySplitwiseConfigMigration {
+nonisolated enum LegacySplitwiseConfigMigration {
     private static let fileURL = ApplicationSupportFile.url("splitwise-wallet-transaction-config.json")
 
     private struct LegacyConfig: Codable {

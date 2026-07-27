@@ -21,7 +21,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletDraftCompletion")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletDraftCompletion")
 
 nonisolated enum WalletDraftCompletion {
     enum Result {

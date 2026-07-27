@@ -17,7 +17,7 @@
 
 import UserNotifications
 
-enum WalletConfirmNotification {
+nonisolated enum WalletConfirmNotification {
     static let categoryIdentifier = "WALLET_CONFIRM_TRANSACTION"
     static let addAction = "WALLET_CONFIRM_ADD"
     static let discardAction = "WALLET_CONFIRM_DISCARD"

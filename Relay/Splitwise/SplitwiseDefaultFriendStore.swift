@@ -10,7 +10,7 @@
 
 import Foundation
 
-struct SplitwiseDefaultFriend: Codable {
+nonisolated struct SplitwiseDefaultFriend: Codable {
     let id: Int
     let firstName: String
     /// Shown in ContentView as the current selection; AddWalletTransactionToYNABIntent

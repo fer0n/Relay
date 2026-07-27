@@ -17,7 +17,7 @@ import AppIntents
 /// doesn't name a real template takes the same path — including the old
 /// "Create New Template" sentinel still stored in an existing automation, so
 /// nothing needs migrating.
-let setUpInRelayOption = String(localized: "Set Up in Relay")
+nonisolated let setUpInRelayOption = String(localized: "Set Up in Relay")
 
 nonisolated struct TemplateOptionsProvider: DynamicOptionsProvider {
     func results() async throws -> [String] {

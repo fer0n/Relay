@@ -3,7 +3,7 @@
 //  Relay
 //
 
-enum OAuthConfig {
+nonisolated enum OAuthConfig {
     static let callbackScheme = "relay"
     static let ynabRedirectURI = "relay://oauth/ynab"
     static let splitwiseRedirectURI = "relay://oauth/splitwise"

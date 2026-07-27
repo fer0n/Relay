@@ -11,7 +11,7 @@
 
 import Foundation
 
-enum NotificationsPreferenceStore {
+nonisolated enum NotificationsPreferenceStore {
     private static let key = "notifications.userEnabled"
 
     static var isEnabled: Bool {

@@ -33,8 +33,8 @@ final class SplitwiseAuthService {
     private var session: ASWebAuthenticationSession?
     private let presentationContextProvider = AuthPresentationContextProvider()
 
-    private static let accessTokenKey = "splitwise.accessToken"
-    private static let refreshTokenKey = "splitwise.refreshToken"
+    private nonisolated static let accessTokenKey = "splitwise.accessToken"
+    private nonisolated static let refreshTokenKey = "splitwise.refreshToken"
 
     var isAuthenticated: Bool { accessToken != nil }
 

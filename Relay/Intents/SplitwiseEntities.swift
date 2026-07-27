@@ -9,7 +9,7 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "SplitwiseEntities")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "SplitwiseEntities")
 
 nonisolated struct SplitwiseFriendEntity: AppEntity {
     let id: Int

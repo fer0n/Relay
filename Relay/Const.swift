@@ -9,14 +9,13 @@
 //
 //  Deliberately *not* here: literals that only ever appear at one call site
 //  (they read better inline), the on-disk store filenames (each already owned
-//  by its store), and OAuth endpoints/client IDs (see `OAuthConfig`). Two
-//  repeated strings also have to stay inline because the compiler/tooling
-//  reads them statically: `table: "AppShortcuts"`, which Xcode uses to route
-//  strings into AppShortcuts.xcstrings, and `AppShortcut.systemImageName` in
-//  `RelayShortcuts`, which AppIntents rejects unless it's a literal.
+//  by its store), and OAuth endpoints/client IDs (see `OAuthConfig`). One
+//  repeated string also has to stay inline because the tooling reads it
+//  statically: `AppShortcut.systemImageName` in `RelayShortcuts`, which
+//  AppIntents rejects unless it's a literal.
 //
 
-struct Const {
+nonisolated struct Const {
     /// The app's bundle identifier. Kept as the single spelling because it
     /// also has to match the `UIApplicationShortcutItemType` prefix in
     /// Info.plist, and because the Keychain service name derived from it must

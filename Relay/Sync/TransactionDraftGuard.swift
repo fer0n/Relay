@@ -41,9 +41,9 @@ import Foundation
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDraftGuard")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDraftGuard")
 
-enum TransactionDraftGuard {
+nonisolated enum TransactionDraftGuard {
     /// How long a run can go quiet (no question answered, no completion)
     /// before the reminder fires. touch() resets this on every answered
     /// question, so it's really "30s of inactivity", not "30s since the

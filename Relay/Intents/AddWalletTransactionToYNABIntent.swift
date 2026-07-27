@@ -44,9 +44,9 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransaction")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "WalletTransaction")
 
-nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
+struct AddWalletTransactionToYNABIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Wallet Transaction to YNAB"
     static let description = IntentDescription(
         "Adds a YNAB transaction from a Wallet transaction, remembering payee/category/account choices for next time."
@@ -259,7 +259,7 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
         // is committed below it's swapped for a .splitwiseWallet draft (only
         // the optional split remains), and the catch handler always fails
         // whichever one is active.
-        var activeDraftId = ensureCompletion
+        let activeDraftId = ensureCompletion
             ? TransactionDraftGuard.begin(.ynabWallet(merchant: merchant, amount: amount, card: card))
             : nil
 
@@ -512,9 +512,9 @@ nonisolated struct AddWalletTransactionToYNABIntent: AppIntent {
                         let splitDescription = payeeName.trimmingCharacters(in: .whitespacesAndNewlines)
                         let prompt: String
                         if splitDescription.isEmpty {
-                            prompt = String(localized: "Split this transaction with Splitwise?", table: "AppShortcuts")
+                            prompt = String(localized: "Split this transaction with Splitwise?")
                         } else {
-                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?", table: "AppShortcuts"), splitDescription)
+                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?"), splitDescription)
                         }
                         return try await $splitwiseRuntimeChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     }

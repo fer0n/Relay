@@ -6,7 +6,7 @@
 import Foundation
 import Security
 
-enum KeychainStore {
+nonisolated enum KeychainStore {
     private static let service = Const.keychainService
 
     /// `AfterFirstUnlock` rather than the default `WhenUnlocked`: the wallet
@@ -17,7 +17,11 @@ enum KeychainStore {
     /// device-only and encrypted at rest, but readable once the device has
     /// been unlocked at least once since boot — the standard class for
     /// credentials a background task needs.
-    private static let accessibility = kSecAttrAccessibleAfterFirstUnlock
+    /// Computed rather than a stored `static let`: `kSecAttrAccessible…` is
+    /// imported as a non-Sendable `CFString`, which as global storage isn't
+    /// concurrency-safe. Reading the framework constant per call has the same
+    /// cost and needs no unsafe opt-out.
+    private static var accessibility: CFString { kSecAttrAccessibleAfterFirstUnlock }
 
     static func save(_ value: String, for key: String) {
         let query: [String: Any] = [

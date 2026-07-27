@@ -15,7 +15,7 @@
 
 import Foundation
 
-struct SplitwiseNotification: Codable, Identifiable {
+nonisolated struct SplitwiseNotification: Codable, Identifiable {
     let id: Int
     /// Kept as the raw Int rather than decoded straight into
     /// `SplitwiseNotificationKind`: Splitwise documents the type list as
@@ -63,7 +63,7 @@ struct SplitwiseNotification: Codable, Identifiable {
 /// `SplitwiseNotification.type` stays an Int and this is only consulted
 /// through the failable `kind` — an unrecognized type still shows in the feed,
 /// just with the generic icon.
-enum SplitwiseNotificationKind: Int {
+nonisolated enum SplitwiseNotificationKind: Int {
     case expenseAdded = 0
     case expenseUpdated = 1
     case expenseDeleted = 2
@@ -101,11 +101,11 @@ enum SplitwiseNotificationKind: Int {
     }
 }
 
-struct SplitwiseNotificationsResponse: Codable {
+nonisolated struct SplitwiseNotificationsResponse: Codable {
     let notifications: [SplitwiseNotification]
 }
 
-extension Array where Element == SplitwiseNotification {
+nonisolated extension Array where Element == SplitwiseNotification {
     /// When each expense was most recently brought back, keyed by expense id.
     /// Splitwise keeps the original "expense deleted" entry in the feed after
     /// a restore and adds a separate "expense undeleted" one, so this is what

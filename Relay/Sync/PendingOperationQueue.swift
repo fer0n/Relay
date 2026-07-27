@@ -22,7 +22,7 @@ import SwiftUI
 import UserNotifications
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "PendingOperationQueue")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "PendingOperationQueue")
 
 @MainActor
 @Observable

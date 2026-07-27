@@ -13,7 +13,7 @@
 
 import Foundation
 
-private struct SplitwiseExpenseCache: Codable {
+private nonisolated struct SplitwiseExpenseCache: Codable {
     let expenses: [SplitwiseExpense]
     let fetchedAt: Date
 }

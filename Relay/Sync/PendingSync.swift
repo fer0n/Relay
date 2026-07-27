@@ -12,7 +12,7 @@
 
 import Foundation
 
-enum PendingSyncOutcome: Equatable {
+nonisolated enum PendingSyncOutcome: Equatable {
     case created
     case queued
 }

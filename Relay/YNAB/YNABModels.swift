@@ -9,21 +9,21 @@
 
 import Foundation
 
-struct YNABAccount: Codable {
+nonisolated struct YNABAccount: Codable {
     let id: String
     let name: String
     let closed: Bool
     let deleted: Bool
 }
 
-struct YNABCategory: Codable {
+nonisolated struct YNABCategory: Codable {
     let id: String
     let name: String
     let hidden: Bool
     let deleted: Bool
 }
 
-struct YNABCategoryGroup: Codable {
+nonisolated struct YNABCategoryGroup: Codable {
     let id: String
     let name: String
     let hidden: Bool
@@ -31,7 +31,7 @@ struct YNABCategoryGroup: Codable {
     let categories: [YNABCategory]
 }
 
-struct YNABTransactionRequest: Codable {
+nonisolated struct YNABTransactionRequest: Codable {
     let accountId: String
     let date: String
     let amount: Int
@@ -68,7 +68,7 @@ struct YNABTransactionRequest: Codable {
     }
 }
 
-struct YNABTransactionEnvelope: Codable {
+nonisolated struct YNABTransactionEnvelope: Codable {
     let transaction: YNABTransactionRequest
 }
 
@@ -84,12 +84,12 @@ nonisolated struct YNABCreatedTransaction: Codable {
 
 // MARK: - Response envelopes
 
-struct YNABAccountsResponse: Codable {
+nonisolated struct YNABAccountsResponse: Codable {
     struct DataWrapper: Codable { let accounts: [YNABAccount] }
     let data: DataWrapper
 }
 
-struct YNABCategoriesResponse: Codable {
+nonisolated struct YNABCategoriesResponse: Codable {
     struct DataWrapper: Codable { let categoryGroups: [YNABCategoryGroup] }
     let data: DataWrapper
 }

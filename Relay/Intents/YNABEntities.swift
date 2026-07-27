@@ -10,7 +10,7 @@
 import AppIntents
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "YNABEntities")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "YNABEntities")
 
 nonisolated struct YNABAccountEntity: AppEntity {
     let id: String

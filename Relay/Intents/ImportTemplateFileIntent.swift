@@ -18,7 +18,7 @@
 import AppIntents
 import UniformTypeIdentifiers
 
-nonisolated struct ImportTemplateFileIntent: AppIntent {
+struct ImportTemplateFileIntent: AppIntent {
     static let title: LocalizedStringResource = "Import Template File"
     static let description = IntentDescription("Imports a Relay templates JSON file, or the legacy shape the \"YNAB Toolkit\" Shortcut's DataJar config used.")
 

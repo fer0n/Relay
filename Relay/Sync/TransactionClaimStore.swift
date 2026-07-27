@@ -20,9 +20,9 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionClaimStore")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionClaimStore")
 
-enum TransactionClaimStore {
+nonisolated enum TransactionClaimStore {
     /// How far apart two sightings of the same purchase can be. The Wallet
     /// automation fires at tap; the bank push can lag well behind it,
     /// especially if the phone was offline at the till.

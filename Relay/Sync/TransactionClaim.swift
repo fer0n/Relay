@@ -30,7 +30,7 @@ import Foundation
 /// A run that was recognised as an already-seen transaction and therefore
 /// not written. Kept for display only — these collapse into the matched
 /// TransactionHistoryEntry rather than becoming rows of their own.
-struct SuppressedRun: Codable, Identifiable, Equatable {
+nonisolated struct SuppressedRun: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
     /// The `source` of the *suppressed* run, i.e. the automation that lost
     /// the race — shown as "also seen from …".
@@ -43,7 +43,7 @@ struct SuppressedRun: Codable, Identifiable, Equatable {
     var occurredAt: Date
 }
 
-struct TransactionClaim: Codable, Identifiable, Equatable {
+nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
     let id: UUID
     /// Which automation this run came from. Two runs sharing a source are
     /// never treated as duplicates of each other: the same automation
@@ -186,7 +186,7 @@ struct TransactionClaim: Codable, Identifiable, Equatable {
     }
 }
 
-extension TransactionClaim {
+nonisolated extension TransactionClaim {
     /// The claim `candidate` duplicates, or nil if it's a new transaction.
     /// Pure (no store, no clock) so the whole match rule is testable
     /// without touching Application Support.
@@ -237,7 +237,7 @@ extension TransactionClaim {
     }
 }
 
-private extension String {
+private nonisolated extension String {
     /// Sources are free text typed into Shortcuts by hand, so "Wallet" and
     /// "wallet" are the same automation as far as dedupe is concerned.
     func matchesSource(_ other: String) -> Bool {
@@ -245,7 +245,7 @@ private extension String {
     }
 }
 
-private extension Double {
+private nonisolated extension Double {
     /// Compared in whole cents: these amounts arrive as Shortcuts-supplied
     /// Doubles, where `==` on two values that both display as 12.34 is not
     /// reliable.

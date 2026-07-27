@@ -10,9 +10,9 @@ import Foundation
 import UserNotifications
 import os
 
-private let walletCompletionLogger = Logger(subsystem: Const.loggerSubsystem, category: "WalletCompletionNotification")
+private nonisolated let walletCompletionLogger = Logger(subsystem: Const.loggerSubsystem, category: "WalletCompletionNotification")
 
-enum WalletCompletionNotification {
+nonisolated enum WalletCompletionNotification {
     /// `historyEntryID`, when set, is the id of the just-recorded
     /// TransactionHistoryEntry this confirmation is for — carried in
     /// userInfo so tapping the notification opens that transaction's detail

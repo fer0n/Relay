@@ -18,7 +18,7 @@
 
 import Foundation
 
-struct WalletTransactionConfig: Codable {
+nonisolated struct WalletTransactionConfig: Codable {
     var merchants: [String: MerchantInfo] = [:]
     var templates: [String: Template] = [:]
     var cards: [String: String] = [:]
@@ -252,7 +252,7 @@ struct WalletTransactionConfig: Codable {
     }
 }
 
-extension WalletTransactionConfig.Template {
+nonisolated extension WalletTransactionConfig.Template {
     /// Tolerant decoder: every field falls back to its default when the key
     /// is absent, so adding a new stored property never invalidates configs
     /// written by an older build. The compiler-synthesized decoder does NOT

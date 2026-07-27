@@ -16,7 +16,7 @@
 
 import Foundation
 
-struct FileImportStaging: Codable {
+nonisolated struct FileImportStaging: Codable {
     /// The destination currently under review — remembered so reopening
     /// lands back on the side the user last looked at.
     var destination: FileImportDestination

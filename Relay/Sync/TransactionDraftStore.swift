@@ -6,9 +6,9 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDraftStore")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionDraftStore")
 
-enum TransactionDraftStore {
+nonisolated enum TransactionDraftStore {
     private static let fileURL = ApplicationSupportFile.url("transaction-drafts.json")
 
     private static var decoder: JSONDecoder {

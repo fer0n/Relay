@@ -10,7 +10,7 @@
 
 import Foundation
 
-struct SplitwiseUser: Codable {
+nonisolated struct SplitwiseUser: Codable {
     let id: Int
     let firstName: String
 }
@@ -21,13 +21,13 @@ struct SplitwiseUser: Codable {
 /// the Optional alone is what buys that tolerance: it must NOT be written as
 /// `let picture: SplitwisePicture? = nil`, since the synthesized decoder skips
 /// immutable properties that already have a value and would never read the key.
-struct SplitwisePicture: Codable {
+nonisolated struct SplitwisePicture: Codable {
     let small: String?
     let medium: String?
     let large: String?
 }
 
-struct SplitwiseFriend: Codable {
+nonisolated struct SplitwiseFriend: Codable {
     let id: Int
     let firstName: String
     let lastName: String?
@@ -78,7 +78,7 @@ struct SplitwiseFriend: Codable {
     }
 }
 
-struct SplitwiseBalance: Codable {
+nonisolated struct SplitwiseBalance: Codable {
     let currencyCode: String
     let amount: String
 }
@@ -96,7 +96,7 @@ extension Array where Element == SplitwiseFriend {
 /// cost) and one friend, each owing their own share back. Currency mirrors
 /// the original Shortcut, which hardcoded EUR. Codable so PendingOperationQueue
 /// can persist one to disk while offline.
-struct SplitwiseExpenseRequest: Codable {
+nonisolated struct SplitwiseExpenseRequest: Codable {
     let costCents: Int
     let description: String
     let currencyCode: String
@@ -135,15 +135,15 @@ struct SplitwiseExpenseRequest: Codable {
 
 // MARK: - Response envelopes
 
-struct SplitwiseCurrentUserResponse: Codable {
+nonisolated struct SplitwiseCurrentUserResponse: Codable {
     let user: SplitwiseUser
 }
 
-struct SplitwiseFriendsResponse: Codable {
+nonisolated struct SplitwiseFriendsResponse: Codable {
     let friends: [SplitwiseFriend]
 }
 
-struct SplitwiseCreateExpenseResponse: Codable {
+nonisolated struct SplitwiseCreateExpenseResponse: Codable {
     let errors: [String: [String]]?
 }
 
@@ -152,6 +152,6 @@ struct SplitwiseCreateExpenseResponse: Codable {
 /// endpoint (an object on failure, plausibly an empty array on success), and
 /// guessing wrong would fail the decode of an otherwise fine response — see
 /// `SplitwiseService.undeleteExpense` for how a failed decode is treated.
-struct SplitwiseUndeleteExpenseResponse: Codable {
+nonisolated struct SplitwiseUndeleteExpenseResponse: Codable {
     let success: Bool?
 }

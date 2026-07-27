@@ -17,7 +17,7 @@
 
 import Foundation
 
-struct TransactionHistoryEntry: Codable, Identifiable {
+nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     let id: UUID
     let createdAt: Date
     let summary: String
@@ -85,7 +85,7 @@ struct TransactionHistoryEntry: Codable, Identifiable {
     }
 }
 
-extension TransactionHistoryEntry {
+nonisolated extension TransactionHistoryEntry {
     /// YNAB category name for the primary transaction, resolved from the
     /// local cache. Nil for a Splitwise-only entry, if no category was set,
     /// or if nothing's cached yet.

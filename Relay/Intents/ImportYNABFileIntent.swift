@@ -20,7 +20,7 @@
 import AppIntents
 import UniformTypeIdentifiers
 
-nonisolated struct ImportYNABFileIntent: AppIntent {
+struct ImportYNABFileIntent: AppIntent {
     static let title: LocalizedStringResource = "Import File to YNAB"
     static let description = IntentDescription("Imports transactions from a bank statement file (CSV or QIF) into YNAB.")
 

@@ -12,7 +12,7 @@
 
 import Foundation
 
-struct YNABCategoryUsage: Codable {
+nonisolated struct YNABCategoryUsage: Codable {
     var lastUsedByCategoryId: [String: Date] = [:]
 }
 

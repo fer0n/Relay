@@ -22,7 +22,7 @@
 
 import UserNotifications
 
-enum WalletIncompleteNotification {
+nonisolated enum WalletIncompleteNotification {
     static let categoryIdentifier = "WALLET_TRANSACTION_INCOMPLETE"
     static let discardAction = "WALLET_INCOMPLETE_DISCARD"
 

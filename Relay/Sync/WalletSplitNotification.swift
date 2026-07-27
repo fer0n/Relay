@@ -17,7 +17,7 @@
 
 import UserNotifications
 
-enum WalletSplitNotification {
+nonisolated enum WalletSplitNotification {
     static let categoryIdentifier = "WALLET_SPLIT_CHOICE"
     static let equallyAction = "WALLET_SPLIT_EQUALLY"
     static let manualAction = "WALLET_SPLIT_MANUAL"

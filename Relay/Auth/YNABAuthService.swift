@@ -29,7 +29,7 @@ import Observation
 import Security
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "YNABAuthService")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "YNABAuthService")
 
 @MainActor
 @Observable
@@ -46,9 +46,9 @@ final class YNABAuthService {
     private var pendingCodeVerifier: String?
     private let presentationContextProvider = AuthPresentationContextProvider()
 
-    private static let accessTokenKey = "ynab.accessToken"
-    private static let refreshTokenKey = "ynab.refreshToken"
-    private static let expiresAtKey = "ynab.accessTokenExpiresAt"
+    private nonisolated static let accessTokenKey = "ynab.accessToken"
+    private nonisolated static let refreshTokenKey = "ynab.refreshToken"
+    private nonisolated static let expiresAtKey = "ynab.accessTokenExpiresAt"
 
     var isAuthenticated: Bool { accessToken != nil }
 
@@ -245,12 +245,12 @@ final class YNABAuthService {
     }
 }
 
-private enum YNABTokenExchangeError: Error {
+private nonisolated enum YNABTokenExchangeError: Error {
     case invalidGrant
     case other
 }
 
-private struct YNABTokenResponse: Decodable {
+private nonisolated struct YNABTokenResponse: Decodable {
     let accessToken: String
     let refreshToken: String
     let expiresIn: TimeInterval

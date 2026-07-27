@@ -1,19 +1,19 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Add a Splitwise expense in ${applicationName}" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Ausgabe in ${applicationName} hinzufügen"
+  "sourceLanguage": "en",
+  "strings": {
+    "Add a Splitwise expense in ${applicationName}": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Splitwise-Ausgabe in ${applicationName} hinzufügen"
           }
         },
-        "en" : {
-          "stringSet" : {
-            "state" : "new",
-            "values" : [
+        "en": {
+          "stringSet": {
+            "state": "new",
+            "values": [
               "Add a Splitwise expense in ${applicationName}",
               "Split an expense in ${applicationName}"
             ]
@@ -21,19 +21,19 @@
         }
       }
     },
-    "Add a transaction in ${applicationName}" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transaktion in ${applicationName} hinzufügen"
+    "Add a transaction in ${applicationName}": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transaktion in ${applicationName} hinzufügen"
           }
         },
-        "en" : {
-          "stringSet" : {
-            "state" : "new",
-            "values" : [
+        "en": {
+          "stringSet": {
+            "state": "new",
+            "values": [
               "Add a transaction in ${applicationName}",
               "Add a YNAB transaction in ${applicationName}",
               "Add an expense in ${applicationName}"
@@ -42,50 +42,19 @@
         }
       }
     },
-    "Ask Each Time" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jedes Mal fragen"
-          }
-        }
-      }
-    },
-    "Description for \"%@\"?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beschreibung für \"%@\"?"
-          }
-        }
-      }
-    },
-    "Don't Split" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht aufteilen"
-          }
-        }
-      }
-    },
-    "Import a file to ${applicationName}" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datei in ${applicationName} importieren"
+    "Import a file to ${applicationName}": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datei in ${applicationName} importieren"
           }
         },
-        "en" : {
-          "stringSet" : {
-            "state" : "new",
-            "values" : [
+        "en": {
+          "stringSet": {
+            "state": "new",
+            "values": [
               "Import a file to ${applicationName}",
               "Import a statement to ${applicationName}"
             ]
@@ -93,117 +62,26 @@
         }
       }
     },
-    "Import a file to Splitwise in ${applicationName}" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datei zu Splitwise in ${applicationName} importieren"
+    "Import a file to Splitwise in ${applicationName}": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datei zu Splitwise in ${applicationName} importieren"
           }
         },
-        "en" : {
-          "stringSet" : {
-            "state" : "new",
-            "values" : [
+        "en": {
+          "stringSet": {
+            "state": "new",
+            "values": [
               "Import a file to Splitwise in ${applicationName}",
               "Import a statement to Splitwise in ${applicationName}"
             ]
           }
         }
       }
-    },
-    "Split %@ expenses with which friend?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ Ausgaben mit welchem Freund aufteilen?"
-          }
-        }
-      }
-    },
-    "Split Equally" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gleich aufteilen"
-          }
-        }
-      }
-    },
-    "Split Manually" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manuell aufteilen"
-          }
-        }
-      }
-    },
-    "Split this %@ transaction with Splitwise?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese %@-Transaktion mit Splitwise aufteilen?"
-          }
-        }
-      }
-    },
-    "Split this transaction with Splitwise?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Transaktion mit Splitwise aufteilen?"
-          }
-        }
-      }
-    },
-    "Splitwise Split Option" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Teilungsoption"
-          }
-        }
-      }
-    },
-    "Splitwise Template Option" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Splitwise-Vorlageneinstellung"
-          }
-        }
-      }
-    },
-    "Which template for \"%@\"?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Welche Vorlage für \"%@\"?"
-          }
-        }
-      }
-    },
-    "Your share of the %@ expense at %@, split with %@?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Anteil an der %1$@-Ausgabe bei %2$@, aufgeteilt mit %3$@?"
-          }
-        }
-      }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

@@ -12,7 +12,7 @@
 
 import Foundation
 
-struct TransactionDraft: Codable, Identifiable {
+nonisolated struct TransactionDraft: Codable, Identifiable {
     let id: UUID
     let startedAt: Date
     let payload: Payload

@@ -10,9 +10,9 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionHistoryStore")
+private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, category: "TransactionHistoryStore")
 
-enum TransactionHistoryStore {
+nonisolated enum TransactionHistoryStore {
     private static let historyLimit = 10
 
     private static let fileURL = ApplicationSupportFile.url("transaction-history.json")
@@ -109,7 +109,7 @@ enum TransactionHistoryStore {
     }
 }
 
-private extension TransactionHistoryEntry {
+private nonisolated extension TransactionHistoryEntry {
     /// Folds a sibling write from the same wallet run into this entry,
     /// keeping the YNAB transaction as the primary `payload` and the
     /// Splitwise expense as `split`. Returns nil when the two can't be

@@ -21,12 +21,12 @@ nonisolated enum SplitwiseTemplateOption: String, AppEnum, Codable {
     case ask
     case never
 
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("Splitwise Template Option", table: "AppShortcuts"))
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: LocalizedStringResource("Splitwise Template Option"))
     static let caseDisplayRepresentations: [SplitwiseTemplateOption: DisplayRepresentation] = [
-        .always: DisplayRepresentation(title: LocalizedStringResource("Split Equally", table: "AppShortcuts")),
-        .manual: DisplayRepresentation(title: LocalizedStringResource("Split Manually", table: "AppShortcuts")),
-        .ask: DisplayRepresentation(title: LocalizedStringResource("Ask Each Time", table: "AppShortcuts")),
-        .never: DisplayRepresentation(title: LocalizedStringResource("Don't Split", table: "AppShortcuts")),
+        .always: DisplayRepresentation(title: LocalizedStringResource("Split Equally")),
+        .manual: DisplayRepresentation(title: LocalizedStringResource("Split Manually")),
+        .ask: DisplayRepresentation(title: LocalizedStringResource("Ask Each Time")),
+        .never: DisplayRepresentation(title: LocalizedStringResource("Don't Split")),
     ]
 
     /// The one-shot runtime choice this stored template option resolves to —

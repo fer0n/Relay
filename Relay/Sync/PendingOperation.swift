@@ -8,7 +8,7 @@
 
 import Foundation
 
-struct PendingOperation: Codable, Identifiable {
+nonisolated struct PendingOperation: Codable, Identifiable {
     let id: UUID
     let queuedAt: Date
     /// Human-readable description shown in PendingQueueView, e.g. "12.34 at
@@ -41,7 +41,7 @@ struct PendingOperation: Codable, Identifiable {
     }
 }
 
-extension PendingOperation.Payload {
+nonisolated extension PendingOperation.Payload {
     /// Payee (YNAB) or description (Splitwise) — TransactionSummaryRow's title.
     var title: String {
         switch self {

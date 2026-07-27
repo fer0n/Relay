@@ -14,7 +14,7 @@ import SwiftUI
 /// nothing else stores this type (PendingOperation/TransactionDraft/
 /// TransactionHistoryEntry all derive `service` from their payload), so the
 /// raw values are free to be whatever reads best on disk.
-enum TransactionService: String, Codable {
+nonisolated enum TransactionService: String, Codable {
     case ynab
     case splitwise
 

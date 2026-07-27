@@ -11,7 +11,7 @@
 
 import Foundation
 
-struct SplitwiseFriendUsage: Codable {
+nonisolated struct SplitwiseFriendUsage: Codable {
     var lastUsedByFriendId: [String: Date] = [:]
 }
 

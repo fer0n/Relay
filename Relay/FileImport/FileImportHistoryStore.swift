@@ -14,9 +14,9 @@
 
 import Foundation
 
-private let recentLimit = 1000
+private nonisolated let recentLimit = 1000
 
-struct FileImportHistory: Codable {
+nonisolated struct FileImportHistory: Codable {
     /// Each entry is "{destination.rawValue}:{rowId}".
     var recentIds: [String] = []
 }
