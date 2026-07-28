@@ -8,6 +8,12 @@
   Add transactions to YNAB & Splitwise via Shortcuts & Wallet automation, and import bank statements into YNAB
 </p>
 
+<p align="center">
+  <a href="https://testflight.apple.com/join/72N1vYRj">
+    <img src="https://img.shields.io/badge/Download-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Download on TestFlight">
+  </a>
+</p>
+
 ## Relay
 
 ## KEY FEATURES
