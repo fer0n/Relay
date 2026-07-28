@@ -135,12 +135,48 @@ nonisolated enum TransactionDraftGuard {
         draft.pendingSplitContext = context
         var drafts = TransactionDraftStore.load()
         drafts.append(draft)
+        save(trimmedToLimit: drafts)
+        return draft
+    }
+
+    /// Splits `drafts` into what fits within `limit` and what falls past it,
+    /// oldest-first by `startedAt` — not insertion order, since
+    /// `transition(_:to:)` keeps a draft's original id/startedAt rather than
+    /// re-adding it. Pure (no file I/O or notification calls), so it's the
+    /// part of the limit logic exercised directly in tests; `save(trimmedToLimit:)`
+    /// below does the actual write + reminder cancellation.
+    static func splitByLimit(_ drafts: [TransactionDraft], limit: Int) -> (kept: [TransactionDraft], dropped: [TransactionDraft]) {
+        guard drafts.count > limit else { return (drafts, []) }
+        let sorted = drafts.sorted { $0.startedAt > $1.startedAt }
+        return (Array(sorted.prefix(limit)), Array(sorted[limit...]))
+    }
+
+    /// Drops the oldest drafts past `DraftLimitPreferenceStore.limit` and
+    /// cancels any reminder scheduled for a dropped one before saving.
+    /// Shared by `create()` (called after every new draft) and by
+    /// `enforceLimit()` (called once Settings is left, in case the limit was
+    /// lowered).
+    private static func save(trimmedToLimit drafts: [TransactionDraft]) {
+        let (kept, dropped) = splitByLimit(drafts, limit: DraftLimitPreferenceStore.limit)
+        if !dropped.isEmpty {
+            let identifiers = dropped.map(\.id.uuidString)
+            let center = UNUserNotificationCenter.current()
+            center.removePendingNotificationRequests(withIdentifiers: identifiers)
+            center.removeDeliveredNotifications(withIdentifiers: identifiers)
+        }
         do {
-            try TransactionDraftStore.save(drafts)
+            try TransactionDraftStore.save(kept)
         } catch {
             logger.error("failed to save transaction draft: \(String(describing: error), privacy: .public)")
         }
-        return draft
+    }
+
+    /// Re-applies the draft limit to whatever's currently stored — called
+    /// when Settings disappears, not on every picker change, so a lower
+    /// value can still be dialed back up before leaving without having
+    /// already discarded the drafts past it.
+    static func enforceLimit() {
+        save(trimmedToLimit: TransactionDraftStore.load())
     }
 
     /// Pushes the reminder deadline back out to `fireDelay` from now —

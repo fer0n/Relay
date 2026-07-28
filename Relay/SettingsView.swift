@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var notificationsEnabled = NotificationsPreferenceStore.isEnabled
+    @State private var draftLimit = DraftLimitPreferenceStore.limit
     @State private var migration = LegacyMigrationCallbackHandler()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -59,6 +60,21 @@ struct SettingsView: View {
             .tint(.accentColor)
             .cardRowBackground()
 
+            Section {
+                Picker("Max Drafts Kept", selection: $draftLimit) {
+                    ForEach(DraftLimitPreferenceStore.options, id: \.self) { count in
+                        Text("\(count)").tag(count)
+                    }
+                }
+                .onChange(of: draftLimit) { _, newValue in
+                    DraftLimitPreferenceStore.limit = newValue
+                }
+            } footer: {
+                Text("The oldest unfinished transaction drafts are discarded once this limit is reached.")
+                    .footerText()
+            }
+            .cardRowBackground()
+
             BackupImportExportSection()
 
             LegacyMigrationShortcutSection(migration: migration)
@@ -90,6 +106,12 @@ struct SettingsView: View {
         .themedList(background: .backgroundColor)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        // Trimming only on the way out (rather than on every picker tap)
+        // lets a lower value be dialed back up again before leaving, without
+        // having already discarded the drafts past it.
+        .onDisappear {
+            TransactionDraftGuard.enforceLimit()
+        }
         .legacyMigrationCallback(migration, openURL: openURL)
         .alert(
             "Couldn't Connect to YNAB",
