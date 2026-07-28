@@ -123,6 +123,12 @@ struct ContentRecentSection: View {
     let namespace: Namespace.ID
     let onSelect: (TransactionHistoryEntry) -> Void
     let onReAdd: (TransactionHistoryEntry) -> Void
+    let onDelete: (TransactionHistoryEntry) -> Void
+
+    /// Set by the swipe action's Delete button to gate a confirmation before
+    /// actually deleting — attached to the row itself rather than the swipe
+    /// button, same reasoning as SplitwiseFriendTransactionsView.
+    @State private var entryPendingDelete: TransactionHistoryEntry?
 
     var body: some View {
         Section("Recent") {
@@ -148,6 +154,31 @@ struct ContentRecentSection: View {
                     } label: {
                         Label("Re-add", systemImage: "arrow.clockwise")
                     }
+                }
+                .swipeActions {
+                    Button {
+                        entryPendingDelete = entry
+                    } label: {
+                        Image(systemName: Const.Symbol.delete)
+                    }
+                    .tint(.red)
+                }
+                .confirmationDialog(
+                    "Delete this transaction?",
+                    isPresented: Binding(
+                        get: { entryPendingDelete?.id == entry.id },
+                        set: { if !$0 { entryPendingDelete = nil } }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        withAnimation {                        
+                            entryPendingDelete = nil
+                            onDelete(entry)
+                        }
+                    }
+                } message: {
+                    Text("This will only delete locally, YNAB/Splitwise are unaffected.")
                 }
             }
         }

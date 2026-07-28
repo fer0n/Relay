@@ -109,8 +109,12 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
     /// Splitwise expense. Only meaningful when `onDestroy` is set.
     var destroyLabel: LocalizedStringKey = "Discard"
     var destroyConfirmationTitle: LocalizedStringKey = "Discard this transaction?"
+    /// Extra detail shown under the confirmation title — e.g. clarifying the
+    /// deletion is local-only, or that it also removes the expense on
+    /// Splitwise for everyone involved.
+    var destroyConfirmationMessage: LocalizedStringKey? = nil
     /// Called when the user confirms the destructive action. Nil hides the
-    /// section entirely (e.g. history, which can't be discarded or deleted).
+    /// section entirely.
     var onDestroy: (() async -> Void)? = nil
     @ViewBuilder var sections: () -> Sections
 
@@ -149,7 +153,12 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
             sections()
 
             if let onDestroy {
-                DiscardSection(label: destroyLabel, confirmationTitle: destroyConfirmationTitle, onConfirm: onDestroy)
+                DiscardSection(
+                    label: destroyLabel,
+                    confirmationTitle: destroyConfirmationTitle,
+                    confirmationMessage: destroyConfirmationMessage,
+                    onConfirm: onDestroy
+                )
             }
         }
         .themedList(background: .sheetBackgroundColor)
@@ -209,7 +218,11 @@ private struct HistoryDetailContent: View {
             amount: entry.formattedAmount,
             serviceIcons: [entry.service.systemImage] + (entry.secondaryService.map { [$0.systemImage] } ?? []),
             date: entry.createdAt,
-            detailLine: merchantDetailLine
+            detailLine: merchantDetailLine,
+            destroyLabel: "Delete",
+            destroyConfirmationTitle: "Delete this transaction?",
+            destroyConfirmationMessage: "This will only delete locally, YNAB/Splitwise are unaffected.",
+            onDestroy: delete
         ) {
             Section {
                 DraftDetailRow(icon: Const.Symbol.titleField, title: entry.service.titleFieldLabel, isEditable: false) {
@@ -279,6 +292,11 @@ private struct HistoryDetailContent: View {
         .bottomBarActionButton(isPresented: hasPayeeChanges, title: "Save", action: savePayee)
     }
 
+    private func delete() async {
+        TransactionHistoryStore.delete(id: entry.id)
+        dismiss()
+    }
+
     private func savePayee() {
         guard let merchant = entry.merchant, let info = linkedInfo else { return }
         let trimmed = payeeText.trimmingCharacters(in: .whitespaces)
@@ -325,6 +343,7 @@ private struct SplitwiseExpenseDetailContent: View {
             detailLine: payerDetailLine,
             destroyLabel: "Delete",
             destroyConfirmationTitle: "Delete this expense?",
+            destroyConfirmationMessage: "This will delete the expense on Splitwise for everyone involved.",
             onDestroy: delete
         ) {
             Section {

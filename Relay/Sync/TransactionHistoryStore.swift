@@ -87,6 +87,24 @@ nonisolated enum TransactionHistoryStore {
         }
     }
 
+    /// Removes a single entry, e.g. from a swipe-to-delete or the detail
+    /// sheet's Delete action. Local-only — the underlying YNAB transaction
+    /// and/or Splitwise expense are untouched, which is why callers must
+    /// confirm that with the user before invoking this.
+    static func delete(id: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var entries = load()
+        entries.removeAll { $0.id == id }
+        do {
+            let data = try encoder.encode(entries)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            logger.error("failed to save transaction history: \(String(describing: error), privacy: .public)")
+        }
+    }
+
     /// Annotates an existing entry with runs that were recognised as the
     /// same purchase and dropped (see TransactionClaim). Called both when a
     /// duplicate arrives after the original committed, and by the original

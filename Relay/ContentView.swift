@@ -227,7 +227,11 @@ struct ContentView: View {
                     history: history,
                     namespace: detailNamespace,
                     onSelect: { selectedHistoryEntry = $0 },
-                    onReAdd: { startManualEntry(prefill: $0) }
+                    onReAdd: { startManualEntry(prefill: $0) },
+                    onDelete: { entry in
+                        TransactionHistoryStore.delete(id: entry.id)
+                        withAnimation { history.removeAll { $0.id == entry.id } }
+                    }
                 )
                 .transition(.contentRow)
             }

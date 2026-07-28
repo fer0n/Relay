@@ -90,6 +90,8 @@ struct SplitwiseFriendTransactionsView: View {
                         Button("Delete", role: .destructive) {
                             Task { await deleteWithSwipe(expense) }
                         }
+                    } message: {
+                        Text("This will delete the expense on Splitwise for everyone involved.")
                     }
                 }
             }
