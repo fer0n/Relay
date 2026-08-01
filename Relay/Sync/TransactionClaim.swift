@@ -5,39 +5,30 @@
 //  One record per wallet-automation *run*, used to recognise the same
 //  real-world purchase arriving twice through two different automations.
 //
-//  Background: the Wallet "Transaction" automation doesn't always fire —
-//  it misses sometimes, and it never fires at all for an online Apple Pay
-//  purchase. iOS 27's notification automations cover those, triggered off
-//  the bank app's push instead. But every Wallet-triggered transaction
-//  *should* also produce a bank notification, so with both automations
-//  wired up most purchases arrive twice and one of the two has to be
-//  dropped.
+//  The Wallet "Transaction" automation misses sometimes, and never fires for an
+//  online Apple Pay purchase; a notification automation on the bank app's push
+//  covers those. With both wired up most purchases arrive twice, and whichever
+//  arrives second is dropped — first write wins. (Letting the later,
+//  better-quality Wallet data patch the existing transaction is a lot of
+//  surface area for something the user can fix by editing it.)
 //
-//  Which one is dropped is simply whichever arrives second — first write
-//  wins. The alternative (let the later, better-quality Wallet data patch
-//  the transaction the notification already created) is a lot of surface
-//  area for a case the user can also fix by editing the transaction.
-//
-//  A claim is written at the very top of perform(), *before* any follow-up
+//  A claim is written at the very top of perform(), before any follow-up
 //  question and before TransactionDraftGuard.begin, because a run can sit
-//  suspended on a question for minutes. Matching only against completed
-//  transactions would let the second automation fire straight through the
-//  middle of a still-running first one.
+//  suspended on a question for minutes — matching only completed transactions
+//  would let the second automation fire through the middle of the first.
 //
 
 import Foundation
 
-/// A run that was recognised as an already-seen transaction and therefore
-/// not written. Kept for display only — these collapse into the matched
-/// TransactionHistoryEntry rather than becoming rows of their own.
+/// A run recognised as an already-seen transaction and therefore not written.
+/// Display only — these collapse into the matched TransactionHistoryEntry
+/// rather than becoming rows of their own.
 nonisolated struct SuppressedRun: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
-    /// The `source` of the *suppressed* run, i.e. the automation that lost
-    /// the race — shown as "also seen from …".
+    /// The automation that lost the race — shown as "also seen from …".
     var source: String
-    /// The raw merchant string that run was given. Usually differs from the
-    /// winning run's (a bank push says "Kartenzahlung ACME GMBH//BERLIN"
-    /// where Wallet says "ACME"), which is exactly why it's worth showing.
+    /// Usually differs from the winning run's (a bank push says "Kartenzahlung
+    /// ACME GMBH//BERLIN" where Wallet says "ACME"), which is why it's shown.
     var merchant: String
     var amount: Double
     var occurredAt: Date
@@ -45,63 +36,46 @@ nonisolated struct SuppressedRun: Codable, Identifiable, Equatable {
 
 nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
     let id: UUID
-    /// Which automation this run came from. Two runs sharing a source are
-    /// never treated as duplicates of each other: the same automation
-    /// firing twice means the user really did pay twice (two taps at the
-    /// same merchant for the same amount is a real thing that happens).
+    /// Two runs sharing a source are never duplicates of each other: the same
+    /// automation firing twice means the user really did pay twice.
     let source: String
-    /// YNAB vs Splitwise. Part of the match key so a YNAB-destined card and
-    /// a Splitwise-destined card charged the same amount within the window
-    /// don't collapse into each other — a real duplicate pair always shares
-    /// a destination, since both automations for a given card are wired to
-    /// the same intent.
+    /// Part of the match key, so a YNAB-destined and a Splitwise-destined card
+    /// charged the same amount in the same window don't collapse. A real
+    /// duplicate pair always shares a destination.
     let destination: TransactionService
     let amount: Double
     let claimedAt: Date
-    /// The resolved YNAB account, when known. Compared rather than the raw
-    /// card string, since Wallet's "Visa ••1234" and a bank app's "DKB
-    /// Visa" both map through `WalletTransactionConfig.cards` to the same
-    /// account id. Nil whenever the card isn't mapped yet — and always nil
-    /// on the Splitwise path, which has no card parameter at all — so a nil
-    /// on either side carries no signal in `matches` rather than counting
-    /// as agreement.
+    /// Compared instead of the raw card string, since Wallet's "Visa ••1234" and
+    /// a bank app's "DKB Visa" map to the same account id. Nil when the card
+    /// isn't mapped, and always nil on the Splitwise path — so `matches` reads a
+    /// nil as no signal rather than as agreement.
     var accountId: String?
     var merchant: String
     var state: State
-    /// Set by `commit` once this run has actually recorded a transaction.
-    /// A suppression arriving after that point patches the entry directly;
-    /// one arriving while the claim is still `inFlight` is parked in
-    /// `suppressed` below and folded in when the entry is finally created.
+    /// Set by `commit`. A suppression arriving after that patches the entry
+    /// directly; one arriving while still `inFlight` parks in `suppressed` and
+    /// is folded in when the entry is created.
     var historyEntryId: UUID?
-    /// The draft a `.awaitingConfirmation` run left for the user to approve or
-    /// finish, so a later run that writes the transaction for real can clear
-    /// it (see `supersededConfirmations`). Nil in every other state.
+    /// The draft an `.awaitingConfirmation` run left behind, so a later run that
+    /// writes for real can clear it (see `supersededConfirmations`).
     var draftId: UUID?
-    /// Runs suppressed against this one.
     var suppressed: [SuppressedRun] = []
 
     enum State: String, Codable {
-        /// perform() is still running — it may be suspended on a follow-up
-        /// question, so this is a live claim and still matchable.
+        /// perform() may be suspended on a follow-up question, so this is a live
+        /// claim and still matchable.
         case inFlight
         case committed
-        /// The run deliberately wrote nothing and left a draft behind
-        /// instead — either because its automation has "Require Confirmation"
-        /// set, or because the merchant has no template yet and picking one
-        /// happens in the app. It doesn't shadow a run that's going to write
-        /// for real — the whole point is that nothing has been added yet — but
-        /// it does shadow another run that can only park a draft too, so one
-        /// purchase can't pile up two drafts asking the same question.
+        /// The run deliberately wrote nothing and left a draft instead. It never
+        /// shadows a run that's going to write for real, but does shadow another
+        /// draft-only run, so one purchase can't pile up two drafts.
         case awaitingConfirmation
-        /// The run ended without writing anything (an API failure, a
-        /// dismissed question, the process killed). No longer matchable:
-        /// the second automation is the safety net for exactly this case
-        /// and must be allowed through.
+        /// The run ended without writing anything. No longer matchable: the
+        /// second automation is the safety net for exactly this case.
         case abandoned
     }
 
-    /// Whether this claim's state lets it shadow `candidate` at all — the
-    /// half of the match that's about what each run *did*, as opposed to
+    /// The half of the match about what each run *did*, as opposed to
     /// `isSamePurchase`, which is about what they're both looking at.
     private func shadows(_ candidate: Candidate) -> Bool {
         switch state {
@@ -111,23 +85,21 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
         }
     }
 
-    /// Whether `candidate` is the same real-world purchase as this claim,
-    /// ignoring what either run did about it.
+    /// Whether `candidate` is the same real-world purchase, ignoring what either
+    /// run did about it.
     ///
-    /// Amount must be exactly equal (to the cent) — deliberately strict.
-    /// A tolerance band would let two genuinely different purchases in the
-    /// same window collapse, and the one case exact matching gives up on
-    /// (a foreign-currency charge, where Wallet reports the transaction
-    /// currency and the bank push the converted amount) is rare enough to
-    /// be worth an occasional duplicate.
+    /// The amount must match to the cent. A tolerance band would collapse two
+    /// genuinely different purchases in the same window, and the case exact
+    /// matching gives up on — a foreign-currency charge, where Wallet reports
+    /// the transaction currency and the bank push the converted amount — is rare
+    /// enough to be worth an occasional duplicate.
     private func isSamePurchase(as candidate: Candidate, window: TimeInterval) -> Bool {
         guard destination == candidate.destination else { return false }
         guard !source.matchesSource(candidate.source) else { return false }
         guard amount.isSameAmount(as: candidate.amount) else { return false }
         guard abs(claimedAt.timeIntervalSince(candidate.occurredAt)) < window else { return false }
-        // Only a *conflict* rejects. Either side being nil means the card
-        // simply isn't mapped (or there's no card at all), which says
-        // nothing either way — amount and time carry the match there.
+        // Only a conflict rejects — a nil on either side says nothing, so amount
+        // and time carry the match there.
         if let accountId, let candidateAccountId = candidate.accountId, accountId != candidateAccountId {
             return false
         }
@@ -139,10 +111,9 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
         shadows(candidate) && isSamePurchase(as: candidate, window: window)
     }
 
-    /// The inputs a starting run is matched on, before it becomes a claim
-    /// of its own. Separate from `TransactionClaim` so `matches` can't
-    /// accidentally be handed a persisted claim's `state`/`suppressed`
-    /// fields as if they were the incoming run's.
+    /// The inputs a starting run is matched on, before it becomes a claim of its
+    /// own. Separate from `TransactionClaim` so `matches` can't be handed a
+    /// persisted claim's `state`/`suppressed` as if they were the incoming run's.
     struct Candidate {
         var source: String
         var destination: TransactionService
@@ -150,13 +121,9 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
         var accountId: String?
         var merchant: String
         var occurredAt: Date = Date()
-        /// Whether this run can only ever park a draft, rather than add the
-        /// transaction itself: its automation has "Require Confirmation" set,
-        /// or (on the YNAB path) the merchant has no template to file it under
-        /// and no usable one pinned, so it has to be set up in the app. Either
-        /// way a draft that's already waiting for the same purchase is asking
-        /// this run's question for it (see `shadows`), and a second draft
-        /// would only double up.
+        /// Whether this run can only park a draft rather than add the transaction
+        /// itself, in which case a draft already waiting for the same purchase is
+        /// asking its question for it — see `shadows`.
         var parksDraftOnly: Bool = false
 
         var asSuppressedRun: SuppressedRun {
@@ -164,9 +131,8 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
         }
     }
 
-    /// How this claim would present itself if it were the incoming run —
-    /// lets a claim be matched back against the ledger (see
-    /// `supersededConfirmations`).
+    /// Lets a claim be matched back against the ledger — see
+    /// `supersededConfirmations`.
     var asCandidate: Candidate {
         Candidate(
             source: source,
@@ -178,23 +144,18 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
         )
     }
 
-    /// This claim as a "also seen from …" record on someone else's history
-    /// entry — used when a writing run adopts the drafts of the
-    /// confirmation-only sightings it supersedes.
     var asSuppressedRun: SuppressedRun {
         SuppressedRun(source: source, merchant: merchant, amount: amount, occurredAt: claimedAt)
     }
 }
 
 nonisolated extension TransactionClaim {
-    /// The claim `candidate` duplicates, or nil if it's a new transaction.
-    /// Pure (no store, no clock) so the whole match rule is testable
-    /// without touching Application Support.
+    /// The claim `candidate` duplicates, or nil if it's new. Pure (no store, no
+    /// clock) so the match rule is testable without Application Support.
     ///
-    /// Ties are broken by closeness in time rather than by position in the
-    /// ledger: with two active claims at the same amount — a genuine
-    /// double-charge the user made twice — the incoming run is the second
-    /// automation for whichever of them it landed nearest.
+    /// Ties break on closeness in time, not ledger position: with two active
+    /// claims at the same amount — a genuine double-charge — the incoming run
+    /// belongs to whichever it landed nearest.
     static func firstMatch(
         in claims: [TransactionClaim],
         for candidate: Candidate,
@@ -205,15 +166,10 @@ nonisolated extension TransactionClaim {
             .min { abs($0.claimedAt.timeIntervalSince(candidate.occurredAt)) < abs($1.claimedAt.timeIntervalSince(candidate.occurredAt)) }
     }
 
-    /// The confirmation-only sightings that `claim` — a run that just wrote
-    /// the transaction for real — answers on their behalf.
-    ///
-    /// This is the mirror image of `matches`: an `awaitingConfirmation` claim
-    /// deliberately stands aside for a run that can actually write, which
-    /// would otherwise leave its draft sitting there asking to add a
-    /// transaction that now exists. The writing run adopts them instead —
-    /// dropping their drafts and folding them into its history entry, so the
-    /// user ends up with the same single collapsed row either way round.
+    /// The mirror image of `matches`: an `awaitingConfirmation` claim stands
+    /// aside for a run that can actually write, which would otherwise leave its
+    /// draft asking to add a transaction that now exists. The writing run adopts
+    /// them instead, so the user ends up with one collapsed row either way round.
     static func supersededConfirmations(
         in claims: [TransactionClaim],
         by claim: TransactionClaim,
@@ -223,14 +179,11 @@ nonisolated extension TransactionClaim {
         return claims.filter { $0.state == .awaitingConfirmation && $0.isSamePurchase(as: candidate, window: window) }
     }
 
-    /// The source recorded when a shortcut leaves the parameter blank —
-    /// which every automation built before the parameter existed does, so
-    /// they keep behaving exactly as before.
+    /// Recorded when a shortcut leaves the parameter blank, as every automation
+    /// built before it existed does.
     static let defaultSource = "wallet"
 
-    /// Normalises a shortcut-supplied source: trimmed, and blank collapsed
-    /// to `defaultSource`. Case is preserved for display; comparison is
-    /// case-insensitive (see `matchesSource`).
+    /// Case is preserved for display; comparison is case-insensitive.
     static func normalizedSource(_ raw: String?) -> String {
         let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? defaultSource : trimmed
@@ -238,17 +191,16 @@ nonisolated extension TransactionClaim {
 }
 
 private nonisolated extension String {
-    /// Sources are free text typed into Shortcuts by hand, so "Wallet" and
-    /// "wallet" are the same automation as far as dedupe is concerned.
+    /// Sources are typed into Shortcuts by hand, so "Wallet" and "wallet" are
+    /// the same automation as far as dedupe is concerned.
     func matchesSource(_ other: String) -> Bool {
         caseInsensitiveCompare(other) == .orderedSame
     }
 }
 
 private nonisolated extension Double {
-    /// Compared in whole cents: these amounts arrive as Shortcuts-supplied
-    /// Doubles, where `==` on two values that both display as 12.34 is not
-    /// reliable.
+    /// Compared in whole cents: these arrive as Shortcuts-supplied Doubles,
+    /// where `==` on two values that both display as 12.34 isn't reliable.
     func isSameAmount(as other: Double) -> Bool {
         Int((self * Const.centsPerUnit).rounded()) == Int((other * Const.centsPerUnit).rounded())
     }

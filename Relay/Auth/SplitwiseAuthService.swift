@@ -2,14 +2,11 @@
 //  SplitwiseAuthService.swift
 //  Relay
 //
-//  Splitwise only offers the authorization code grant, which requires a
-//  client secret for the token exchange — one that can't live in the app
-//  once Relay is distributed to more than one device, since anything
-//  compiled into the binary is extractable from any install. The actual
-//  exchange is delegated to the relay-auth Cloudflare Worker (see
-//  ../../oauth-relay/README.md), the only place that holds the secret;
-//  this service only ever sends it an authorization `code`, never the
-//  secret itself.
+//  Splitwise only offers the authorization code grant, whose token exchange
+//  needs a client secret — which can't live in the app, since anything compiled
+//  into the binary is extractable. The exchange is delegated to the relay-auth
+//  Cloudflare Worker (see ../../oauth-relay/README.md), the only place holding
+//  the secret; this service only ever sends it an authorization `code`.
 //
 
 import AuthenticationServices
@@ -23,12 +20,10 @@ private let logger = Logger(subsystem: Const.loggerSubsystem, category: "Splitwi
 @Observable
 final class SplitwiseAuthService {
     private(set) var accessToken: String?
-    /// Set when the interactive sign-in's token exchange fails, so the view
-    /// showing the Connect button can surface it — otherwise the flow looks
-    /// like it did nothing (the web sign-in page closes either way).
+    /// Surfaced next to the Connect button — otherwise a failed token exchange
+    /// looks like nothing happened, since the web page closes either way.
     private(set) var signInError: String?
-    /// Raw error text for the "Report Error" mail action — `signInError`
-    /// itself stays a friendly, generic message.
+    /// Raw text for the "Report Error" mail action; `signInError` stays friendly.
     private(set) var signInErrorDetail: String?
     private var session: ASWebAuthenticationSession?
     private let presentationContextProvider = AuthPresentationContextProvider()
@@ -38,16 +33,13 @@ final class SplitwiseAuthService {
 
     var isAuthenticated: Bool { accessToken != nil }
 
-    /// Reads the token directly from the Keychain, for use in contexts (like
-    /// App Intents) that run without an owning `SplitwiseAuthService` instance.
+    /// Static, since App Intents contexts run without an owning instance.
     nonisolated static var currentAccessToken: String? {
         KeychainStore.load(for: accessTokenKey)
     }
 
-    /// Clears the stored token once the API reports it's no longer valid,
-    /// so the app stops showing "Connected" for a token that no longer
-    /// works. Called from App Intents contexts too, which run without an
-    /// owning `SplitwiseAuthService` instance.
+    /// Clears the stored token once the API reports it's dead, so the app stops
+    /// showing "Connected". Static for the same reason as above.
     nonisolated static func invalidateAccessToken() {
         KeychainStore.delete(for: accessTokenKey)
         KeychainStore.delete(for: refreshTokenKey)
@@ -57,8 +49,7 @@ final class SplitwiseAuthService {
         accessToken = KeychainStore.load(for: Self.accessTokenKey)
     }
 
-    /// Re-reads the Keychain, in case an App Intent invalidated the token
-    /// (see `invalidateAccessToken()`) while this instance was already alive.
+    /// In case an App Intent invalidated the token while this instance was alive.
     func refreshFromKeychain() {
         accessToken = KeychainStore.load(for: Self.accessTokenKey)
     }
@@ -96,8 +87,7 @@ final class SplitwiseAuthService {
             let code = components.queryItems?.first(where: { $0.name == "code" })?.value
         else { return }
 
-        // Calls the oauth-relay Worker rather than secure.splitwise.com/
-        // oauth/token directly — the Worker is the only place holding
+        // Goes through the oauth-relay Worker, the only place holding
         // client_secret.
         var request = URLRequest(url: URL(string: OAuthConfig.oauthRelayBaseURL + "/splitwise/token")!)
         request.httpMethod = Const.HTTP.post
@@ -112,15 +102,12 @@ final class SplitwiseAuthService {
             if let refreshToken = token.refreshToken {
                 KeychainStore.save(refreshToken, for: Self.refreshTokenKey)
             }
-            // Warms the friend cache right away, so a fresh sign-in doesn't
-            // need a first online visit to a template editor before
-            // offline template creation works.
+            // Warms the friend cache, so offline template creation works without a
+            // first online visit to the template editor.
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token.accessToken) }
-            // Warms SplitwiseCurrentUserStore too — otherwise it stays empty
-            // until the first expense is added through Relay, and every
-            // signed/colored amount that depends on it (e.g.
-            // SplitwiseFriendTransactionsView's rows) silently falls back to
-            // the plain unsigned cost until then.
+            // And SplitwiseCurrentUserStore, which would otherwise stay empty until
+            // the first expense is added — leaving every signed/colored amount
+            // that depends on it falling back to the plain unsigned cost.
             Task {
                 if let user = try? await SplitwiseService.fetchCurrentUser(token: token.accessToken) {
                     try? SplitwiseCurrentUserStore.save(user)
@@ -140,12 +127,9 @@ final class SplitwiseAuthService {
         return "Something went wrong while connecting to Splitwise. Please try again."
     }
 
-    /// Disconnecting is the user's data-deletion request (see CLAUDE.md's
-    /// Splitwise API Terms notes), so it drops everything read through the
-    /// token as well as the token itself — the cached friend list/balances,
-    /// every friend's expense history, and the activity feed. None of those
-    /// are reachable in the app once signed out, so keeping them on disk would
-    /// leave Splitwise data behind with no way to see or clear it.
+    /// Disconnecting is the user's data-deletion request (see CLAUDE.md), so it
+    /// drops everything read through the token too. None of it is reachable once
+    /// signed out, so keeping it would leave data behind with no way to clear it.
     func signOut() {
         accessToken = nil
         KeychainStore.delete(for: Self.accessTokenKey)

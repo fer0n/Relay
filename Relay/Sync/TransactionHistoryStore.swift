@@ -2,9 +2,7 @@
 //  TransactionHistoryStore.swift
 //  Relay
 //
-//  Newest-first log of the last few successfully created transactions,
-//  capped at historyLimit — same lightweight JSON-file pattern as
-//  TransactionDraftStore.
+//  Newest-first log of the last few successfully created transactions.
 //
 
 import Foundation
@@ -17,10 +15,9 @@ nonisolated enum TransactionHistoryStore {
 
     private static let fileURL = ApplicationSupportFile.url("transaction-history.json")
 
-    // record() does a load-modify-write that isn't atomic on its own, and
-    // callers can record concurrently (e.g. AddYNABTransactionIntent fires
-    // its YNAB and Splitwise writes with `async let`). Serialize the whole
-    // read/merge/write so a groupId merge always sees the sibling write.
+    // record() is a load-modify-write, and callers record concurrently (the
+    // intents fire their YNAB and Splitwise writes with `async let`). Serializing
+    // the whole read/merge/write is what lets a groupId merge see its sibling.
     private static let lock = NSLock()
 
     private static var decoder: JSONDecoder {
@@ -44,18 +41,15 @@ nonisolated enum TransactionHistoryStore {
         }
     }
 
-    /// The id of the newest recorded entry — read right after a successful
-    /// write to link that transaction's success notification to its detail
-    /// view. Since `record()` inserts (or merges) at the front, this is the
-    /// entry the just-finished write produced.
+    /// Read right after a successful write to link its success notification to the
+    /// detail view. `record()` inserts (or merges) at the front, so this is the
+    /// entry that write produced.
     static func newestEntryID() -> UUID? {
         load().first?.id
     }
 
-    /// Records a created transaction. When `groupId` matches an entry
-    /// already recorded from the same wallet automation run, the two are
-    /// folded into one combined entry (YNAB transaction + Splitwise split)
-    /// instead of adding a second row.
+    /// A `groupId` matching an already-recorded entry folds the two into one
+    /// combined entry rather than adding a second row.
     static func record(summary: String, payload: PendingOperation.Payload, groupId: UUID? = nil, merchant: String? = nil) {
         lock.lock()
         defer { lock.unlock() }
@@ -87,10 +81,8 @@ nonisolated enum TransactionHistoryStore {
         }
     }
 
-    /// Removes a single entry, e.g. from a swipe-to-delete or the detail
-    /// sheet's Delete action. Local-only — the underlying YNAB transaction
-    /// and/or Splitwise expense are untouched, which is why callers must
-    /// confirm that with the user before invoking this.
+    /// Local-only: the underlying YNAB transaction and Splitwise expense are
+    /// untouched, which is why callers must confirm that with the user first.
     static func delete(id: UUID) {
         lock.lock()
         defer { lock.unlock() }
@@ -105,11 +97,10 @@ nonisolated enum TransactionHistoryStore {
         }
     }
 
-    /// Annotates an existing entry with runs that were recognised as the
-    /// same purchase and dropped (see TransactionClaim). Called both when a
-    /// duplicate arrives after the original committed, and by the original
-    /// itself at commit time to fold in duplicates that arrived while it was
-    /// still in flight. A no-op if the entry has since been trimmed away.
+    /// Annotates an entry with runs dropped as duplicates of it (see
+    /// TransactionClaim) — called both when a duplicate arrives after the original
+    /// committed, and by the original at commit time to fold in ones that arrived
+    /// while it was in flight. A no-op if the entry has since been trimmed away.
     static func recordSuppressions(_ runs: [SuppressedRun], on entryId: UUID) {
         guard !runs.isEmpty else { return }
 
@@ -133,11 +124,10 @@ nonisolated enum TransactionHistoryStore {
 }
 
 private nonisolated extension TransactionHistoryEntry {
-    /// Folds a sibling write from the same wallet run into this entry,
-    /// keeping the YNAB transaction as the primary `payload` and the
-    /// Splitwise expense as `split`. Returns nil when the two can't be
-    /// combined (e.g. two writes of the same service share a group), so the
-    /// caller records the second one on its own instead.
+    /// Folds a sibling write into this entry, keeping the YNAB transaction as
+    /// `payload` and the Splitwise expense as `split`. Nil when the two can't
+    /// combine — two writes of the same service sharing a group — so the caller
+    /// records the second on its own.
     func merging(summary newSummary: String, payload newPayload: PendingOperation.Payload) -> TransactionHistoryEntry? {
         switch (payload, newPayload) {
         case (.ynabTransaction, .splitwiseExpense(let expense)):
@@ -145,9 +135,8 @@ private nonisolated extension TransactionHistoryEntry {
             copy.split = Split(summary: newSummary, expense: expense)
             return copy
         case (.splitwiseExpense(let expense), .ynabTransaction):
-            // Sibling writes can land out of order under `async let` — if the
-            // Splitwise half recorded first, promote the YNAB transaction to
-            // the primary payload and keep the earlier expense as the split.
+            // Sibling writes can land out of order under `async let`, so promote
+            // the YNAB transaction and demote the earlier expense to the split.
             return TransactionHistoryEntry(
                 id: id,
                 createdAt: createdAt,

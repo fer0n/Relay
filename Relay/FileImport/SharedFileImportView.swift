@@ -2,25 +2,15 @@
 //  SharedFileImportView.swift
 //  Relay
 //
-//  Every file-import entry point lands here: a freshly shared file
-//  (`source` set) auto-parses on appear; reopening an already-staged import
-//  (from the main view's "File Import" row, or ImportSplitwiseFileIntent
-//  bringing Relay to the foreground) starts with `source` nil and loads the
-//  staged rows from disk.
+//  Every file-import entry point lands here: a freshly shared file (`source`
+//  set) auto-parses on appear; reopening an already-staged import starts with
+//  `source` nil and loads the staged rows from disk.
 //
 //  YNAB and Splitwise are two destinations of ONE flow. Parsing produces a
-//  single destination-independent list of rows (FileImportRow) that both
-//  sides show and select from identically — the "Import To" picker only
-//  changes the top settings (account + memos vs. friend), the bottom
-//  button's label, and what submit does. Flipping it never re-parses or
-//  rebuilds, so the list never disappears; there is no per-destination
-//  "Parse File" step, because parsing doesn't depend on which destination or
-//  target is chosen (only submitting does). See FileImportStagingStore /
-//  FileImportModels.
-//
-//  Uses native List(selection:) + edit mode (iOS) for the checklist rather
-//  than a custom checkmark row: it's a full-width tap target and an
-//  unanimated toggle for free, with no extra work.
+//  single destination-independent list of rows that both sides show and select
+//  from identically — the "Import To" picker only changes the top settings, the
+//  button's label, and what submit does. Flipping it never re-parses, so the
+//  list never disappears, and there's no per-destination "Parse File" step.
 //
 
 import SwiftUI
@@ -30,28 +20,23 @@ private let logger = Logger(subsystem: Const.loggerSubsystem, category: "SharedF
 
 struct SharedFileImportView: View {
     /// Set when reached fresh from the Share Sheet; nil when reopening an
-    /// already-staged import, in which case staging is loaded from disk
-    /// instead of being produced by parsing a file here.
+    /// already-staged import, which loads from disk instead of parsing.
     let source: SharedStatementFile?
     /// Closes the whole share-sheet import flow.
     let onDone: () -> Void
 
     @State private var destination: FileImportDestination
-    /// True once both YNAB/Splitwise connection state is known — before
-    /// that, default to showing the destination picker rather than
-    /// flashing it away a moment after appearing.
+    /// Until this is true the destination picker shows by default, rather than
+    /// flashing away a moment after appearing.
     @State private var connectivityChecked = false
 
-    /// The one pending import, shared by both destinations. nil before the
-    /// first parse, and again once every row has been submitted or removed.
+    /// nil before the first parse, and again once every row is submitted or gone.
     @State private var staging: FileImportStaging?
-    /// True once staging has ever held rows this run — distinguishes "not
-    /// parsed/reopened yet" (show empty state) from "fully reviewed, nothing
-    /// left" (show the Done summary), both of which leave `staging` nil.
+    /// Distinguishes "not parsed yet" (empty state) from "fully reviewed" (Done
+    /// summary), both of which leave `staging` nil.
     @State private var hasStaged = false
     /// Row ids already handled for the active destination (see
-    /// FileImportHistoryStore) — refreshed on load and whenever the
-    /// destination flips, so the "already imported/split" badge is a set
+    /// FileImportHistoryStore), so the "already imported/split" badge is a set
     /// lookup rather than a disk read per row.
     @State private var handledIDs: Set<String> = []
 
@@ -70,8 +55,8 @@ struct SharedFileImportView: View {
     @State private var selectedFriendId: Int?
 
     @State private var isParsing = false
-    /// Guards maybeAutoParse against a second concurrent parse of the same
-    /// file (the initial .task and a foreground re-entry can both reach it).
+    /// The initial `.task` and a foreground re-entry can both reach
+    /// maybeAutoParse, so guard against a second concurrent parse.
     @State private var isParseInFlight = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
@@ -88,14 +73,11 @@ struct SharedFileImportView: View {
     @State private var prompt = ColumnMappingPrompt()
     @Environment(\.scenePhase) private var scenePhase
 
-    /// Applied to the sections that appear once parsing finishes so they
-    /// animate in instead of popping straight into the list.
+    /// So the post-parse sections animate in instead of popping into the list.
     private static let sectionTransition = AnyTransition.opacity.combined(with: .move(edge: .top))
 
-    /// Remembers which destination the picker was last left on, so
-    /// reopening/re-sharing defaults back to it instead of an arbitrary
-    /// tie-break — same lightweight UserDefaults-scalar pattern ContentView
-    /// uses for its onboarding flag.
+    /// So reopening defaults back to the last destination rather than an
+    /// arbitrary tie-break.
     private static let lastDestinationKey = "lastFileImportDestination"
 
     private static func loadLastDestination() -> FileImportDestination? {
@@ -129,18 +111,16 @@ struct SharedFileImportView: View {
                 _destination = State(initialValue: Self.loadLastDestination() ?? .splitwise)
             }
         } else {
-            // Fresh from the Share Sheet — refined once both connection
-            // states are known in .task; the last-picked destination is the
-            // best guess meanwhile.
+            // Fresh from the Share Sheet — the last-picked destination is the best
+            // guess until `.task` learns both connection states.
             _destination = State(initialValue: Self.loadLastDestination() ?? (SplitwiseAuthService.currentAccessToken != nil ? .splitwise : .ynab))
         }
     }
 
     // MARK: - Derived state
 
-    /// Hides the "Import To" picker once it's clear there's no real choice
-    /// to make — only one of YNAB/Splitwise is actually connected. Defaults
-    /// to showing it until the connectivity check completes.
+    /// Hides the "Import To" picker when only one service is connected, so
+    /// there's no real choice to make.
     private var showDestinationPicker: Bool {
         guard connectivityChecked else { return true }
         return !splitwiseNotAuthenticated && !ynabNotAuthenticated
@@ -150,16 +130,15 @@ struct SharedFileImportView: View {
         destination == .splitwise ? splitwiseNotAuthenticated : ynabNotAuthenticated
     }
 
-    /// Whether the active destination has enough picked to submit — an
-    /// account for YNAB, a friend for Splitwise. Parsing needs neither.
+    /// Whether the active destination has enough picked to submit. Parsing needs
+    /// neither an account nor a friend.
     private var isActiveTargetResolved: Bool {
         destination == .splitwise ? selectedFriendId != nil : selectedAccountId != nil
     }
 
     private var rowIDs: [String] { staging?.rows.map(\.id) ?? [] }
 
-    /// True once there's nothing left to review — either the parse found
-    /// nothing, or every staged row has been submitted or deleted.
+    /// The parse found nothing, or every staged row was submitted or deleted.
     private var isDone: Bool {
         noRowsMessage != nil || (hasStaged && staging == nil)
     }
@@ -176,8 +155,8 @@ struct SharedFileImportView: View {
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
-    /// Reads/writes through to the shared staging's selection, persisting it
-    /// so a dismiss/reopen keeps the checklist state.
+    /// Writes through to the staged selection, so a dismiss/reopen keeps the
+    /// checklist state.
     private var selectedIDs: Binding<Set<String>> {
         Binding(
             get: { staging?.selectedIDs ?? [] },
@@ -214,10 +193,9 @@ struct SharedFileImportView: View {
                 await loadActiveTarget()
                 await maybeAutoParse()
             }
-            // Only when reopening (no source of our own): a Shortcut import
-            // (ImportSplitwiseFileIntent) may have written staging while this
-            // already-open screen was backgrounded. Load it only if we have
-            // nothing yet, so an in-progress review is never clobbered.
+            // A Shortcut import may have written staging while this already-open
+            // screen was backgrounded. Only load when we have nothing yet, so an
+            // in-progress review is never clobbered.
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, source == nil, staging == nil, !hasStaged, noRowsMessage == nil else { return }
                 guard let reloaded = FileImportStagingStore.load() else { return }
@@ -240,8 +218,7 @@ struct SharedFileImportView: View {
                 handledIDs = FileImportHistoryStore.handledIDs(destination: newValue)
                 Task { await loadActiveTarget() }
             }
-            // Keep the staged import's remembered target/settings in sync as
-            // the user changes them, so a reopen restores the same choices.
+            // Keeps the staged target/settings in sync so a reopen restores them.
             .onChange(of: selectedAccountId) { syncStagingTargets() }
             .onChange(of: selectedFriendId) { syncStagingTargets() }
             .onChange(of: includeMemos) { syncStagingTargets() }
@@ -265,9 +242,7 @@ struct SharedFileImportView: View {
         }
     }
 
-    /// Same "big faint watermark icon behind an empty List" convention as
-    /// TransactionDraftsView/PendingQueueView — reopened with nothing staged
-    /// at all (e.g. a stale badge count).
+    /// Reopened with nothing staged at all, e.g. from a stale badge count.
     private var emptyList: some View {
         List {}
             .themedList(background: .sheetBackgroundColor)
@@ -353,10 +328,8 @@ struct SharedFileImportView: View {
         #endif
         .toolbar {
             if staging != nil {
-                // The destructive actions (delete the selected rows, or
-                // discard the whole import) are tucked into a "…" menu so the
-                // top bar isn't crowded and the two aren't a mis-tap apart —
-                // Select All, the everyday action, stays out on its own.
+                // Destructive actions go in a "…" menu so they aren't a mis-tap
+                // from Select All, the everyday action.
                 ToolbarItem(placement: .cancellationAction) {
                     Menu {
                         Button(role: .destructive) {
@@ -434,8 +407,7 @@ struct SharedFileImportView: View {
         return selectedIDs.wrappedValue.isEmpty || !isActiveTargetResolved || isSubmitting
     }
 
-    /// One shared row for both destinations: payee, date (plus an "already
-    /// handled" note on a re-import), and the signed statement amount.
+    /// One shared row for both destinations.
     private func rowContent(_ row: FileImportRow) -> some View {
         let handled = handledIDs.contains(row.id)
         return HStack {
@@ -459,8 +431,8 @@ struct SharedFileImportView: View {
     }
 
     /// Date, plus "Already imported"/"Already split" when this row overlaps a
-    /// previous import — dot-separated inline. The orange color lives on the
-    /// badge icon next to the price, so this stays a plain secondary string.
+    /// previous import. The orange lives on the badge icon next to the price, so
+    /// this stays a plain secondary string.
     private func rowSubtitle(for row: FileImportRow, handled: Bool) -> String {
         var parts = [row.date.formatted(date: .abbreviated, time: .omitted)]
         if handled {
@@ -477,15 +449,13 @@ struct SharedFileImportView: View {
         }
     }
 
-    /// Discards the selected rows from this pending import entirely — for
-    /// statement lines that were never meant to be submitted, as opposed to
-    /// submit(), the "yes, do these" path.
+    /// Drops the selected rows from the import — statement lines that were never
+    /// meant to be submitted, as opposed to submit()'s "yes, do these".
     private func deleteSelected() {
         removeRows(ids: selectedIDs.wrappedValue)
     }
 
-    /// Abandons the entire pending import — every staged row, not just the
-    /// selected ones — and closes the sheet.
+    /// Abandons every staged row, not just the selected ones, and closes.
     private func discardActive() {
         FileImportStagingStore.clear()
         onDone()
@@ -508,9 +478,8 @@ struct SharedFileImportView: View {
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
         }
-        // Show the cache instantly; only hit the network when it's stale, so
-        // re-opening this sheet doesn't re-fetch. Selection validation below
-        // still runs against whatever list we have.
+        // Only hit the network when the cache is stale, so re-opening this sheet
+        // doesn't re-fetch. Selection validation still runs either way.
         if SplitwiseFriendCacheStore.isStale {
             isLoadingFriends = friends.isEmpty
             defer { isLoadingFriends = false }
@@ -520,8 +489,8 @@ struct SharedFileImportView: View {
                 logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
             }
         }
-        // A stale default friend (removed/blocked since being set) would
-        // otherwise leave the friend picker pointing at nothing.
+        // A default friend removed or blocked since being set would otherwise
+        // leave the picker pointing at nothing.
         if let selectedFriendId, !friends.contains(where: { $0.id == selectedFriendId }) {
             self.selectedFriendId = nil
         }
@@ -547,8 +516,7 @@ struct SharedFileImportView: View {
         if let selectedAccountId, !accounts.contains(where: { $0.id == selectedAccountId }) {
             self.selectedAccountId = nil
         }
-        // Only one account to choose from — pick it so the user doesn't have
-        // to confirm the obvious before submitting.
+        // One account to choose from, so don't make the user confirm the obvious.
         if selectedAccountId == nil, accounts.count == 1 {
             selectedAccountId = accounts[0].id
         }
@@ -556,9 +524,8 @@ struct SharedFileImportView: View {
 
     // MARK: - Parsing
 
-    /// Parses the shared file as soon as it appears — parsing is destination-
-    /// and target-independent, so there's no manual "Parse File" step and no
-    /// waiting on an account/friend to be picked first.
+    /// Parsing is destination- and target-independent, so this runs on appear
+    /// rather than waiting on an account/friend to be picked.
     private func maybeAutoParse() async {
         guard source != nil, staging == nil, noRowsMessage == nil, !isParseInFlight else { return }
         isParseInFlight = true
@@ -569,8 +536,7 @@ struct SharedFileImportView: View {
     private func parseFile() async {
         guard let source else { return }
         errorMessage = nil
-        // Only show the spinner once it's been running a while — most parses
-        // resolve fast enough that flashing one would just be noise.
+        // Most parses resolve fast enough that flashing a spinner is just noise.
         let spinnerTask = Task {
             try? await Task.sleep(nanoseconds: 400_000_000)
             guard !Task.isCancelled else { return }
@@ -600,8 +566,7 @@ struct SharedFileImportView: View {
             return
         }
 
-        // Pre-select everything: the common case for both destinations is
-        // "handle the whole statement", with the odd row deselected.
+        // The common case is "handle the whole statement", minus the odd row.
         let newStaging = FileImportStaging(
             destination: destination,
             rows: built,
@@ -634,11 +599,9 @@ struct SharedFileImportView: View {
         }
     }
 
-    /// Splits only the currently-selected rows with the picked friend.
-    /// Sequential with 300ms pacing (same "don't hammer" approach as
-    /// PendingOperationQueue.flush), since Splitwise has no bulk endpoint.
-    /// Only rows that actually succeeded are removed and recorded, so a
-    /// failure leaves them to retry.
+    /// Splitwise has no bulk endpoint, so this goes sequentially with 300ms
+    /// pacing (same as PendingOperationQueue.flush). Only rows that succeeded are
+    /// removed, so a failure leaves them to retry.
     private func submitSplitwise() async {
         guard let staging else { return }
         guard let friendId = selectedFriendId, let friend = friends.first(where: { $0.id == friendId }) else { return }
@@ -685,11 +648,9 @@ struct SharedFileImportView: View {
         removeRows(ids: Set(doneIds))
     }
 
-    /// YNAB's bulk-create endpoint takes every selected row in one request.
-    /// A successful response accounts for every submitted row as created or a
-    /// server-side dedup ("duplicate"), so on success every selected row is
-    /// done, recorded, and removed; a thrown error means the whole batch
-    /// failed and every selected row stays put for retry.
+    /// YNAB's bulk-create endpoint takes every selected row in one request, and
+    /// accounts for each as created or a server-side duplicate — so success
+    /// clears them all, and a throw leaves them all for retry.
     private func submitYNAB() async {
         guard let staging else { return }
         guard let accountId = selectedAccountId else { return }
@@ -722,9 +683,8 @@ struct SharedFileImportView: View {
 
     // MARK: - Staging mutation
 
-    /// Removes rows from the shared staging (submitted or deleted), clearing
-    /// the whole import once nothing's left. Keeps `hasStaged` true so the
-    /// Done summary shows rather than the empty-state watermark.
+    /// Clears the whole import once nothing's left, keeping `hasStaged` true so
+    /// the Done summary shows rather than the empty-state watermark.
     private func removeRows(ids: Set<String>) {
         guard var staging, !ids.isEmpty else { return }
         let remaining = staging.rows.filter { !ids.contains($0.id) }

@@ -3,18 +3,15 @@
 //  Relay
 //
 //  Holds YNAB transactions / Splitwise expenses that couldn't be sent while
-//  offline (queued by PendingSync) until they can be retried. Drained
-//  opportunistically — on app foreground (ContentView) and at the start of
-//  every App Intent (see PendingSync) — plus manually from PendingQueueView.
-//  There's no true OS-level background sync (BGTaskScheduler isn't set up,
-//  and wouldn't cover the native-macOS build of this app anyway), so a
-//  queued item only retries the next time Relay is opened or a Shortcut runs.
+//  offline until they can be retried. Drained opportunistically: on app
+//  foreground, at the start of every App Intent, and manually from
+//  PendingQueueView. There's no OS-level background sync (BGTaskScheduler isn't
+//  set up, and wouldn't cover the macOS build anyway), so a queued item only
+//  retries the next time Relay is opened or a Shortcut runs.
 //
-//  Two things make a stuck queue hard to miss in the meantime: the app icon
-//  badge always mirrors `operations.count`, and a single local notification
-//  (same replace-on-reschedule/cancel-on-empty pattern as
-//  TransactionDraftGuard) reminds the user a day after the queue first goes
-//  non-empty, in case it's still stuck by then.
+//  Two things make a stuck queue hard to miss meanwhile: the app icon badge
+//  mirrors `operations.count`, and a notification fires a day after the queue
+//  first goes non-empty in case it's still stuck.
 //
 
 import Foundation
@@ -38,9 +35,8 @@ final class PendingOperationQueue {
     private init() {
         operations = PendingOperationQueueStore.load()
         updateBadge()
-        // Best-effort: re-arms the reminder if Relay was killed before a
-        // previous schedule call completed. Harmless if one's already
-        // pending — re-adding the same identifier just replaces it.
+        // Re-arms the reminder in case Relay was killed before a previous schedule
+        // completed. Harmless either way — the same identifier just replaces it.
         if !operations.isEmpty {
             scheduleReminderNotification()
         }
@@ -72,11 +68,10 @@ final class PendingOperationQueue {
         }
     }
 
-    /// Retries every queued operation once, in submission order, pausing
-    /// briefly between calls (YNAB/Splitwise ToS: don't hammer retries).
-    /// Stops the pass early on a connectivity failure — the rest are almost
-    /// certainly offline too, and since this runs opportunistically there'll
-    /// be another pass soon.
+    /// Retries every queued operation once, in submission order, pausing between
+    /// calls (YNAB/Splitwise ToS: don't hammer retries). Stops early on a
+    /// connectivity failure — the rest are almost certainly offline too, and this
+    /// runs often enough that there'll be another pass soon.
     func flush() async {
         guard !isFlushing, !operations.isEmpty else { return }
         isFlushing = true
@@ -138,10 +133,9 @@ final class PendingOperationQueue {
         }
     }
 
-    /// `message(for:)` keeps an already-typed YNABIntentError/SplitwiseIntentError
-    /// as-is (thrown directly above for the "no token" case) rather than
-    /// re-mapping it through `.from(_:)`, which would lose the specific
-    /// reason since `.from` only pattern-matches the raw API error types.
+    /// `message(for:)` keeps an already-typed error as-is rather than re-mapping it
+    /// through `.from(_:)`, which only pattern-matches raw API errors and would
+    /// lose the specific reason.
     private func describe(_ error: Error, for payload: PendingOperation.Payload) -> String {
         switch payload {
         case .ynabTransaction: YNABIntentError.message(for: error)

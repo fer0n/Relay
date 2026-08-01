@@ -2,24 +2,18 @@
 //  YNABAuthService.swift
 //  Relay
 //
-//  YNAB's authorization code grant is the only one that issues a refresh
-//  token — the implicit grant this used to use has a fixed 2-hour access
-//  token with no way to renew it, forcing a re-`signIn()` every couple of
-//  hours. The trade-off: the code grant's token exchange requires a client
-//  secret, which can't live in the app once Relay is distributed to more
-//  than one device — anything compiled into the binary is extractable from
-//  any install. The actual token exchange (and refresh) is delegated to the
-//  relay-auth Cloudflare Worker (see ../../oauth-relay/README.md),
-//  the only place that holds the secret; this service only ever sends it a
-//  `code`/`code_verifier` or `refresh_token`, never the secret itself.
-//  PKCE (RFC 7636) is layered on top of that for defense in depth against a
-//  code-interception attack via the shared "relay://" URL scheme.
+//  Uses YNAB's authorization code grant, the only one that issues a refresh
+//  token — the implicit grant's 2-hour access token can't be renewed at all.
+//  The trade-off is that its token exchange needs a client secret, which can't
+//  live in the app (anything compiled into the binary is extractable), so the
+//  exchange and refresh are delegated to the relay-auth Cloudflare Worker (see
+//  ../../oauth-relay/README.md), the only place holding the secret. PKCE
+//  (RFC 7636) is layered on top as defense in depth against code interception
+//  via the shared "relay://" URL scheme.
 //
-//  Tokens saved before this change (implicit grant, no refresh token, no
-//  recorded expiry) keep working as-is until they naturally expire and a
-//  real API call 401s — at that point invalidateAccessToken() clears them
-//  and the user does one more manual signIn(), which starts recording a
-//  refresh token and expiry going forward.
+//  Implicit-grant tokens saved before this keep working until they expire and a
+//  real API call 401s; invalidateAccessToken() then clears them, and one more
+//  manual signIn() starts recording a refresh token and expiry.
 //
 
 import AuthenticationServices
@@ -35,12 +29,10 @@ private nonisolated let logger = Logger(subsystem: Const.loggerSubsystem, catego
 @Observable
 final class YNABAuthService {
     private(set) var accessToken: String?
-    /// Set when the interactive sign-in's token exchange fails, so the view
-    /// showing the Connect button can surface it — otherwise the flow looks
-    /// like it did nothing (the web sign-in page closes either way).
+    /// Surfaced next to the Connect button — otherwise a failed token exchange
+    /// looks like nothing happened, since the web page closes either way.
     private(set) var signInError: String?
-    /// Raw error text for the "Report Error" mail action — `signInError`
-    /// itself stays a friendly, generic message.
+    /// Raw text for the "Report Error" mail action; `signInError` stays friendly.
     private(set) var signInErrorDetail: String?
     private var session: ASWebAuthenticationSession?
     private var pendingCodeVerifier: String?
@@ -52,13 +44,10 @@ final class YNABAuthService {
 
     var isAuthenticated: Bool { accessToken != nil }
 
-    /// Returns a still-valid access token, silently refreshing it first if
-    /// it's expired (or close to it) and a refresh token is on file. Falls
-    /// back to whatever's stored if there's no recorded expiry (a token
-    /// saved before refresh support existed) — a real API call will 401
-    /// and invalidate it via YNABIntentError if it's actually dead. Called
-    /// from App Intents contexts too, which run without an owning
-    /// `YNABAuthService` instance.
+    /// Refreshes silently when the token is expired or close to it. With no
+    /// recorded expiry it returns whatever's stored — a real API call 401s and
+    /// invalidates it if it's actually dead. Static, since App Intents contexts
+    /// run without an owning instance.
     nonisolated static func validAccessToken() async -> String? {
         guard let accessToken = KeychainStore.load(for: accessTokenKey) else { return nil }
         guard
@@ -71,18 +60,14 @@ final class YNABAuthService {
         if let refreshed = await refreshAccessToken() {
             return refreshed
         }
-        // Refresh failed — re-read rather than reuse the token captured
-        // above, since a definitive invalid-grant failure wipes it via
-        // invalidateAccessToken() while a transient network failure
-        // leaves it in place (worth letting a real API call try).
+        // Re-read rather than reuse the token captured above: an invalid-grant
+        // failure wipes it, while a transient network failure leaves it in place
+        // for a real API call to try.
         return KeychainStore.load(for: accessTokenKey)
     }
 
-    /// Clears every stored credential once the API (or a refresh attempt)
-    /// reports they're no longer valid, so the app stops showing
-    /// "Connected" for credentials that no longer work. Called from App
-    /// Intents contexts too, which run without an owning
-    /// `YNABAuthService` instance.
+    /// Clears every stored credential once the API reports they're dead, so the
+    /// app stops showing "Connected". Static for the same reason as above.
     nonisolated static func invalidateAccessToken() {
         KeychainStore.delete(for: accessTokenKey)
         KeychainStore.delete(for: refreshTokenKey)
@@ -93,8 +78,8 @@ final class YNABAuthService {
         accessToken = KeychainStore.load(for: Self.accessTokenKey)
     }
 
-    /// Re-reads the Keychain, in case an App Intent invalidated or
-    /// silently refreshed the token while this instance was already alive.
+    /// In case an App Intent invalidated or refreshed the token while this
+    /// instance was already alive.
     func refreshFromKeychain() {
         accessToken = KeychainStore.load(for: Self.accessTokenKey)
     }
@@ -147,9 +132,8 @@ final class YNABAuthService {
             Self.save(token)
             accessToken = token.accessToken
             logger.log("YNAB sign-in succeeded")
-            // Warms the category/account caches right away, so a fresh
-            // sign-in doesn't need a first online visit to a template
-            // editor before offline template creation works.
+            // Warms the caches, so offline template creation works without a
+            // first online visit to the template editor.
             Task {
                 _ = try? await YNABCategoryCacheStore.fetch(token: token.accessToken)
                 _ = try? await YNABAccountCacheStore.fetch(token: token.accessToken)
@@ -168,12 +152,10 @@ final class YNABAuthService {
         return "Something went wrong while connecting to YNAB. Please try again."
     }
 
-    /// Disconnecting drops the data read through the token as well as the
-    /// token itself, so nothing pulled from YNAB is left on disk (the YNAB API
-    /// Terms' data-handling rules, see CLAUDE.md). Only here, not in
-    /// `invalidateAccessToken()` — that also runs when a token merely expires,
-    /// where the caches are exactly what keeps the pickers working until the
-    /// user signs back in.
+    /// Drops the data read through the token as well as the token, so nothing
+    /// pulled from YNAB is left on disk (see CLAUDE.md). Deliberately not in
+    /// `invalidateAccessToken()`, which also runs on a merely expired token —
+    /// there the caches are what keeps the pickers working until sign-in.
     func signOut() {
         accessToken = nil
         Self.invalidateAccessToken()
@@ -211,8 +193,8 @@ final class YNABAuthService {
 
     // MARK: - Token exchange
 
-    /// Calls the oauth-relay Worker rather than app.ynab.com/oauth/token
-    /// directly — the Worker is the only place holding client_secret.
+    /// Goes through the oauth-relay Worker rather than app.ynab.com/oauth/token,
+    /// since the Worker is the only place holding client_secret.
     private nonisolated static func requestToken(path: String, bodyParams: [String: String]) async throws -> YNABTokenResponse {
         var request = URLRequest(url: URL(string: OAuthConfig.oauthRelayBaseURL + path)!)
         request.httpMethod = Const.HTTP.post
@@ -221,11 +203,9 @@ final class YNABAuthService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw YNABTokenExchangeError.other }
-        // The relay passes YNAB's own token-endpoint status through
-        // unchanged; YNAB returns 400 for both a malformed request and an
-        // expired/revoked/reused refresh token (standard OAuth
-        // `invalid_grant`) — treated as the latter since that's the case
-        // worth reacting to.
+        // The relay passes YNAB's status through unchanged, and YNAB returns 400
+        // for both a malformed request and a dead refresh token (`invalid_grant`)
+        // — treated as the latter, since that's the case worth reacting to.
         if http.statusCode == 400 { throw YNABTokenExchangeError.invalidGrant }
         guard (200...299).contains(http.statusCode) else { throw YNABTokenExchangeError.other }
         return try JSONDecoder().decode(YNABTokenResponse.self, from: data)

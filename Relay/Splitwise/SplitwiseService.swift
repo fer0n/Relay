@@ -24,10 +24,8 @@ nonisolated enum SplitwiseService {
     private static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        // Only `get_expenses` responses carry a Date field (`date`); Splitwise
-        // documents it as e.g. "2012-07-27T05:00:00Z" but also emits
-        // fractional-second timestamps elsewhere in the API, so this tries
-        // both rather than assuming one.
+        // Splitwise documents `date` as e.g. "2012-07-27T05:00:00Z" but emits
+        // fractional-second timestamps elsewhere, so try both.
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let string = try container.decode(String.self)
@@ -50,9 +48,7 @@ nonisolated enum SplitwiseService {
         return try decoder.decode(SplitwiseFriendsResponse.self, from: data).friends
     }
 
-    /// Expenses shared with `friendId`, newest first, with soft-deleted
-    /// entries filtered out — backs the default-friend transaction list in
-    /// SplitwiseFriendTransactionsView.
+    /// Newest first, with soft-deleted entries filtered out.
     static func fetchExpenses(friendId: Int, token: String) async throws -> [SplitwiseExpense] {
         let data = try await get("get_expenses", queryItems: [
             URLQueryItem(name: "friend_id", value: String(friendId)),
@@ -63,10 +59,9 @@ nonisolated enum SplitwiseService {
             .sorted { $0.date > $1.date }
     }
 
-    /// Recent account activity — the same feed the Splitwise app shows under
-    /// "Activity" — newest first, backing SplitwiseActivityView. Capped at the
-    /// same 50 entries as `fetchExpenses`; without an explicit `limit`
-    /// Splitwise returns the entire history.
+    /// The same feed the Splitwise app shows under "Activity", newest first.
+    /// Capped like `fetchExpenses` — without an explicit `limit` Splitwise
+    /// returns the entire history.
     static func fetchNotifications(token: String) async throws -> [SplitwiseNotification] {
         let data = try await get("get_notifications", queryItems: [
             URLQueryItem(name: "limit", value: "50"),
@@ -94,11 +89,9 @@ nonisolated enum SplitwiseService {
         }
     }
 
-    /// Saves an edited expense via the documented `update_expense` endpoint —
-    /// backs the editable total/shares in SplitwiseExpenseDetailView. Returns
-    /// the expense as Splitwise stored it, or nil when the response didn't
-    /// carry one (the save still succeeded — see the `errors` check — so the
-    /// caller re-fetches rather than treating that as a failure).
+    /// Returns the expense as Splitwise stored it, or nil when the response didn't
+    /// carry one — the save still succeeded (see the `errors` check), so the caller
+    /// re-fetches rather than treating that as a failure.
     static func updateExpense(id: Int, _ expense: SplitwiseExpenseUpdateRequest, token: String) async throws -> SplitwiseExpense? {
         var request = URLRequest(url: baseURL.appendingPathComponent("update_expense/\(id)"))
         request.httpMethod = Const.HTTP.post
@@ -109,8 +102,8 @@ nonisolated enum SplitwiseService {
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
 
-        // Same 200-with-"errors" convention as create_expense (e.g. shares
-        // that don't add up to the cost), so a 2xx alone isn't enough here.
+        // Same 200-with-"errors" convention as create_expense, so a 2xx alone
+        // isn't enough here.
         let result = try decoder.decode(SplitwiseUpdateExpenseResponse.self, from: data)
         let messages = result.errors?.values.flatMap { $0 } ?? []
         if !messages.isEmpty {
@@ -119,8 +112,7 @@ nonisolated enum SplitwiseService {
         return result.expenses?.first
     }
 
-    /// Soft-deletes an expense via Splitwise's documented `delete_expense`
-    /// endpoint — used by the detail sheet in SplitwiseFriendTransactionsView.
+    /// Soft-deletes, per `delete_expense`.
     static func deleteExpense(id: Int, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("delete_expense/\(id)"))
         request.httpMethod = Const.HTTP.post
@@ -129,11 +121,8 @@ nonisolated enum SplitwiseService {
         try validate(response, data: data)
     }
 
-    /// Brings a soft-deleted expense back via the documented
-    /// `undelete_expense` endpoint — backs the Activity feed's "Restore"
-    /// action. Splitwise answers 200 even when it refused (e.g. the expense
-    /// was already restored), reporting the real outcome in the body's
-    /// `success` flag, so a 2xx alone isn't enough here.
+    /// Splitwise answers 200 even when it refused — an already-restored expense,
+    /// say — reporting the real outcome in the body's `success` flag.
     static func undeleteExpense(id: Int, token: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("undelete_expense/\(id)"))
         request.httpMethod = Const.HTTP.post
@@ -141,12 +130,10 @@ nonisolated enum SplitwiseService {
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
 
-        // Only an explicit `false` is treated as a failure: a body Relay
-        // can't parse (a shape change, an empty response) alongside a 2xx is
-        // more likely a success than not, and the caller re-fetches the feed
-        // straight after — which shows the truth either way. Guessing
-        // "failed" there would put an error in front of a restore that
-        // actually worked.
+        // Only an explicit `false` is a failure: an unparseable body alongside a
+        // 2xx is more likely a success, and the caller re-fetches the feed straight
+        // after — so guessing "failed" would put an error in front of a restore
+        // that actually worked.
         let result = try? decoder.decode(SplitwiseUndeleteExpenseResponse.self, from: data)
         if result?.success == false {
             throw SplitwiseAPIError.validation("Splitwise wouldn't restore this expense.")

@@ -3,10 +3,7 @@
 //  Relay
 //
 //  Row-level building blocks for ContinueWalletTransactionView's YNAB-side
-//  fields — the template, account, and category pickers. The Splitwise
-//  "Split" rows live in SplitwiseSplitRows.swift; these mirror that split so
-//  the main view just assembles rows instead of spelling each one out
-//  inline.
+//  fields. The Splitwise "Split" rows live in SplitwiseSplitRows.swift.
 //
 
 import SwiftUI
@@ -17,8 +14,7 @@ struct TemplatePickerRow: View {
     let templates: [String]
     @Binding var choice: String?
     let onCreateNew: () -> Void
-    /// True when a template is required to submit (YNAB) rather than
-    /// optional (Splitwise, which can auto-create one from the payee name).
+    /// True for YNAB, which requires a template; Splitwise can auto-create one.
     var isIncomplete: Bool = false
 
     var body: some View {
@@ -38,9 +34,8 @@ struct TemplatePickerRow: View {
     }
 }
 
-/// The YNAB account for the transaction — a plain label once the card is
-/// already mapped (`isResolved`), otherwise a loading spinner or a live
-/// picker. Titled with the originating card name.
+/// A plain label once the card is already mapped (`isResolved`), otherwise a
+/// loading spinner or a live picker.
 struct AccountPickerRow: View {
     let cardName: String
     let isResolved: Bool
@@ -75,31 +70,24 @@ struct AccountPickerRow: View {
     }
 }
 
-/// The payee (YNAB) / description (Splitwise) field — a plain text field
-/// plus a custom keyboard toolbar that replaces the system predictive bar
-/// with suggestions of its own. Owns the field's focus state since the
-/// toolbar content only makes sense scoped to this field being focused.
+/// The payee (YNAB) / description (Splitwise) field, with a custom keyboard
+/// toolbar in place of the system predictive bar. Owns the focus state, since the
+/// toolbar only makes sense scoped to this field.
 struct PayeeFieldRow: View {
     let title: LocalizedStringKey
-    /// A plain `String` (not a `LocalizedStringKey`) so callers can pass a
-    /// runtime value — the Splitwise Description field uses the effective
-    /// payee name as its placeholder so leaving it blank files the expense
-    /// under that name.
+    /// A plain `String`, not a `LocalizedStringKey`, so callers can pass a runtime
+    /// value — the Description field uses the effective payee name.
     let placeholder: String
     @Binding var text: String
-    /// Existing auto-match payee names matching what's typed so far — see
-    /// ContinueWalletTransactionModel.suggestedPayeeNames.
-    let suggestedNames: [String]
-    /// Whether to offer "Add to <linkToTemplateName>" for the current text
-    /// — see ContinueWalletTransactionModel.showsLinkToTemplate.
-    let showsLinkToTemplate: Bool
-    /// The template that action would add to — see
-    /// ContinueWalletTransactionModel.linkToTemplateName.
+    /// See ContinueWalletTransactionModel.suggestedPayeeNames.
+let suggestedNames: [String]
+    /// See ContinueWalletTransactionModel.showsLinkToTemplate.
+let showsLinkToTemplate: Bool
+    /// See ContinueWalletTransactionModel.linkToTemplateName.
     let linkToTemplateName: String
     let onLinkToTemplate: () -> Void
-    /// When true, a blank field isn't flagged incomplete — used by the
-    /// Splitwise Payee/Description fields, which fall back to the merchant /
-    /// effective-payee shown in their placeholder rather than requiring input.
+    /// Don't flag a blank field incomplete — for the Splitwise fields, which fall
+    /// back to what their placeholder shows rather than requiring input.
     var allowsEmpty: Bool = false
 
     @FocusState private var isFocused: Bool
@@ -127,15 +115,11 @@ struct PayeeFieldRow: View {
         .cardRowBackground()
     }
 
-    /// Replaces the system predictive/autocorrect bar with plain-text
-    /// suggestions (divider-separated, like the system bar's own
-    /// candidates). Always exactly 3 equally-spaced slots (like the system
-    /// bar's own 3-candidate layout) filled left to right; a slot past the
-    /// last match stays blank rather than shrinking the others, so the
-    /// dividers land in the same place regardless of how many matches there
-    /// are. "Add to <template>" always claims the leftmost slot when
-    /// matches are scarce (2 or fewer) for the currently typed text, ahead
-    /// of any real suggestions rather than filling whatever slot is left.
+    /// Replaces the system predictive bar, matching its 3-candidate layout: always
+    /// exactly 3 equally-spaced slots filled left to right, with a slot past the
+    /// last match left blank rather than shrinking the others, so the dividers
+    /// land in the same place however many matches there are. "Add to <template>"
+    /// claims the leftmost slot ahead of any real suggestions.
     private static let suggestionSlotCount = 3
 
     @ViewBuilder
@@ -182,11 +166,9 @@ struct PayeeFieldRow: View {
     }
 }
 
-/// The optional YNAB memo. A plain text field with no suggestion bar —
-/// unlike the payee, a memo is one-off free text rather than a name that
-/// repeats and is worth autocompleting. When the transaction is also split,
-/// this same text is appended to the Splitwise description ("<Payee>:
-/// <memo>"), so the two sides carry the same note.
+/// No suggestion bar: unlike the payee, a memo is one-off text rather than a name
+/// that repeats and is worth autocompleting. Also appended to the Splitwise
+/// description when the transaction is split, so both sides carry the same note.
 struct MemoFieldRow: View {
     @Binding var text: String
 
@@ -200,8 +182,7 @@ struct MemoFieldRow: View {
     }
 }
 
-/// The optional YNAB category for the transaction — a loading spinner while
-/// categories load, otherwise a live picker.
+/// A loading spinner while categories load, otherwise a live picker.
 struct CategoryPickerRow: View {
     let isLoading: Bool
     let categories: [YNABCategory]

@@ -2,17 +2,10 @@
 //  SplitwiseActivityView.swift
 //  Relay
 //
-//  Pushed from ContentView's "Activity" row — the recent-activity feed from
-//  `get_notifications`, i.e. the same list the Splitwise app shows under
-//  "Activity". Read-only apart from one action: an entry saying an expense
-//  was deleted offers "Restore" from its context menu, which is the only
-//  place in Relay a deleted expense can be brought back (the friend
-//  transaction lists filter deleted expenses out entirely).
-//
-//  Follows SplitwiseBalancesView/SplitwiseFriendTransactionsView's
-//  cache-then-refresh shape: render the disk cache immediately, throttle
-//  `.task`'s live fetch on that cache's staleness, and let pull-to-refresh
-//  bypass the throttle.
+//  The `get_notifications` feed, i.e. the same list the Splitwise app shows under
+//  "Activity". Read-only apart from one action: a "deleted expense" entry offers
+//  "Restore", which is the only place in Relay a deleted expense can be brought
+//  back — the friend transaction lists filter them out entirely.
 //
 
 import SwiftUI
@@ -36,10 +29,9 @@ struct SplitwiseActivityView: View {
             }
 
             ForEach(items) { item in
-                // The context menu is attached only where there's actually an
-                // action, rather than as one modifier with a conditional
-                // body — an empty menu still lifts the row on long-press,
-                // which reads as a broken control on every other entry.
+                // Attached only where there's an action, rather than as one modifier
+                // with a conditional body: an empty menu still lifts the row on
+                // long-press, which reads as a broken control.
                 if let expenseId = item.restorableExpenseId {
                     SplitwiseActivityRow(item: item)
                         .cardRowBackground()
@@ -59,10 +51,8 @@ struct SplitwiseActivityView: View {
                 }
             }
 
-            // A plain centered row rather than a Section footer: a footer
-            // needs a section with content to hang off, and this belongs after
-            // the rows above, which aren't wrapped in one. Same "… ago" line
-            // SplitwiseBalancesView puts under its grid.
+            // A plain centered row rather than a Section footer, which would need a
+            // section to hang off — and the rows above aren't wrapped in one.
             if let lastRefreshedAt {
                 Section {
                     FuzzyDateText(date: lastRefreshedAt)
@@ -108,12 +98,9 @@ struct SplitwiseActivityView: View {
         }
     }
 
-    /// Restores the deleted expense, then re-fetches the feed so the new
-    /// "restored" entry appears (and this row stops offering "Restore" — see
-    /// `SplitwiseActivityItem`). Also clears the caches the restored expense
-    /// now belongs in again: the friend balances it counts toward, and every
-    /// friend's expense list, since the feed only knows the expense id and
-    /// not whose history to reload.
+    /// Re-fetches the feed afterwards so the "restored" entry appears and this row
+    /// stops offering "Restore". Clears every friend's expense cache, not just
+    /// one: the feed knows the expense id but not whose history it belongs to.
     private func restore(expenseId: Int) async {
         guard !restoringExpenseIds.contains(expenseId) else { return }
         guard let token = SplitwiseAuthService.currentAccessToken else {
@@ -137,11 +124,9 @@ struct SplitwiseActivityView: View {
     }
 }
 
-/// A feed entry with its HTML already parsed and its icon resolved. Kept as a
-/// separate type from `SplitwiseNotification` so neither happens inside a view
-/// body: a computed `AttributedString` on the model would re-scan the HTML for
-/// all 50 rows on every body pass, which is exactly the kind of per-row work
-/// FileCache's memo exists to avoid (see CacheStore.swift).
+/// A feed entry with its HTML already parsed and its icon resolved — a separate
+/// type from `SplitwiseNotification` so neither happens inside a view body, where
+/// it would re-scan the HTML for all 50 rows on every pass.
 struct SplitwiseActivityItem: Identifiable {
     let id: Int
     let createdAt: Date
@@ -154,11 +139,9 @@ struct SplitwiseActivityItem: Identifiable {
     static func items(for notifications: [SplitwiseNotification]) -> [SplitwiseActivityItem] {
         let latestRestoreDates = notifications.latestRestoreDates
         return notifications.map { notification in
-            // A delete entry stays in the feed after the expense is brought
-            // back, so it only counts as restorable while no *later* restore
-            // of the same expense exists. Comparing dates rather than just
-            // checking for one handles delete → restore → delete again, where
-            // the newest delete really is restorable.
+            // A delete entry stays in the feed after a restore, so it's only
+            // restorable while no *later* restore exists. Comparing dates rather
+            // than just checking for one handles delete → restore → delete again.
             let restorableExpenseId = notification.restorableExpenseId.flatMap { expenseId in
                 (latestRestoreDates[expenseId] ?? .distantPast) > notification.createdAt ? nil : expenseId
             }
@@ -173,9 +156,7 @@ struct SplitwiseActivityItem: Identifiable {
     }
 }
 
-/// One feed entry, laid out like `RowLabel`/`TransactionSummaryRow`: a
-/// 30pt accent-tinted icon column, then the text with a secondary caption
-/// under it.
+/// One feed entry, laid out like `RowLabel`/`TransactionSummaryRow`.
 private struct SplitwiseActivityRow: View {
     let item: SplitwiseActivityItem
 
@@ -192,8 +173,8 @@ private struct SplitwiseActivityRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.content)
                     .font(.body)
-                    // Splitwise writes these as full sentences, so they wrap —
-                    // which a List row won't allow room for on its own.
+                    // Splitwise writes these as full sentences, so they wrap — which
+                    // a List row won't make room for on its own.
                     .fixedSize(horizontal: false, vertical: true)
                 FuzzyDateText(date: item.createdAt)
                     .font(.caption)

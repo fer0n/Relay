@@ -2,19 +2,13 @@
 //  StatementFileResolver.swift
 //  Relay
 //
-//  CSV/QIF statement parsing shared by ImportYNABFileIntent,
-//  ImportSplitwiseFileIntent, and the share-sheet import flow — turns any
-//  StatementFileSource (an AppIntents IntentFile, or a SharedStatementFile
-//  read from a shared document) into [ImportedStatementRow], asking the
-//  same "which column is X"/"what date format is this" questions each
-//  caller needs, but caching the answer in FileImportConfigStore per
-//  distinct header/QIF type so a header already mapped once isn't re-asked.
+//  CSV/QIF statement parsing shared by both import intents and the share-sheet
+//  flow: turns any StatementFileSource into [ImportedStatementRow], asking the
+//  "which column is X" questions each caller needs but caching the answers in
+//  FileImportConfigStore per distinct header/QIF type.
 //
-//  Column/date-format *overrides* and the actual requestDisambiguation calls
-//  stay intent-local (each intent has its own @Parameter-backed
-//  `$dateColumn` etc. projections) — they're passed in here as small ask
-//  closures. Everything else (parsing, caching, candidate-building, file
-//  kind detection) lives in this one place.
+//  The requestDisambiguation calls stay intent-local, since each intent has its
+//  own `@Parameter` projections, and are passed in here as ask closures.
 //
 
 import AppIntents
@@ -30,14 +24,10 @@ nonisolated enum StatementFileResolver {
     typealias ColumnAsk = (_ candidates: [StatementColumnEntity], _ dialog: String) async throws -> StatementColumnEntity
     typealias DateFormatAsk = (_ candidates: [DateFormatEntity], _ dialog: String) async throws -> DateFormatEntity
 
-    /// Convenience for the two statement-import intents, which both wire the
-    /// same five interactive `@Parameter` fields to `resolveRows` in exactly
-    /// the same way: use the parameter's value if the automation pre-set one,
-    /// else ask live via `requestDisambiguation`. Callers pass the projected
-    /// values (`$dateColumn`, …) — `IntentParameter` is a reference type, so
-    /// the ask closures built here stay bound to the running intent. This is
-    /// the only place that closure boilerplate lives now, instead of a
-    /// byte-for-byte copy in each intent's `perform()`.
+    /// Wires the five interactive `@Parameter` fields to `resolveRows` the way both
+    /// import intents want: use a pre-set value, else ask live. Callers pass the
+    /// projected values (`$dateColumn`, …) — `IntentParameter` is a reference type,
+    /// so the closures built here stay bound to the running intent.
     static func resolveRows(
         file: some StatementFileSource,
         config: inout FileImportConfig,
@@ -101,12 +91,10 @@ nonisolated enum StatementFileResolver {
         }
     }
 
-    /// Filename extension is the primary signal, but some sources (notably
-    /// files picked via Shortcuts from certain cloud/file providers) report
-    /// `IntentFile.filename` as the document's *display name*, which iOS
-    /// hides the extension from when "Show all filename extensions" is off
-    /// — so a real "Buchungsliste.csv" can arrive as just "Buchungsliste".
-    /// Falls back to the file's UTType, then sniffs the content itself.
+    /// The extension is the primary signal, but some file providers report
+    /// `IntentFile.filename` as the document's *display name*, which iOS strips the
+    /// extension from — so a real "Buchungsliste.csv" can arrive as just
+    /// "Buchungsliste". Falls back to the UTType, then sniffs the content.
     static func detectKind(for file: some StatementFileSource) -> StatementFileKind? {
         if let kind = StatementFileKind(filename: file.filename) {
             return kind
@@ -148,9 +136,8 @@ nonisolated enum StatementFileResolver {
         if let cached = config.csvMappings[headerKey] {
             mapping = cached
         } else {
-            // A power user can pre-set these in the Shortcuts editor to
-            // skip the prompt entirely; otherwise the ask closure resolves
-            // it live — see each intent's perform().
+            // Pre-set in the Shortcuts editor to skip the prompt; otherwise the ask
+            // closure resolves it live.
             let dateEntity = try await askDateColumn(
                 columnCandidates(header: table.header, sampleRow: sampleRow, excluding: []),
                 "Which column is the transaction date?"

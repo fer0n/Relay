@@ -2,24 +2,19 @@
 //  InstantFocusTextField.swift
 //  Relay
 //
-//  The manual-entry amount field, wrapped in UIKit purely so the keyboard
-//  shows up immediately.
+//  The manual-entry amount field, wrapped in UIKit purely so the keyboard shows
+//  up immediately.
 //
-//  A SwiftUI `TextField` focused via `@FocusState` in `.onAppear` doesn't get
-//  its keyboard until *after* the presenting sheet's transition commits —
-//  SwiftUI applies the focus change at the end of the update cycle, and UIKit
-//  then animates the keyboard as a second, separate step. Inside a sheet
-//  (doubly so behind a `.zoom` navigation transition) that reads as a
-//  consistent lag on every single open, not just the first.
+//  A SwiftUI `TextField` focused via `@FocusState` in `.onAppear` doesn't get its
+//  keyboard until *after* the presenting sheet's transition commits: SwiftUI
+//  applies the focus at the end of the update cycle, and UIKit animates the
+//  keyboard as a second step. Asking for first responder from `didMoveToWindow`
+//  instead puts the request in during the sheet's own layout pass, so the
+//  keyboard rises *with* the sheet rather than behind it.
 //
-//  Asking for first responder from `didMoveToWindow` instead puts the request
-//  in during the sheet's own layout pass, so the keyboard rises *with* the
-//  sheet rather than behind it.
-//
-//  Auto-focusing is opt-out (`autoFocuses`): it's the right call for a blank
-//  entry, where typing the amount is the first thing to do, but not for a
-//  "Re-add", which already has an amount and opens for review — raising the
-//  keyboard over the form there just hides the fields being reviewed.
+//  Auto-focusing is opt-out (`autoFocuses`) because a "Re-add" already has an
+//  amount and opens for review, where the keyboard would only cover the fields
+//  being checked.
 //
 
 import SwiftUI
@@ -28,9 +23,8 @@ import UIKit
 /// `UITextField` that claims first responder as soon as it lands in a window,
 /// unless `focusesOnAppearing` is cleared before it gets there.
 final class AutoFocusingTextField: UITextField {
-    /// Set once at creation (see `InstantFocusTextField.makeUIView`) — this
-    /// isn't a live "focus me now" switch, just whether the one automatic
-    /// grab on first appearance happens at all.
+    /// Set once at creation. Not a live "focus me now" switch — just whether the
+    /// one automatic grab on first appearance happens at all.
     var focusesOnAppearing = true
     private var hasFocused = false
 
@@ -45,8 +39,7 @@ final class AutoFocusingTextField: UITextField {
 struct InstantFocusTextField: UIViewRepresentable {
     @Binding var text: String
     let placeholder: String
-    /// False for a pre-filled amount, which opens for review rather than for
-    /// typing — see the note in this file's header.
+    /// False for a pre-filled amount — see this file's header.
     var autoFocuses: Bool = true
 
     func makeUIView(context: Context) -> AutoFocusingTextField {
@@ -77,8 +70,8 @@ struct InstantFocusTextField: UIViewRepresentable {
     }
 
     func updateUIView(_ field: AutoFocusingTextField, context: Context) {
-        // Don't clobber what the user is mid-way through typing — only push
-        // the binding down when it genuinely diverges (e.g. a prefill landing).
+        // Only push the binding down when it genuinely diverges, so this can't
+        // clobber what the user is mid-way through typing.
         if field.text != text {
             field.text = text
         }
@@ -100,11 +93,9 @@ struct InstantFocusTextField: UIViewRepresentable {
             parent.text = field.text ?? ""
         }
 
-        /// The chevron-down dismiss button, as an `inputAccessoryView` rather
-        /// than a SwiftUI `.toolbar(placement: .keyboard)`. That placement only
-        /// works for text inputs SwiftUI itself manages — it has no hook into a
-        /// raw `UITextField` — so the bar has to be built here to appear at all.
-        /// Mirrors `dismissButtonToolbar(isFocused:)` in Theme.swift.
+        /// An `inputAccessoryView` rather than `.toolbar(placement: .keyboard)`,
+        /// which only works for text inputs SwiftUI itself manages and has no hook
+        /// into a raw `UITextField`. Mirrors Theme.swift's `dismissButtonToolbar`.
         func makeDismissBar(for field: UITextField) -> UIToolbar {
             self.field = field
             let bar = UIToolbar()

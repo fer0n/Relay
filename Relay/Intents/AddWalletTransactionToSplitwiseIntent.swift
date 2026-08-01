@@ -2,34 +2,19 @@
 //  AddWalletTransactionToSplitwiseIntent.swift
 //  Relay
 //
-//  Sibling to AddWalletTransactionToYNABIntent for a card/account used
-//  purely for shared expenses: wired as the action of a Shortcuts
-//  "Transaction" Personal Automation (receiving Merchant/Amount magic
-//  variables), but creates a Splitwise expense directly — no YNAB
-//  transaction at all. Backed by the same WalletTransactionConfigStore the
-//  YNAB intent uses, so a template edited in-app works for both.
+//  Sibling to AddWalletTransactionToYNABIntent for a card used purely for
+//  shared expenses: same Shortcuts "Transaction" automation and the same
+//  WalletTransactionConfigStore, but it creates a Splitwise expense with no
+//  YNAB transaction at all.
 //
-//  Unlike the YNAB intent — where a template is worth building up front
-//  (category, account, split mode) — a Splitwise expense only needs a memo
-//  + amount + split yes/no, so this intent never asks the user to set a
-//  template up. An unknown merchant is auto-filed under the default
-//  Splitwise template (WalletTransactionConfig.ensureSplitwiseDefaultTemplate,
-//  split option `.ask`), its description defaults to the merchant name, and
-//  the only live question is the split yes/no. Customizing — renaming the
-//  description, a second "Don't Split" template, moving merchants, auto-match
-//  rules — is all done later in Relay's Templates screen, not here.
+//  A Splitwise expense only needs a description + amount + split yes/no, so
+//  unlike the YNAB intent this one never asks for template setup: an unknown
+//  merchant is auto-filed under the default Splitwise template, described by
+//  the merchant name, and only the split is asked. The friend is asked once
+//  and written back onto the template rather than re-asked.
 //
-//  The friend is asked once (when neither the template nor the app-wide
-//  default friend supplies one) and written back onto the template, fixing
-//  it for next time rather than re-asking.
-//
-//  Built entirely with the async requestValue/requestDisambiguation style
-//  (perform() never restarts, so there's no duplicate-expense risk from a
-//  restart). requestValue params must stay listed in parameterSummary —
-//  on iOS 18+ it throws a connection error otherwise (see the equivalent
-//  note in AddWalletTransactionToYNABIntent.swift) — while the
-//  requestDisambiguation param (friendOverride) is resolved with its
-//  candidates passed inline, so it can stay hidden.
+//  requestValue params must stay listed in parameterSummary — see the
+//  equivalent note in AddWalletTransactionToYNABIntent.swift.
 //
 
 import AppIntents
@@ -49,40 +34,29 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     @Parameter(title: "Amount")
     var amount: Double
 
-    /// Only used when the resolved template's split option is "Ask Each
-    /// Time" — the live per-transaction equivalent of the original's
-    /// Ja/Manuell/Nein menu.
+    /// Only used when the resolved template's split option is "Ask Each Time".
     @Parameter(title: "Split Transaction?")
     var splitwiseRuntimeChoice: SplitwiseSplitOption?
 
-    /// Who to split with, when this automation's expenses always go to the
-    /// same person. Left unset, the merchant template's cached friend or the
-    /// app-wide default (`SplitwiseDefaultFriendStore`) is used, and only a
-    /// merchant with neither is asked live.
+    /// Unset falls back to the template's cached friend, then the app-wide
+    /// default; only a merchant with neither is asked live.
     @Parameter(title: "Split With")
     var friendOverride: SplitwiseFriendEntity?
 
     @Parameter(title: "Your Share", description: "Only used when Split is Manual")
     var splitwiseOwnShare: Double?
 
-    /// Which automation this run came from — see the equivalent parameter
-    /// on AddWalletTransactionToYNABIntent. Blank means "wallet", so
-    /// automations built before this existed keep working untouched.
+    /// See the equivalent parameter on AddWalletTransactionToYNABIntent.
     @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
     var source: String?
 
-    /// See the equivalent parameter on AddWalletTransactionToYNABIntent.
-    /// Less pressing here — a stray Splitwise expense is more visible, and
-    /// more easily deleted, than a stray line in a budget — but kept
-    /// symmetric so both wallet automations can be wired up the same way.
+    /// See the equivalent parameter on AddWalletTransactionToYNABIntent. Kept for
+    /// symmetry so both wallet automations wire up the same way, though a stray
+    /// Splitwise expense is more visible and more easily deleted.
     @Parameter(title: "Require Confirmation", description: "Never add to Splitwise automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay.", default: false)
     var requireConfirmation: Bool
 
-    /// See TransactionDraftGuard: if this run gets interrupted (a follow-up
-    /// question dismissed/timed out, the process killed by a screen lock)
-    /// before the expense is actually created, a local notification nudges
-    /// the user to go finish it — since there's no way to resume a
-    /// suspended perform() call.
+    /// See TransactionDraftGuard — a suspended perform() can't be resumed.
     @Parameter(title: "Ensure Completion", description: "If this run is interrupted before finishing, send a notification to continue it later.", default: true)
     var ensureCompletion: Bool
 
@@ -105,12 +79,10 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
         let claimSource = TransactionClaim.normalizedSource(source)
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) source=\(claimSource, privacy: .public)")
 
-        // Ahead of the draft guard and of any network call, so a purchase
-        // the other automation already handled leaves no draft, no reminder
-        // and no API request behind. No account id to match on here — this
-        // intent has no card parameter — which `matches` treats as "no
-        // signal" rather than as agreement, leaving amount and time to carry
-        // it.
+        // Ahead of the draft guard and any network call, so a purchase the other
+        // automation already handled leaves no draft, reminder or API request.
+        // No card parameter here, so `matches` has no account id to weigh in and
+        // amount + time carry it.
         let claimId: UUID
         switch TransactionClaimStore.claimOrSuppress(
             TransactionClaim.Candidate(
@@ -119,9 +91,8 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 amount: amount,
                 accountId: nil,
                 merchant: merchant,
-                // An unknown merchant is auto-filed under the default
-                // Splitwise template, so nothing but "Require Confirmation"
-                // can stop this run from adding the expense itself.
+                // An unknown merchant auto-files under the default template, so
+                // nothing but "Require Confirmation" can hold this run back.
                 parksDraftOnly: requireConfirmation
             )
         ) {
@@ -133,12 +104,9 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             claimId = id
         }
 
-        // Nothing to confirm — so on a confirm-only automation this expense
-        // stops here as a draft. See the equivalent branch in
-        // AddWalletTransactionToYNABIntent for why `ensureCompletion` isn't
-        // consulted. Which reminder that draft gets depends on the merchant's
-        // template: an "ask each time" one is posed as the split question
-        // directly, since that already asks for the confirmation.
+        // See the equivalent branch in AddWalletTransactionToYNABIntent for why
+        // `ensureCompletion` isn't consulted. Which reminder the draft gets
+        // depends on the template — see handleAwaitingSplitwiseConfirmation.
         if requireConfirmation {
             let dialog = WalletAutomationDialog.handleAwaitingSplitwiseConfirmation(
                 claimId,
@@ -150,11 +118,8 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             return .result(dialog: "\(dialog)")
         }
 
-        // Resolves the claim exactly once, whichever way the run ends.
-        // Unlike the YNAB intent there's nothing committed ahead of the
-        // split — the expense *is* the transaction — so this only fires at
-        // the very end, either on a created/queued expense or on a
-        // deliberate "Don't Split".
+        // Unlike the YNAB intent nothing is committed ahead of the split — the
+        // expense *is* the transaction — so this only fires at the very end.
         var claimResolved = false
         func commitClaim(historyEntryId: UUID?) {
             guard !claimResolved else { return }
@@ -166,19 +131,16 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             ? TransactionDraftGuard.begin(.splitwiseWallet(merchant: merchant, amount: amount))
             : nil
 
-        // Pushes the "still needs finishing" reminder back out — called
-        // after every follow-up question below is answered, so a normal but
-        // slow-to-answer run doesn't get a premature nudge mid-flow.
+        // Called after every follow-up question is answered, so a slow-to-answer
+        // run doesn't get a premature nudge mid-flow.
         func touchDraft() {
             if let draftId {
                 TransactionDraftGuard.touch(draftId)
             }
         }
 
-        // Resolves a friend to split with: uses `existing` (a template's
-        // already-cached friend) if there is one, otherwise a manual
-        // override via the shortcut parameter, otherwise the app-wide
-        // default friend, otherwise asks live.
+        // `existing` (a template's cached friend), then the shortcut parameter,
+        // then the app-wide default, then ask live.
         func resolveFriend(existing: WalletTransactionConfig.CachedFriend?, dialog: IntentDialog) async throws -> WalletTransactionConfig.CachedFriend {
             if let existing { return existing }
             let friend: SplitwiseFriendEntity
@@ -233,24 +195,18 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 friendId = resolved.id
                 friendFirstName = resolved.firstName
                 friendFullName = resolved.fullName
-                // Backfill the friend if the template didn't have one yet
-                // (e.g. it was only ever used from the YNAB intent) so future
-                // runs skip asking — same rule as a freshly-created template
-                // below, shared via cacheSplitwiseFriendIfMissing.
+                // Backfill the friend when the template had none — e.g. it was
+                // only ever used from the YNAB intent — so future runs don't ask.
                 var updated = template ?? WalletTransactionConfig.Template()
                 if updated.cacheSplitwiseFriendIfMissing(resolved) {
                     config.templates[info.templateName] = updated
                     changed = true
                 }
             } else {
-                // No stored mapping for this merchant: auto-file it under the
-                // default Splitwise template rather than walking the user
-                // through template/description/auto-match/split-option setup.
-                // The description just defaults to the merchant name (rename
-                // it later in Templates), and the split question is still
-                // asked because the default template's option is `.ask`.
-                // Customization (a second "Don't Split" template, moving
-                // merchants over, auto-match rules) all happens in-app later.
+                // No stored mapping: auto-file under the default template rather
+                // than walking the user through setup here. The description
+                // defaults to the merchant name, and the split is still asked
+                // because that template's option is `.ask`.
                 let templateName = config.ensureSplitwiseDefaultTemplate()
                 let template = config.templates[templateName]
 
@@ -259,13 +215,9 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with which friend?"), templateName))
                 )
 
-                // File the merchant under the default template and pin the
-                // resolved friend onto it (unless it already had one) so
-                // future merchants filed here skip the ask. Same shared path
-                // the in-app Splitwise submit uses; `changed` stays true
-                // regardless since ensureSplitwiseDefaultTemplate may have
-                // just created the template. Leaving "Split With" as Default
-                // in Templates resets it to follow the app-wide default again.
+                // `changed` stays true regardless, since
+                // ensureSplitwiseDefaultTemplate may have just created the
+                // template.
                 _ = config.recordSplitwiseMerchantLink(
                     merchant: merchant,
                     payeeName: merchant,
@@ -280,9 +232,8 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 changed = true
             }
 
-            // Persist the resolved template/friend/merchant mappings before
-            // the (interruptible) split question, so they're remembered even
-            // when this run is finished from the notification instead of here.
+            // Persisted before the interruptible split question, so the mappings
+            // survive a run that's finished from the notification instead.
             if changed {
                 do {
                     try WalletTransactionConfigStore.save(config)
@@ -306,11 +257,9 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 } else {
                     logger.log("splitOption=ask — requesting runtime choice")
                     // Description + friend are already resolved, so an
-                    // interruption at this question can be answered straight
-                    // from the reminder. Unlike the YNAB automation nothing is
-                    // committed ahead of the split (the expense *is* the
-                    // split), so a dismiss defers (the draft stays) rather than
-                    // completing; Don't Split resolves it with no expense.
+                    // interruption here can be answered from the reminder. With
+                    // nothing committed ahead of the split, a dismiss defers (the
+                    // draft stays) and Don't Split resolves it with no expense.
                     splitwiseAction = try await TransactionDraftGuard.askSplitChoice(
                         draftId: draftId,
                         context: TransactionDraft.PendingSplitContext(
@@ -338,10 +287,9 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 if let draftId {
                     TransactionDraftGuard.complete(draftId)
                 }
-                // Nothing written, but the purchase *has* been decided on —
-                // commit rather than abandon so the other automation doesn't
-                // come back and ask the same split question a second time.
-                // No history entry exists to hang suppressions off, hence nil.
+                // Nothing written, but the purchase *has* been decided — commit
+                // rather than abandon, so the other automation doesn't come back
+                // and ask the same question. No entry to hang suppressions off.
                 commitClaim(historyEntryId: nil)
                 let dialog = WalletAutomationDialog.splitwiseSkippedDialog(description: expenseDescription)
                 if successNotification {
@@ -380,9 +328,8 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     TransactionDraftGuard.complete(draftId)
                 }
                 let isQueued: Bool = if case .queued = outcome { true } else { false }
-                // A queued expense records its history entry only once it
-                // syncs, so newestEntryID() would name an earlier, unrelated
-                // one — commit without an entry to annotate in that case.
+                // A queued expense records its entry only on sync, so
+                // newestEntryID() would name an earlier, unrelated one.
                 commitClaim(historyEntryId: isQueued ? nil : TransactionHistoryStore.newestEntryID())
                 let dialog = WalletAutomationDialog.splitwiseWalletDialog(outcome: outcome, formattedAmount: formattedAmount, description: expenseDescription)
                 if successNotification {
@@ -403,22 +350,19 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 return .result(dialog: "\(dialog)")
             } catch {
                 logger.error("Splitwise addExpense failed: \(String(describing: error), privacy: .public)")
-                // addExpense already throws a well-formed SplitwiseIntentError in
-                // most cases (validation, not-authenticated, mapped API errors) —
-                // re-mapping those through `.from` again would lose the specific
-                // reason, since `.from` only pattern-matches the raw API errors.
+                // addExpense mostly throws a well-formed SplitwiseIntentError
+                // already; `.from` only pattern-matches raw API errors, so
+                // re-mapping would lose the specific reason.
                 throw (error as? SplitwiseIntentError) ?? SplitwiseIntentError.from(error)
             }
         } catch {
-            // The run is ending without a created/queued expense — no
-            // reason to wait out the usual quiet-period window once
-            // that's certain, so nudge the user right away instead.
+            // No created/queued expense, so nudge right away rather than waiting
+            // out the quiet-period window.
             if let draftId {
                 await TransactionDraftGuard.fail(draftId)
             }
             // Nothing was written, so this run must stop shadowing the other
-            // automation — that second sighting is the safety net for
-            // exactly this failure.
+            // automation — its second sighting is the safety net for this case.
             if !claimResolved {
                 TransactionClaimStore.abandon(claimId)
             }

@@ -2,21 +2,15 @@
 //  FileImportModels.swift
 //  Relay
 //
-//  The unified, destination-independent model behind the file-import review
-//  screen (SharedFileImportView). Parsing a statement produces one list of
-//  [FileImportRow] that both YNAB and Splitwise show and select from
-//  identically — the destination only changes the top settings, the submit
-//  button, and what happens on submit, never the rows themselves. Replaces
-//  the old parallel YNABImportRow/SplitwiseImportRow + per-destination
-//  staging stores, which each held their own copy of the rows and could
-//  drift apart (switching destinations rebuilt from scratch and could come
-//  up empty).
+//  The destination-independent model behind SharedFileImportView. Parsing a
+//  statement produces one list of [FileImportRow] that both YNAB and Splitwise
+//  show and select from identically; the destination only changes the top
+//  settings, the submit button, and what happens on submit — never the rows.
 //
 
 import Foundation
 
-/// Where a parsed file gets sent. Codable so the active destination can be
-/// remembered on the staged import across a dismiss/reopen.
+/// Codable so the active destination survives a dismiss/reopen.
 enum FileImportDestination: String, Codable, Hashable {
     case ynab
     case splitwise
@@ -29,34 +23,29 @@ enum FileImportDestination: String, Codable, Hashable {
     }
 }
 
-/// One reviewable transaction parsed from a statement file, before any
-/// destination-specific shaping. The `id` is deterministic across re-imports
-/// of the same statement (rows sort into the same order), so it doubles as
-/// the SwiftUI identity, the multi-select key, and the dedup key for
+/// One reviewable transaction parsed from a statement file. The `id` is
+/// deterministic across re-imports of the same statement, so it doubles as the
+/// SwiftUI identity, the multi-select key, and the dedup key behind
 /// FileImportHistoryStore's "already handled" badge.
 struct FileImportRow: Codable, Identifiable, Hashable {
-    /// "{signedMilliunits}:{yyyy-MM-dd}:{occurrence}" — the same encoding
-    /// StatementTransactionBuilder gives a YNAB `import_id` (minus the
-    /// "YNAB:" prefix), so `ynabTransaction(...)` can reproduce a byte-
-    /// identical import_id and YNAB's server-side re-import dedup keeps
-    /// working unchanged.
+    /// "{signedMilliunits}:{yyyy-MM-dd}:{occurrence}" —
+    /// StatementTransactionBuilder's YNAB `import_id` encoding minus the "YNAB:"
+    /// prefix, so `ynabTransaction(...)` reproduces a byte-identical import_id and
+    /// YNAB's own re-import dedup keeps working.
     let id: String
     let date: Date
     let payeeName: String
     let memo: String?
-    /// Sign preserved from the statement — shown as-is in the review list.
+    /// Sign preserved from the statement.
     let amount: Double
 }
 
 nonisolated enum FileImportRowBuilder {
-    /// Drops zero-amount rows (nothing to import or split), then assigns each
-    /// remaining row an incrementing occurrence suffix within its
-    /// amount+date group. The grouping/sort is identical to
-    /// StatementTransactionBuilder so the ids line up with YNAB import_ids —
-    /// see FileImportRow.id. Unlike the old builder there is no 5-year
-    /// staleness filter: the review screen shows every parsed row and lets
-    /// the user deselect what they don't want, rather than dropping rows
-    /// silently.
+    /// Drops zero-amount rows, then gives each remaining one an incrementing
+    /// occurrence suffix within its amount+date group. The grouping and sort match
+    /// StatementTransactionBuilder so the ids line up with YNAB import_ids — see
+    /// `FileImportRow.id`. There's deliberately no staleness filter: the review
+    /// screen shows every parsed row rather than dropping any silently.
     static func build(from rows: [ImportedStatementRow]) -> [FileImportRow] {
         struct Draft {
             let dateString: String
@@ -90,10 +79,8 @@ nonisolated enum FileImportRowBuilder {
 }
 
 extension FileImportRow {
-    /// Shapes this row into a YNAB create request. The import_id is derived
-    /// straight from `id` (which already encodes milliunits/date/occurrence),
-    /// so it's stable regardless of which subset of rows is submitted and
-    /// matches what StatementTransactionBuilder would have produced.
+    /// The import_id comes straight from `id`, so it's stable regardless of which
+    /// subset of rows is submitted.
     func ynabTransaction(accountId: String, includeMemos: Bool) -> YNABTransactionRequest {
         YNABTransactionRequest(
             accountId: accountId,
@@ -107,7 +94,6 @@ extension FileImportRow {
         )
     }
 
-    /// What Splitwise splits: the statement's sign is irrelevant once a row
-    /// is a candidate (the cost either way is what gets divided).
+    /// The statement's sign is irrelevant here — the cost is what gets divided.
     var splitAmount: Double { abs(amount) }
 }

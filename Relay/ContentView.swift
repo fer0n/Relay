@@ -6,22 +6,17 @@
 import SwiftUI
 
 struct ContentView: View {
-    // State is `internal` rather than `private` because the lifecycle/deep-link
-    // routing and sheet presentation live in ContentView+Coordination.swift —
-    // a same-type extension in another file, which can't see `private` members.
+    // State is `internal`, not `private`, so the same-type extension in
+    // ContentView+Coordination.swift can see it.
     @State var pendingQueue = PendingOperationQueue.shared
     @State var draftRouter = DraftNotificationRouter.shared
     @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var drafts = TransactionDraftStore.load()
     @State var fileImportCount = Self.loadFileImportCount()
     @State var history = TransactionHistoryStore.load()
-    /// The configured default Splitwise friend's cached record (for their
-    /// balance) — nil hides the balance card in favor of the plain logo.
-    /// Loaded from disk instantly; refreshed live once in `mainList`'s
-    /// `.task` and again on every pull-to-refresh of the transaction list.
+    /// nil hides the balance card in favor of the plain logo.
     @State private var defaultSplitwiseFriend = Self.loadDefaultSplitwiseFriendFromCache()
-    /// When `defaultSplitwiseFriend`'s balance was last actually fetched from
-    /// Splitwise — shown on the balance card as "Last refreshed …".
+    /// Shown on the balance card as "Last refreshed …".
     @State private var splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
     @State var path: [ContentRoute] = []
     @State var continueDraft: TransactionDraft?
@@ -29,35 +24,22 @@ struct ContentView: View {
     @State var selectedHistoryEntry: TransactionHistoryEntry?
     @State var showOnboarding = false
     @Namespace var addNamespace
-    /// Shared by every row that opens `TransactionDetailView` as a sheet (the
-    /// Drafts and Recent sections below) so the sheet zooms in from
-    /// whichever row was actually tapped.
+    /// Shared by every row that opens `TransactionDetailView`, so the sheet zooms
+    /// in from whichever row was tapped.
     @Namespace var detailNamespace
     @State var showAutomationTutorial = false
-    /// Set by OnboardingView's "Setup" button, consumed once onboarding's
-    /// sheet has actually finished dismissing — presenting the tutorial
-    /// sheet immediately would race with the outgoing onboarding sheet.
+    // Each is consumed only once the presenting sheet has finished dismissing —
+    // presenting immediately would race with the outgoing sheet.
     @State var opensAutomationTutorialAfterOnboarding = false
-    /// Set by Settings' "Show Tutorial" button, consumed once Settings'
-    /// sheet has actually finished dismissing so we don't present a second
-    /// sheet while Settings is still on screen.
     @State var opensOnboardingAfterSettings = false
-    /// Set by Settings' "Automation Setup" button, consumed once Settings'
-    /// sheet has actually finished dismissing so we don't present a second
-    /// sheet while Settings is still on screen.
     @State var opensAutomationTutorialAfterSettings = false
     @State var importSheetContent: ImportSheetContent?
     @Environment(\.scenePhase) var scenePhase
 
-    /// What the manual-entry sheet is presenting: the blank draft it hangs
-    /// off, plus — for "Re-add" — the history entry to seed its fields from
-    /// (nil for the "+" button's usual empty form).
-    ///
-    /// Both travel *inside* the sheet's item rather than the prefill sitting
-    /// in a `@State` of its own: the sheet's content closure captured that
-    /// separate state before the "Re-add" action had set it, so the first
-    /// re-add after launch built the form with `prefill: nil` and opened
-    /// blank (and every later one silently reused the *previous* entry).
+    /// `prefill` travels *inside* the sheet's item rather than in a `@State` of
+    /// its own: the sheet's content closure captured that separate state before
+    /// "Re-add" had set it, so the first re-add after launch opened blank and
+    /// every later one reused the *previous* entry.
     struct ManualEntry: Identifiable {
         let draft: TransactionDraft
         let prefill: TransactionHistoryEntry?
@@ -65,14 +47,8 @@ struct ContentView: View {
         var id: UUID { draft.id }
     }
 
-    /// What the single file-import sheet should show — a just-shared file
-    /// (`sharedFile`) or reopening an already-staged import (`review`).
-    /// SharedFileImportView resolves the YNAB-vs-Splitwise destination
-    /// itself (an inline picker, not a separate screen), so both cases
-    /// route to the same view. Unifies the share-sheet flow and the main
-    /// view's "File Import" row/Shortcut hand-off onto the same
-    /// presentation so both can use the same "Done" button to close in one
-    /// step.
+    /// SharedFileImportView resolves the YNAB-vs-Splitwise destination itself, so
+    /// both cases route to the same view — and both close with one "Done".
     enum ImportSheetContent: Identifiable, Hashable {
         case sharedFile(SharedStatementFile)
         case review
@@ -89,25 +65,21 @@ struct ContentView: View {
         return SplitwiseFriendCacheStore.load()?.first { $0.id == defaultId }
     }
 
-    /// Most recently started 3 drafts — "Show All" links to the full list
-    /// (TransactionDraftsView) for everything else.
+    /// "Show All" links to TransactionDraftsView for everything else.
     private var topDrafts: [TransactionDraft] {
         Array(drafts.sorted { $0.startedAt > $1.startedAt }.prefix(3))
     }
 
-    /// `defaultSplitwiseFriend`, but only once Splitwise is actually
-    /// connected — otherwise the disk cache from a previous sign-in would
-    /// keep showing a stale balance card (and its "Balances"/friend
-    /// transactions routes) after signing out in Settings.
+    /// `defaultSplitwiseFriend`, but only while connected — otherwise the disk
+    /// cache from a previous sign-in would keep showing a stale balance card
+    /// after signing out in Settings.
     private var visibleSplitwiseFriend: SplitwiseFriend? {
         splitwiseAuth.isAuthenticated ? defaultSplitwiseFriend : nil
     }
 
-    // Split into `navigationContent` + two modifier-applying functions (rather
-    // than one long chain hung directly off `body`) because the compiler
-    // couldn't type-check the whole thing as a single expression in
-    // reasonable time — each piece below is independently small enough to
-    // solve on its own. Both functions live in ContentView+Coordination.swift.
+    // Split into `navigationContent` + two modifier-applying functions (in
+    // ContentView+Coordination.swift) because the compiler couldn't type-check
+    // one long chain in reasonable time.
     var body: some View {
         withSheetsAndAlerts(withLifecycleHandlers(navigationContent))
     }
@@ -134,10 +106,9 @@ struct ContentView: View {
                     .padding(.horizontal, 30)
                 }
         }
-        // Popping back to the root (e.g. a pushed TransactionDetailView dismissing
-        // itself after completing a draft) never fires the scenePhase or root
-        // onAppear handlers, so reload here whenever the stack empties to drop
-        // the just-completed draft from the list.
+        // Popping back to the root never fires the scenePhase or root onAppear
+        // handlers, so reload whenever the stack empties — that's how a
+        // just-completed draft leaves the list.
         .onChange(of: path) { _, newPath in
             if newPath.isEmpty {
                 reloadMainListState()
@@ -238,25 +209,18 @@ struct ContentView: View {
         }
         .themedList(background: .backgroundColor)
         .statusBarBackground()
-        // Runs once for this view's lifetime (mainList is only ever created
-        // once per app launch) rather than on every appearance —
-        // reloadMainListState() already re-reads the disk cache cheaply for
-        // those. Foregrounding also live-refreshes, via
-        // withLifecycleHandlers in ContentView+Coordination.swift. Pull-to-
-        // refresh below can still trigger it again on demand.
+        // Once per launch rather than on every appearance —
+        // reloadMainListState() covers those from the disk cache, and
+        // foregrounding live-refreshes via withLifecycleHandlers.
         .task { await refreshDefaultSplitwiseFriend(force: false) }
         .refreshable { await refreshDefaultSplitwiseFriend(force: true) }
     }
 
-    // Re-reads the file-backed stores that feed the main list. Called from
-    // every lifecycle transition that can leave those snapshots stale:
-    // foregrounding (scenePhase), first appearance, and popping back to the
-    // root of the NavigationStack after a pushed detail dismisses itself.
+    // Re-reads the file-backed stores that feed the main list, from every
+    // lifecycle transition that can leave those snapshots stale.
     func reloadMainListState() {
-        // Picks up a sign-in/out that happened in Settings' own
-        // SplitwiseAuthService instance while this one was already alive —
-        // same reasoning as YNABAuthService's refreshFromKeychain() call
-        // sites for App Intent-invalidated tokens.
+        // Picks up a sign-in/out from Settings' own SplitwiseAuthService instance,
+        // which this one can't see otherwise.
         splitwiseAuth.refreshFromKeychain()
         withAnimation {
             drafts = TransactionDraftStore.load()
@@ -267,15 +231,9 @@ struct ContentView: View {
         }
     }
 
-    /// Live-fetches the friend list and updates the balance card from it —
-    /// shared by `mainList`'s `.task`, its pull-to-refresh, and foregrounding
-    /// (ContentView+Coordination.swift). `force` is false for `.task` and
-    /// foregrounding so a recent cache is left untouched — keeping the "Last
-    /// refreshed …" timestamp stable rather than resetting it on each
-    /// visit — and true for pull-to-refresh so pulling down always
-    /// re-fetches regardless of how fresh the cache is. Non-private so
-    /// ContentView+Coordination.swift can call it, same reasoning as
-    /// startManualEntry above.
+    /// `force` is false for `.task` and foregrounding, leaving a recent cache
+    /// (and its "Last refreshed …" timestamp) untouched, and true for
+    /// pull-to-refresh so pulling down always re-fetches.
     func refreshDefaultSplitwiseFriend(force: Bool) async {
         guard force || SplitwiseFriendCacheStore.isStale else { return }
         guard let defaultId = SplitwiseDefaultFriendStore.load()?.id,
@@ -286,12 +244,8 @@ struct ContentView: View {
         }
     }
 
-    /// Opens the manual-entry sheet, blank for the "+" button or the "New
-    /// Transaction" quick action (`prefill: nil`) or seeded with a history
-    /// entry's fields for "Re-add" — either way the user reviews/edits
-    /// before it's actually submitted. Non-private (rather than the rest of
-    /// this file's `@State`-adjacent members) so ContentView+Coordination.swift
-    /// can call it in reaction to the quick-action deep link.
+    /// Blank for the "+" button and the quick action, or seeded from a history
+    /// entry for "Re-add" — either way the user reviews before submitting.
     func startManualEntry(prefill: TransactionHistoryEntry?) {
         manualEntry = ManualEntry(
             draft: TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: "")),
@@ -306,12 +260,9 @@ struct ContentView: View {
 }
 
 /// Seeds every store ContentView reads from so the preview shows all of its
-/// sections (balance card, pending, file import, drafts, recent) at once,
-/// and marks onboarding as already completed so its sheet doesn't cover the
-/// list. The `let _ = seedPreviewData()` line above runs this synchronously
-/// before `ContentView()` is constructed, so its `@State` initializers
-/// (which load from these same files) pick up the seeded data instead of
-/// starting empty.
+/// sections at once. The `let _ = seedPreviewData()` line above runs this
+/// synchronously before `ContentView()` is constructed, so its `@State`
+/// initializers pick up the seeded data instead of starting empty.
 private func seedPreviewData() {
     UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
 

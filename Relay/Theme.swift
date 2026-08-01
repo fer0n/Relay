@@ -35,8 +35,7 @@ struct ListChevron: View {
     }
 }
 
-/// Standard row label for a `NavigationLink` in a themed `List` — pairs
-/// with `.navigationLinkIndicatorVisibility(.hidden)` on the enclosing
+/// Pairs with `.navigationLinkIndicatorVisibility(.hidden)` on the enclosing
 /// List, since `ListChevron` replaces the native disclosure indicator.
 struct RowLabel: View {
     let title: LocalizedStringKey
@@ -61,11 +60,8 @@ struct RowLabel: View {
     }
 }
 
-/// The collapsed label content shared by every `Menu`-based picker in the
-/// app (`MenuPickerField`, plus the hand-rolled template/friend pickers that
-/// can't use a real `Picker` — see their own comments for why) — the
-/// caller's content plus the trailing `chevron.up.chevron.down` indicator
-/// that marks it as a picker, matching what a native `Picker` shows.
+/// The collapsed label shared by every `Menu`-based picker: the caller's content
+/// plus the trailing indicator a native `Picker` would show.
 struct MenuPickerLabel<Label: View>: View {
     @ViewBuilder var label: () -> Label
 
@@ -79,14 +75,10 @@ struct MenuPickerLabel<Label: View>: View {
     }
 }
 
-/// A menu-style `Picker` whose collapsed button shows a caller-supplied
-/// label instead of the system-derived one. A plain `Picker(...)
-/// .pickerStyle(.menu).labelsHidden()` has a longstanding SwiftUI bug where
-/// its auto-derived collapsed label ignores `.lineLimit` applied from
-/// outside, so a longer option's text can wrap to two lines instead of
-/// truncating (https://stackoverflow.com/q/75423473). Wrapping the Picker
-/// in a `Menu` with an explicit label sidesteps that, since the label is
-/// then just a `Text` we control directly.
+/// A menu-style `Picker` with a caller-supplied collapsed label. Works around a
+/// longstanding SwiftUI bug where `.pickerStyle(.menu).labelsHidden()`'s
+/// auto-derived label ignores an outside `.lineLimit`, wrapping a long option to
+/// two lines instead of truncating (https://stackoverflow.com/q/75423473).
 struct MenuPickerField<Selection: Hashable, Content: View>: View {
     @Binding var selection: Selection
     let label: String
@@ -106,9 +98,8 @@ struct MenuPickerField<Selection: Hashable, Content: View>: View {
     }
 }
 
-/// Faint, oversized icon watermark shown behind an empty themed `List` —
-/// pairs with `.background { if isEmpty { EmptyListBackground(...) } }`
-/// on the List, in place of a titled `ContentUnavailableView`.
+/// Faint, oversized icon watermark behind an empty `List`, in place of a titled
+/// `ContentUnavailableView`.
 struct EmptyListBackground: View {
     var systemName: String
 
@@ -122,12 +113,10 @@ struct EmptyListBackground: View {
     }
 }
 
-/// Visually mimics a system `.alert()` — title/message over a button row —
-/// while staying a plain view that lays out inline wherever it's placed,
-/// rather than presenting as a floating modal. Styled after iOS 26's Liquid
-/// Glass alerts: the buttons are their own inset glass pills rather than
-/// full-bleed rows split by hairline dividers, with their corner radius kept
-/// concentric with the card's (inner radius = outer radius − the inset).
+/// Mimics a system `.alert()` while staying a plain view that lays out inline
+/// rather than presenting as a floating modal. Styled after iOS 26's Liquid Glass
+/// alerts, with the buttons' corner radius kept concentric with the card's
+/// (inner = outer − the inset).
 struct InlineAlertCard: View {
     let title: String
     var message: String?
@@ -176,11 +165,8 @@ struct InlineAlertCard: View {
     }
 }
 
-/// Prominent Liquid Glass action button pinned to the bottom safe area
-/// (Save / Import / Add Expense / Add Transaction). Shows a spinner in
-/// place of the label while `isLoading`, and applies the shared padding,
-/// themed text, and glass styling every bottom bar uses — so the four
-/// `safeAreaBar(edge: .bottom)` call sites don't each re-spell it.
+/// Prominent Liquid Glass action button pinned to the bottom safe area, so the
+/// `safeAreaBar(edge: .bottom)` call sites don't each re-spell its styling.
 struct BottomBarActionButton: View {
     let title: LocalizedStringKey
     var isLoading = false
@@ -205,9 +191,8 @@ struct BottomBarActionButton: View {
     }
 }
 
-/// Backs `View.bottomBarActionButton` — owns the keyboard-visibility state
-/// so every call site gets the same "hidden while typing" rule for free
-/// instead of re-declaring its own `@State private var isKeyboardVisible`.
+/// Backs `View.bottomBarActionButton`, owning the keyboard-visibility state so
+/// every call site gets the same "hidden while typing" rule.
 private struct BottomBarActionButtonModifier: ViewModifier {
     let isPresented: Bool
     let title: LocalizedStringKey
@@ -234,8 +219,6 @@ extension View {
         listRowBackground(Color.sheetInsetColor)
     }
 
-    /// Text styling shared by themed List rows and the bottom-bar Settings
-    /// button label.
     func themedText() -> some View {
         self
             .font(.system(size: 18))
@@ -243,14 +226,10 @@ extension View {
             .foregroundStyle(Color.foregroundColor)
     }
 
-    /// Standard style for a prominent Liquid Glass action button pinned to
-    /// the bottom safe area (Save / Add Expense / Add Transaction). Forces
-    /// dark color scheme because `.glassProminent` derives its label
-    /// contrast from the color scheme rather than from `.foregroundStyle` —
-    /// this also flips any themed color assets used by the label (e.g.
-    /// `.themedText()`'s `Color.foregroundColor`) to their light variant, so
-    /// the label reads correctly against the accent-tinted glass regardless
-    /// of the app's actual light/dark mode.
+    /// Forces dark color scheme because `.glassProminent` derives its label
+    /// contrast from the color scheme rather than from `.foregroundStyle`. That
+    /// also flips the label's themed color assets to their light variant, so it
+    /// reads correctly against the accent-tinted glass in either mode.
     func glassProminentActionButton() -> some View {
         self
             .buttonStyle(.glassProminent)
@@ -258,11 +237,9 @@ extension View {
             .colorScheme(.dark)
     }
 
-    /// Tracks system keyboard visibility into `isVisible` — shared by every
-    /// view that hides/adjusts a `safeAreaBar` action button while the
-    /// keyboard is up (`safeAreaBar` docks its content right above the
-    /// keyboard, which otherwise reads as the button chasing the keyboard up
-    /// the screen).
+    /// `safeAreaBar` docks its content right above the keyboard, which reads as
+    /// the button chasing the keyboard up the screen — so its users hide it while
+    /// the keyboard is up.
     func onKeyboardVisibilityChange(_ isVisible: Binding<Bool>) -> some View {
         self
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -273,15 +250,9 @@ extension View {
             }
     }
 
-    /// A single `BottomBarActionButton` pinned to the bottom safe area,
-    /// entirely absent while the keyboard is up rather than riding above it —
-    /// `safeAreaBar` would otherwise reposition it right above the keyboard
-    /// the moment it can be shown, which reads as the button chasing the
-    /// keyboard up the screen. Shared by every screen with a single bottom
-    /// action (Save, Add Transaction, Add Expense) so they all appear/
-    /// disappear the same plain way instead of each spelling out its own
-    /// keyboard-visibility tracking, with each screen free to drift on
-    /// whether/how it animates.
+    /// A single `BottomBarActionButton` pinned to the bottom safe area, absent
+    /// while the keyboard is up rather than riding above it — see
+    /// `KeyboardVisibilityModifier`.
     func bottomBarActionButton(
         isPresented: Bool,
         title: LocalizedStringKey,
@@ -292,9 +263,8 @@ extension View {
         modifier(BottomBarActionButtonModifier(isPresented: isPresented, title: title, isLoading: isLoading, isDisabled: isDisabled, action: action))
     }
 
-    /// Binds this field's focus to `isFocused` and adds a keyboard-toolbar
-    /// dismiss button (chevron-down, top right) — for keyboard types like
-    /// `.decimalPad`/`.numberPad` that have no built-in return/dismiss key.
+    /// Adds a keyboard-toolbar dismiss button, for keyboard types like
+    /// `.decimalPad` that have no return key of their own.
     func dismissButtonToolbar(isFocused: FocusState<Bool>.Binding) -> some View {
         self
             .focused(isFocused)
@@ -321,12 +291,9 @@ extension View {
             .foregroundStyle(.secondary)
     }
 
-    /// Applies Spine's list styling (hidden system row background, themed
-    /// text, dimmed separators, and hidden native disclosure indicators in
-    /// favor of `ListChevron`) without touching the background — use this
-    /// directly when the screen also needs an `EmptyListBackground`, since
-    /// that has to sit behind the (transparent) list but in front of the
-    /// screen background, which a plain `.background(color)` can't express.
+    /// List styling without touching the background — use this directly when the
+    /// screen also needs an `EmptyListBackground`, which has to sit behind the
+    /// transparent list but in front of the screen background.
     func themedListStyle() -> some View {
         self
             .scrollContentBackground(.hidden)
@@ -335,8 +302,7 @@ extension View {
             .navigationLinkIndicatorVisibility(.hidden)
     }
 
-    /// `themedListStyle()` plus a plain screen background — the common case
-    /// for a List with no empty state to show through it.
+    /// The common case: a List with no empty state to show through it.
     func themedList(background: Color) -> some View {
         self
             .themedListStyle()

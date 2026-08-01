@@ -2,13 +2,9 @@
 //  TemplateEditView.swift
 //  Relay
 //
-//  Create/edit form for a single WalletTransactionConfig.Template, shared by
-//  both YNAB and Splitwise wallet automations — a template used to be split
-//  into two separate per-provider types/screens; now one template can carry
-//  a YNAB category, a Splitwise split option/friend, or both, with each
-//  provider's fields hidden here when that provider isn't connected.
-//  AddWalletTransactionToYNABIntent and AddWalletTransactionToSplitwiseIntent
-//  both read/write this same WalletTransactionConfigStore.
+//  Create/edit form for one WalletTransactionConfig.Template, which can carry a
+//  YNAB category, a Splitwise split option/friend, or both — each provider's
+//  fields hidden when that provider isn't connected.
 //
 
 import SwiftUI
@@ -16,9 +12,8 @@ import os
 
 private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TemplateEditView")
 
-/// Everything Save actually persists, in one place, so "has anything
-/// changed?" is a single Equatable comparison instead of a field-by-field
-/// list that has to be kept in sync by hand as fields are added.
+/// Everything Save persists, in one place, so "has anything changed?" is one
+/// Equatable comparison rather than a hand-maintained field-by-field list.
 private struct TemplateDraft: Equatable {
     var name: String
     var categoryId: String?
@@ -56,22 +51,16 @@ struct TemplateEditView: View {
     @State private var errorMessage: String?
     @State private var showDeleteConfirmation = false
 
-    /// Fallback used at save time if the existing template's friend no
-    /// longer appears in a fresh fetchFriends() (e.g. fetch still in
-    /// flight, or the friend was removed on Splitwise) but the selection
-    /// hasn't changed from what was already saved.
+    /// Save-time fallback for when the template's friend no longer appears in a
+    /// fresh fetchFriends() but the selection hasn't changed either.
     private let existingFriend: (id: Int, firstName: String, fullName: String)?
 
-    /// The app-wide default (Settings' DefaultSplitwiseFriendRow) — leaving
-    /// this template's own friend unset doesn't mean "split with no one",
-    /// it means "use this" (it's the last step of both wallet intents'
-    /// friend resolution), so the picker/footer below should say so instead
-    /// of showing a bare "None".
+    /// Leaving this template's friend unset means "use the app-wide default", not
+    /// "split with no one", so the picker names it rather than showing "None".
     private let defaultFriend: SplitwiseDefaultFriend?
 
-    /// Snapshot of the loaded state, compared against `currentDraft` in
-    /// `hasChanges` so the Save bar only appears once something's actually
-    /// been edited.
+    /// Compared against `currentDraft` so the Save bar only appears once something
+    /// has actually been edited.
     private let originalDraft: TemplateDraft
 
     init(templateName: String?, onSave: @escaping (String) -> Void, onDelete: @escaping () -> Void) {
@@ -106,8 +95,8 @@ struct TemplateEditView: View {
         )
     }
 
-    /// Mirrors what `save()` would actually write, cleaned/trimmed the same
-    /// way, so it can be compared directly against `originalDraft`.
+    /// Trimmed exactly as `save()` would write it, so it compares directly against
+    /// `originalDraft`.
     private var currentDraft: TemplateDraft {
         TemplateDraft(
             name: name.trimmingCharacters(in: .whitespaces),
@@ -121,9 +110,7 @@ struct TemplateEditView: View {
         )
     }
 
-    /// Whether anything differs from what was loaded, i.e. whether Save has
-    /// anything to persist.
-    private var hasChanges: Bool {
+private var hasChanges: Bool {
         currentDraft != originalDraft
     }
 
@@ -237,8 +224,7 @@ struct TemplateEditView: View {
         if let cached = YNABCategoryCacheStore.load() {
             categories = YNABCategoryUsageStore.sorted(cached)
         }
-        // Show the cache instantly, but skip the live fetch while it's still
-        // fresh — re-opening this editor shouldn't re-hit YNAB (200 req/hr).
+        // Skip the live fetch while the cache is fresh — YNAB allows 200 req/hr.
         guard YNABCategoryCacheStore.isStale else { return }
         isLoadingCategories = categories.isEmpty
         defer { isLoadingCategories = false }
@@ -292,9 +278,8 @@ struct TemplateEditView: View {
             resolvedFriend = nil
         }
 
-        // Preserve the "default Splitwise template" flag across edits (and
-        // renames) — save() rebuilds the template from the form's fields,
-        // which don't include it, so it would otherwise be silently dropped.
+        // save() rebuilds the template from the form's fields, which don't include
+        // the "default Splitwise template" flag, so carry it across by hand.
         let wasSplitwiseDefault = templateName.flatMap { config.templates[$0]?.isSplitwiseDefault } ?? false
 
         let template = WalletTransactionConfig.Template(
@@ -322,9 +307,8 @@ struct TemplateEditView: View {
         }
         config.templates[trimmedName] = template
 
-        // Rewrites every kept linked merchant with its (possibly edited)
-        // payee name and the template's current name, covering both plain
-        // edits and a template rename in one pass.
+        // Rewrites every kept merchant with its payee name and the template's
+        // current name, covering plain edits and a rename in one pass.
         for linked in linkedMerchants {
             config.merchants[linked.merchant] = WalletTransactionConfig.MerchantInfo(
                 payeeName: linked.payeeName.trimmingCharacters(in: .whitespaces),
@@ -359,10 +343,8 @@ struct TemplateEditView: View {
         }
     }
 
-    /// Repoints a merchant at a different, existing template, independent of
-    /// this screen's own pending edits/Save — the merchant no longer belongs
-    /// to the template being edited here, so there's nothing for this
-    /// screen's save() to reconcile once it's removed from `linkedMerchants`.
+    /// Repoints a merchant at another template, independent of this screen's Save:
+    /// once it leaves `linkedMerchants` there's nothing for save() to reconcile.
     private func move(_ linked: LinkedMerchant, to destinationTemplate: String) {
         var config = WalletTransactionConfigStore.load()
         config.merchants[linked.merchant] = WalletTransactionConfig.MerchantInfo(
@@ -382,9 +364,8 @@ struct TemplateEditView: View {
 
 #if DEBUG
 extension TemplateEditView {
-    /// Preview-only initializer that seeds sample auto-match rules directly,
-    /// bypassing WalletTransactionConfigStore so previewing never touches
-    /// the real on-disk config.
+    /// Bypasses WalletTransactionConfigStore so previewing never touches the real
+    /// on-disk config.
     init(previewAutoMatchRules: [WalletTransactionConfig.AutoMatchRule]) {
         self.templateName = nil
         self.onSave = { _ in }

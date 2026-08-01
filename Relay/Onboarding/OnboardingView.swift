@@ -6,27 +6,18 @@
 import SwiftUI
 import UserNotifications
 
-/// First-launch wizard shown instead of auto-opening Settings — walks a new
-/// user through connecting accounts, notifications, and importing templates.
-/// Presented as a `.sheet` from `ContentView` with interactive dismissal
-/// disabled — the wizard only closes via the last page's Done button, since
-/// swiping it away wouldn't otherwise leave a visible way back in; regular
-/// Settings is unaffected.
+/// First-launch wizard walking a new user through connecting accounts,
+/// notifications, and importing templates. Interactive dismissal is disabled, so
+/// it only closes via the last page's Done button — swiping it away wouldn't
+/// leave a visible way back in.
 ///
-/// The logo, header title, and description sit outside the paging scroll
-/// view so only the interactive content underneath moves between pages —
-/// the header instead crossfades via `.id(page)` + `.transition(.opacity)`.
+/// The logo, title, and description sit outside the paging scroll view so only
+/// the content underneath moves; the header crossfades via `.id(page)` instead.
 ///
-/// Paging uses a `ScrollView` + `.scrollTargetBehavior(.paging)` rather than
-/// `TabView(.page)`: a `TabView`'s selection can be changed programmatically,
-/// but doing so just swaps content in place instead of sliding — tapping
-/// Continue needs the same slide motion a swipe produces, which only a
-/// scroll-position-driven pager gives you when the change is wrapped in
-/// `withAnimation`.
-///
-/// Two bottom buttons provide page-specific actions. The lower primary button
-/// performs the main action for each step, while the upper secondary button
-/// offers skip/close alternatives where relevant.
+/// Paging uses `ScrollView` + `.scrollTargetBehavior(.paging)` rather than
+/// `TabView(.page)`, whose selection can be set programmatically but only swaps
+/// content in place. Tapping Continue needs the same slide a swipe produces,
+/// which requires a scroll-position-driven pager inside `withAnimation`.
 struct OnboardingView: View {
     @State private var ynabAuth = YNABAuthService()
     @State private var splitwiseAuth = SplitwiseAuthService()
@@ -36,11 +27,9 @@ struct OnboardingView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
 
-    /// Called instead of dismissing outright on the last page — ContentView
-    /// sets its own state here and presents the automation tutorial sheet
-    /// once this sheet has actually finished dismissing (via `onDismiss`),
-    /// rather than trying to present a second sheet while this one is still
-    /// on screen.
+    /// Called instead of dismissing outright on the last page: ContentView flags
+    /// its state here and presents the tutorial from this sheet's `onDismiss`,
+    /// rather than stacking a second sheet on one still on screen.
     var onRequestAutomationTutorial: () -> Void = {}
 
     private var page: OnboardingPage { scrollPosition ?? .welcome }
@@ -141,11 +130,9 @@ struct OnboardingView: View {
             .animation(.easeInOut(duration: 0.2), value: page)
             .padding(.top, 12)
 
-            // All three descriptions stay mounted at once (crossfading via
-            // opacity) instead of swapping a single Text via .id — that way
-            // the ZStack's height is always the tallest of the three, so it
-            // never needs a fixed height yet still doesn't jump between
-            // pages of different description lengths.
+            // All three stay mounted, crossfading via opacity, rather than swapping
+            // one Text via .id: the ZStack's height is then always the tallest of
+            // them, so it needs no fixed height yet never jumps between pages.
             ZStack(alignment: .top) {
                 ForEach(OnboardingPage.allCases, id: \.self) { candidate in
                     Text(candidate.description)
@@ -160,11 +147,9 @@ struct OnboardingView: View {
             .animation(.easeInOut(duration: 0.2), value: page)
             .padding(.top, 10)
 
-            // Fills all the remaining space between the header and the
-            // dots/button below — this container's own size never depends
-            // on which page is showing (each page fills whatever height
-            // it's given), so swiping between pages of different content
-            // heights doesn't move the dots/button at all.
+            // Fills the space between the header and the dots below, so this
+            // container's size never depends on which page is showing and swiping
+            // between pages of different heights doesn't move them.
             ScrollView(.horizontal) {
                 HStack(spacing: 0) {
                     OnboardingWelcomePage(ynabAuth: ynabAuth, splitwiseAuth: splitwiseAuth)

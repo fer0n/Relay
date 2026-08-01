@@ -2,11 +2,9 @@
 //  SplitwiseExpenseHelper.swift
 //  Relay
 //
-//  Shared expense-splitting logic used by both the standalone "Add
-//  Splitwise Expense" intent and the "Split with Splitwise" option on
-//  "Add YNAB Transaction" — mirrors the original setup where both the
-//  "Add YNAB Expense" and standalone flows hand off to the same
-//  "Splitwise Master" Shortcut.
+//  Shared expense-splitting logic, used by both the standalone "Add Splitwise
+//  Expense" intent and the "Split with Splitwise" option on "Add YNAB
+//  Transaction" — mirroring the original Shortcut setup.
 //
 
 import Foundation
@@ -18,27 +16,22 @@ enum SplitwiseOwnShareParse {
 
 enum SplitwiseExpenseOutcome {
     case created(shareSummary: String)
-    /// Offline — the expense was handed to PendingOperationQueue and will
-    /// be created automatically once connectivity returns.
+    /// Handed to PendingOperationQueue, to be created once connectivity returns.
     case queued
 }
 
 nonisolated enum SplitwiseExpenseHelper {
-    /// Shared so callers (AddYNABTransactionIntent, AddWalletTransactionToYNABIntent)
-    /// can validate the share *before* creating a YNAB transaction, rather
-    /// than finding out only when addExpense is called afterwards — which
-    /// would leave the YNAB transaction created with no matching Splitwise
-    /// expense and just a dialog hint about it.
+    /// Exposed so callers can validate the share *before* creating the YNAB
+    /// transaction — otherwise a bad share leaves that transaction created with no
+    /// matching Splitwise expense and only a dialog hint about it.
     static func validateOwnShare(_ ownShare: Double, amount: Double) throws {
         guard ownShare.isFinite, (0...amount).contains(ownShare) else {
             throw SplitwiseIntentError.validation("Your share must be between 0 and the total amount.")
         }
     }
 
-    /// Parses a manual own-share string entered in a form and validates it
-    /// against the total, returning either the amount or a user-facing error
-    /// message. Shared by the in-app "Continue…" draft forms, which both
-    /// need the same "parse then validate, else show why" step before submit.
+    /// Parses and validates a form's own-share field against the total, returning
+    /// either the amount or a user-facing message.
     static func parseOwnShare(_ text: String, amount: Double) -> SplitwiseOwnShareParse {
         guard let parsed = Double(text) else {
             return .invalid(message: "Enter a valid share amount.")
@@ -53,11 +46,9 @@ nonisolated enum SplitwiseExpenseHelper {
         return .valid(parsed)
     }
 
-    /// Creates a non-group Splitwise expense split between the signed-in
-    /// user (who pays the full cost) and `friend`; a nil `ownShare` splits
-    /// the cost equally. Returns a human-readable summary of each share.
-    /// `groupId`, when set, folds this expense into the same history entry
-    /// as the YNAB transaction from the same wallet automation run.
+    /// Creates a non-group expense between the signed-in user, who fronts the whole
+    /// cost, and `friend`; a nil `ownShare` splits it equally. `groupId` folds this
+    /// into the same history entry as its run's YNAB transaction.
     static func addExpense(
         amount: Double,
         description: String,
@@ -78,10 +69,8 @@ nonisolated enum SplitwiseExpenseHelper {
             throw SplitwiseIntentError.notAuthenticated
         }
 
-        // Needs the signed-in user's id to build the expense request below.
-        // Falls back to the last cached value when offline, so a queued
-        // expense can still be assembled instead of failing before it ever
-        // reaches PendingSync's queue-for-later path.
+        // Falls back to the cached id when offline, so a queued expense can still be
+        // assembled instead of failing before it reaches the queue-for-later path.
         let user: SplitwiseUser
         do {
             user = try await PendingSync.retryOnConnectivityFailure {
@@ -123,18 +112,14 @@ nonisolated enum SplitwiseExpenseHelper {
         switch outcome {
         case .created:
             SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
-            // Force-refreshes the friend balance right away rather than
-            // leaving it to the next staleness-based fetch — an expense that
-            // just posted live should be reflected immediately, same as
-            // SplitwiseFriendTransactionsView.delete(_:) does after a delete.
+            // Force-refreshes the friend balance rather than leaving it to the next
+            // staleness-based fetch, so a just-posted expense shows immediately.
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token) }
             let ownAmount = (Double(ownShareCents) / Const.centsPerUnit).asMoneyString
             let friendAmount = (Double(friendShareCents) / Const.centsPerUnit).asMoneyString
             return .created(shareSummary: "You: \(ownAmount); \(friend.firstName): \(friendAmount)")
         case .queued:
-            // Nothing posted live (offline/queued for later), so there's
-            // nothing new to refresh yet — PendingSync will actually create
-            // the expense once connectivity returns.
+            // Queued for later, so there's nothing to refresh yet.
             return .queued
         }
     }

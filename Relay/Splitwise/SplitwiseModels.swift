@@ -15,12 +15,10 @@ nonisolated struct SplitwiseUser: Codable {
     let firstName: String
 }
 
-/// Sizes Splitwise returns for a user's avatar — each optionally nil, and the
-/// whole `picture` field itself is optional on `SplitwiseFriend`, so a friend
-/// with no photo (or a build predating this field) still decodes fine. Note
-/// the Optional alone is what buys that tolerance: it must NOT be written as
-/// `let picture: SplitwisePicture? = nil`, since the synthesized decoder skips
-/// immutable properties that already have a value and would never read the key.
+/// Avatar sizes, each optional so a friend with no photo still decodes. The
+/// Optional alone is what buys that: `let picture: SplitwisePicture? = nil`
+/// would NOT work, since the synthesized decoder skips immutable properties that
+/// already have a value and would never read the key.
 nonisolated struct SplitwisePicture: Codable {
     let small: String?
     let medium: String?
@@ -34,44 +32,35 @@ nonisolated struct SplitwiseFriend: Codable {
     let balance: [SplitwiseBalance]?
     let picture: SplitwisePicture?
 
-    /// Disambiguates friends sharing a first name (e.g. in the default
-    /// friend picker in ContentView.swift).
+    /// Disambiguates friends sharing a first name.
     var fullName: String {
         [firstName, lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
-    /// First name plus the last name's initial (e.g. "Alex K.") — used where
-    /// the full surname would be noise, like the per-expense "paid"
-    /// subheader in SplitwiseFriendTransactionsView. Falls back to just the
-    /// first name when there's no last name.
+    /// First name plus the last name's initial ("Alex K."), for where the full
+    /// surname would be noise.
     var shortName: String {
         guard let initial = lastName?.trimmingCharacters(in: .whitespaces).first else { return firstName }
         return "\(firstName) \(initial)."
     }
 
-    /// True once this friend has a nonzero balance in any shared currency —
-    /// used to surface not-yet-settled-up friends first in the pickers.
-    /// Splitwise lists a zero-amount entry (rather than omitting it) once a
-    /// currency is settled, so this checks the amount, not just presence.
+    /// Surfaces not-yet-settled-up friends first in the pickers. Splitwise keeps
+    /// a zero-amount entry once a currency is settled rather than omitting it, so
+    /// this checks the amount, not just presence.
     var hasOutstandingBalance: Bool {
         (balance ?? []).contains { Double($0.amount) != 0 }
     }
 
-    /// The first shared-currency balance, parsed — Splitwise only ever
-    /// returns one balance per shared currency, and personal use is expected
-    /// to have exactly one, so it's shown plainly rather than summed across
-    /// currencies. Positive means the friend owes the signed-in user;
-    /// negative means the reverse. Shared by ContentView's balance card and
-    /// SplitwiseFriendTransactionsView's navigation subtitle.
+    /// The first shared-currency balance, positive when the friend owes the
+    /// signed-in user. Shown plainly rather than summed, since personal use is
+    /// expected to have exactly one currency.
     var primaryBalance: (amount: Double, currencyCode: String)? {
         guard let balance = balance?.first, let amount = Double(balance.amount) else { return nil }
         return (amount, balance.currencyCode)
     }
 
-    /// Prefers `medium` (matches the balance card's small avatar circle);
-    /// falls back to whichever other size Splitwise did include. Nil for a
-    /// friend with no `picture` at all, which the avatar view falls back on
-    /// with the plain `Const.Symbol.person` placeholder.
+    /// Prefers `medium`, matching the balance card's avatar circle, and falls back
+    /// to whichever other size Splitwise included.
     var avatarURL: URL? {
         guard let urlString = picture?.medium ?? picture?.small ?? picture?.large else { return nil }
         return URL(string: urlString)
@@ -84,18 +73,15 @@ nonisolated struct SplitwiseBalance: Codable {
 }
 
 extension Array where Element == SplitwiseFriend {
-    /// Splits into (not settled up, settled up), each preserving relative
-    /// order — used to group friend pickers under an "Outstanding Balance"
-    /// section.
+    /// Splits into (not settled up, settled up), preserving relative order, so
+    /// friend pickers can group under an "Outstanding Balance" section.
     var partitionedByBalance: (outstanding: [SplitwiseFriend], settled: [SplitwiseFriend]) {
         (filter(\.hasOutstandingBalance), filter { !$0.hasOutstandingBalance })
     }
 }
 
-/// Non-group expense split between the signed-in user (who pays the full
-/// cost) and one friend, each owing their own share back. Currency mirrors
-/// the original Shortcut, which hardcoded EUR. Codable so PendingOperationQueue
-/// can persist one to disk while offline.
+/// Non-group expense split between the signed-in user (who fronts the full cost)
+/// and one friend. Codable so PendingOperationQueue can persist one while offline.
 nonisolated struct SplitwiseExpenseRequest: Codable {
     let costCents: Int
     let description: String
@@ -104,9 +90,8 @@ nonisolated struct SplitwiseExpenseRequest: Codable {
     let payerOwedCents: Int
     let friendUserId: Int
     let friendOwedCents: Int
-    /// ISO-8601 date string. Omitted (nil) means "now", which is every call
-    /// site's intent except the statement-file-import flow, where the
-    /// expense should carry the transaction's actual date instead of today.
+    /// ISO-8601. nil means "now" — only the statement-file import sets it, to
+    /// carry the transaction's own date instead of today's.
     let date: String?
 
     var asJSONObject: [String: Any] {
@@ -129,18 +114,14 @@ nonisolated struct SplitwiseExpenseRequest: Codable {
     }
 }
 
-/// Edit of an expense that already exists on Splitwise — the payload for
-/// `update_expense/{id}`, sent from the expense detail screen after the total
-/// or someone's share was changed. Distinct from `SplitwiseExpenseRequest`
-/// above in more than the endpoint: that one only ever describes the shape
-/// Relay itself creates (the signed-in user fronts the whole cost, split with
-/// exactly one friend), whereas an expense being edited can have any number
-/// of participants and payers, and Splitwise overwrites *every* share as soon
-/// as one is supplied — so all of them travel together here.
+/// The payload for `update_expense/{id}`. Distinct from `SplitwiseExpenseRequest`
+/// in more than the endpoint: that one only describes the shape Relay creates,
+/// whereas an edited expense can have any number of participants and payers — and
+/// Splitwise overwrites *every* share as soon as one is supplied, so they all
+/// travel together here.
 nonisolated struct SplitwiseExpenseUpdateRequest {
-    /// One participant's new shares. `paidCents` is what they fronted,
-    /// `owedCents` the portion they're responsible for; Splitwise requires
-    /// each of those to add up to `costCents` across all participants.
+    /// Splitwise requires both `paidCents` and `owedCents` to add up to
+    /// `costCents` across all participants.
     struct UserShare {
         let userId: Int
         let paidCents: Int
@@ -150,15 +131,14 @@ nonisolated struct SplitwiseExpenseUpdateRequest {
     let costCents: Int
     let description: String
     let currencyCode: String
-    /// Passed back exactly as Splitwise reported it (0 for a personal
-    /// expense) — `update_expense` treats a missing/zero `group_id` as "not
-    /// in a group", which would move a group expense out of its group.
+    /// Passed back exactly as Splitwise reported it: `update_expense` reads a
+    /// missing `group_id` as "not in a group", moving a group expense out of it.
     let groupId: Int
     let users: [UserShare]
 
     var asJSONObject: [String: Any] {
-        // `date` is deliberately absent: update_expense leaves out-of-payload
-        // fields alone, and this screen doesn't edit the date.
+        // `date` is deliberately absent — update_expense leaves out-of-payload
+        // fields alone, and this screen doesn't edit it.
         var object: [String: Any] = [
             "cost": splitwiseDecimalString(costCents),
             "description": description,
@@ -174,9 +154,8 @@ nonisolated struct SplitwiseExpenseUpdateRequest {
     }
 }
 
-/// Splitwise takes amounts as decimal strings with at most two places.
-/// `String(format:)` rather than a locale-aware formatter on purpose: the API
-/// wants a `.` decimal separator whatever the device's locale does.
+/// `String(format:)` rather than a locale-aware formatter: the API wants a `.`
+/// decimal separator whatever the device's locale does.
 nonisolated private func splitwiseDecimalString(_ cents: Int) -> String {
     String(format: "%.2f", Double(cents) / Const.centsPerUnit)
 }
@@ -195,21 +174,17 @@ nonisolated struct SplitwiseCreateExpenseResponse: Codable {
     let errors: [String: [String]]?
 }
 
-/// `update_expense`'s body: the saved expense (Splitwise returns it as a
-/// one-element list) plus the same 200-with-`errors` failure channel
-/// `create_expense` uses. Both are Optional so a response that only carries
-/// one of them still decodes — see `SplitwiseService.updateExpense` for how a
-/// missing `expenses` is handled.
+/// The saved expense (returned as a one-element list) plus the same
+/// 200-with-`errors` failure channel `create_expense` uses. Both Optional so a
+/// response carrying only one of them still decodes.
 nonisolated struct SplitwiseUpdateExpenseResponse: Codable {
     let expenses: [SplitwiseExpense]?
     let errors: [String: [String]]?
 }
 
-/// `undelete_expense`'s body. Only `success` is modeled: Splitwise's
-/// accompanying `errors` field isn't documented with a stable shape for this
-/// endpoint (an object on failure, plausibly an empty array on success), and
-/// guessing wrong would fail the decode of an otherwise fine response — see
-/// `SplitwiseService.undeleteExpense` for how a failed decode is treated.
+/// Only `success` is modeled: this endpoint's `errors` field has no documented
+/// stable shape (an object on failure, plausibly an empty array on success), and
+/// guessing wrong would fail the decode of an otherwise fine response.
 nonisolated struct SplitwiseUndeleteExpenseResponse: Codable {
     let success: Bool?
 }

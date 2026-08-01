@@ -3,33 +3,26 @@
 //  Relay
 //
 //  Codable models for `get_notifications` (https://dev.splitwise.com) — the
-//  same recent-activity feed the Splitwise app shows under "Activity". Backs
-//  SplitwiseActivityView.
+//  activity feed behind SplitwiseActivityView.
 //
-//  Splitwise renders each entry itself and hands back a ready-made `content`
-//  string rather than structured fields, so the feed is display-only: there's
-//  nothing here to recompute an amount or a name from. The one thing Relay
-//  acts on is a deleted expense, which `restorableExpenseId` picks out of
-//  `type` + `source` so the row can offer "Restore".
+//  Splitwise hands back a ready-made `content` string rather than structured
+//  fields, so the feed is display-only. The one thing Relay acts on is a deleted
+//  expense, which `restorableExpenseId` picks out so the row can offer "Restore".
 //
 
 import Foundation
 
 nonisolated struct SplitwiseNotification: Codable, Identifiable {
     let id: Int
-    /// Kept as the raw Int rather than decoded straight into
-    /// `SplitwiseNotificationKind`: Splitwise documents the type list as
-    /// incomplete and says values may be added without warning, so a
-    /// non-failable Int keeps a future type from failing the whole response's
-    /// decode. `kind` resolves it where a name is actually needed.
+    /// A raw Int rather than a `SplitwiseNotificationKind`: Splitwise documents the
+    /// type list as incomplete, so this keeps a future value from failing the whole
+    /// response's decode. `kind` resolves it where a name is needed.
     let type: Int
     let createdAt: Date
-    /// HTML, limited by Splitwise to `<strong>`, `<strike>`, `<small>`,
-    /// `<br>` and `<font color="…">` — parsed for display by
-    /// `SplitwiseNotificationContent`.
+    /// HTML, limited by Splitwise to a documented handful of tags — parsed for
+    /// display by `SplitwiseNotificationContent`.
     let content: String
-    /// What the entry is about (an `"Expense"`, `"Group"`, …). Optional so an
-    /// entry Splitwise sends without one still decodes.
+    /// Optional so an entry Splitwise sends without one still decodes.
     let source: Source?
 
     struct Source: Codable {
@@ -39,30 +32,25 @@ nonisolated struct SplitwiseNotification: Codable, Identifiable {
 
     var kind: SplitwiseNotificationKind? { SplitwiseNotificationKind(rawValue: type) }
 
-    /// The expense this entry refers to, or nil when it's about something
-    /// else (a group, a friendship) — `source.id` alone isn't enough, since
-    /// it's a different id space per source type.
+    /// nil when the entry is about something else — `source.id` alone isn't enough,
+    /// being a different id space per source type.
     var expenseId: Int? {
         guard source?.type == "Expense" else { return nil }
         return source?.id
     }
 
-    /// The expense id `undelete_expense` can bring back, i.e. non-nil only
-    /// for an "expense deleted" entry that actually names an expense. Note a
-    /// *later* restore of the same expense doesn't clear this — Splitwise
-    /// leaves the original "deleted" entry in the feed — so callers pair it
-    /// with `alreadyRestored(_:)` below rather than using it alone.
+    /// Non-nil only for an "expense deleted" entry that names an expense. A later
+    /// restore doesn't clear it — Splitwise leaves the original "deleted" entry in
+    /// the feed — so callers pair it with `alreadyRestored(_:)` below.
     var restorableExpenseId: Int? {
         guard kind == .expenseDeleted else { return nil }
         return expenseId
     }
 }
 
-/// The documented `type` values (https://dev.splitwise.com). Splitwise notes
-/// this list is incomplete and may grow, which is why
-/// `SplitwiseNotification.type` stays an Int and this is only consulted
-/// through the failable `kind` — an unrecognized type still shows in the feed,
-/// just with the generic icon.
+/// The documented `type` values. Splitwise notes the list is incomplete, which is
+/// why `SplitwiseNotification.type` stays an Int and this is only reached through
+/// the failable `kind` — an unrecognized type still shows, with a generic icon.
 nonisolated enum SplitwiseNotificationKind: Int {
     case expenseAdded = 0
     case expenseUpdated = 1
@@ -81,10 +69,9 @@ nonisolated enum SplitwiseNotificationKind: Int {
     case groupCurrencyConversion = 14
     case friendCurrencyConversion = 15
 
-    /// Stands in for the icon Splitwise ships with each notification
-    /// (`image_url`), which Relay deliberately doesn't fetch — a remote image
-    /// per row would break the feed offline and doesn't match how the rest of
-    /// the app draws list rows (accent-tinted SF Symbol, see `RowLabel`).
+    /// Stands in for Splitwise's own `image_url`, which Relay doesn't fetch: a
+    /// remote image per row would break the feed offline and wouldn't match how the
+    /// rest of the app draws list rows.
     var systemImage: String {
         switch self {
         case .expenseAdded: "plus.circle"
@@ -106,10 +93,9 @@ nonisolated struct SplitwiseNotificationsResponse: Codable {
 }
 
 nonisolated extension Array where Element == SplitwiseNotification {
-    /// When each expense was most recently brought back, keyed by expense id.
-    /// Splitwise keeps the original "expense deleted" entry in the feed after
-    /// a restore and adds a separate "expense undeleted" one, so this is what
-    /// tells a delete entry apart from one that's already been undone.
+    /// When each expense was most recently restored. Splitwise keeps the original
+    /// "deleted" entry in the feed and adds a separate "undeleted" one, so this is
+    /// what tells a delete entry apart from one already undone.
     var latestRestoreDates: [Int: Date] {
         reduce(into: [:]) { result, notification in
             guard notification.kind == .expenseUndeleted, let expenseId = notification.expenseId else { return }

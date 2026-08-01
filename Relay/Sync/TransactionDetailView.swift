@@ -2,25 +2,17 @@
 //  TransactionDetailView.swift
 //  Relay
 //
-//  Unified detail screen for a single transaction, reached two ways:
+//  Unified detail screen for a single transaction:
 //
-//  - `.draft(id:)` — a tapped "Continue Adding Transaction" notification (or
-//    a draft row in TransactionDraftsView): loads the draft by id and routes
-//    to the editable continue flow (ContinueWalletTransactionView), or
-//    explains there's nothing left to do if it's already been resolved
-//    (completed elsewhere, or dismissed) since the notification fired.
-//  - `.history(_:)` — a tapped row in ContentView's "Recent" list: a
-//    read-only summary of an already-created YNAB transaction and/or
-//    Splitwise expense. No editing — re-adding stays on the row's context
-//    menu.
-//  - `.pending(_:)` — a tapped row in PendingQueueView: a read-only summary
-//    of a YNAB transaction or Splitwise expense still waiting to be sent.
+//  - `.draft(id:)` — routes to the editable continue flow, or explains there's
+//    nothing left to do if the draft was resolved since the notification fired.
+//  - `.history(_:)` — read-only summary of a created transaction/expense.
+//    Re-adding stays on the row's context menu.
+//  - `.pending(_:)` — read-only summary of one still waiting to be sent.
 //    Retry/delete stay on the row's swipe actions.
-//  - `.splitwiseExpense(_:)` — a tapped row in
-//    SplitwiseFriendTransactionsView: an expense fetched live from Splitwise
-//    (rather than one Relay itself created), whose total and per-person
-//    shares can be edited back onto Splitwise. Lives in
-//    SplitwiseExpenseDetailView.swift, next to the rest of the Splitwise code.
+//  - `.splitwiseExpense(_:)` — an expense fetched live from Splitwise, whose
+//    total and shares can be edited back onto it. Lives in
+//    SplitwiseExpenseDetailView.swift.
 //
 
 import SwiftUI
@@ -96,37 +88,28 @@ private struct DraftDetailContent: View {
 
 // MARK: - Shared layout
 
-/// Hero amount/service-icons/timestamp header, plus caller-supplied detail
-/// sections — the common shell behind `HistoryDetailContent`,
-/// `PendingDetailContent`, and `SplitwiseExpenseDetailView`. Mostly read-only
-/// screens, but not exclusively: history edits the merchant's payee mapping,
-/// and a Splitwise expense edits the hero amount itself (`editableAmount`).
+/// Hero amount/service-icons/timestamp header plus caller-supplied sections —
+/// the common shell behind `HistoryDetailContent`, `PendingDetailContent`, and
+/// `SplitwiseExpenseDetailView`.
 struct TransactionDetailContent<Sections: View>: View {
     let amount: String
-    /// Set to make the hero amount a text field bound to it, for the one
-    /// screen whose amount is editable. Nil renders `amount` as plain text.
+    /// Set to make the hero amount a bound text field; nil renders plain text.
     var editableAmount: Binding<String>? = nil
     let serviceIcons: [String]
-    /// When this transaction happened — shown as a single-unit relative time
-    /// (e.g. "1 day ago") alongside `serviceIcons`, live-updating via
-    /// `FuzzyDateText`. Its schedule backs off to a coarser tick interval
-    /// once the near-term buckets are past, so an open detail sheet doesn't
-    /// re-invalidate the view graph every second for a day-old transaction.
+    /// Rendered as a live-updating relative time via `FuzzyDateText`, whose tick
+    /// interval coarsens with age so an open sheet doesn't re-invalidate the view
+    /// graph every second for a day-old transaction.
     let date: Date
-    /// An optional icon + text line shown above the service-icons/timestamp
-    /// line — e.g. Splitwise's "Paid by" line. Nil shows nothing.
+    /// An icon + text line above the timestamp — e.g. Splitwise's "Paid by".
     var detailLine: (icon: String, text: String)? = nil
-    /// Row label + confirmation wording for the destructive action at the
-    /// bottom — "Discard" for a not-yet-sent operation, "Delete" for a live
-    /// Splitwise expense. Only meaningful when `onDestroy` is set.
+    /// "Discard" for a not-yet-sent operation, "Delete" for a live Splitwise
+    /// expense. Only meaningful when `onDestroy` is set.
     var destroyLabel: LocalizedStringKey = "Discard"
     var destroyConfirmationTitle: LocalizedStringKey = "Discard this transaction?"
-    /// Extra detail shown under the confirmation title — e.g. clarifying the
-    /// deletion is local-only, or that it also removes the expense on
-    /// Splitwise for everyone involved.
+    /// Extra detail under the confirmation title — e.g. that the deletion is
+    /// local-only, or that it removes the expense for everyone involved.
     var destroyConfirmationMessage: LocalizedStringKey? = nil
-    /// Called when the user confirms the destructive action. Nil hides the
-    /// section entirely.
+    /// Nil hides the destructive section entirely.
     var onDestroy: (() async -> Void)? = nil
     @ViewBuilder var sections: () -> Sections
 
@@ -135,10 +118,9 @@ struct TransactionDetailContent<Sections: View>: View {
             Section {
                 VStack(spacing: 4) {
                     if let editableAmount {
-                        // Same UIKit field the manual-entry amount uses, for
-                        // the matching 50pt heavy centered look — but never
-                        // auto-focusing: this screen opens on an amount that
-                        // already exists, to be read before it's changed.
+                        // Same UIKit field as manual entry for the matching look,
+                        // but never auto-focusing: this amount already exists,
+                        // and is to be read before it's changed.
                         InstantFocusTextField(text: editableAmount, placeholder: "0", autoFocuses: false)
                             .frame(maxWidth: .infinity)
                             .frame(height: 60)
@@ -193,17 +175,12 @@ struct TransactionDetailContent<Sections: View>: View {
 private struct HistoryDetailContent: View {
     let entry: TransactionHistoryEntry
 
-    /// The merchant's Payee/Template mapping as of when this screen opened —
-    /// resolved once at init (rather than a computed property re-reading
-    /// WalletTransactionConfigStore from disk on every body evaluation, e.g.
-    /// each keystroke in the Payee field) and refreshed in-place after a
-    /// successful save. Nil when the entry predates `merchant` being
-    /// recorded, or the mapping was since removed — either way there's
-    /// nothing to show or edit.
+    /// Resolved once at init rather than as a computed property, which would
+    /// re-read the config store from disk on every keystroke in the Payee field.
+    /// Nil when the entry predates `merchant` or the mapping was since removed.
     @State private var linkedInfo: WalletTransactionConfig.MerchantInfo?
-    /// Seeded once at init from `linkedInfo`'s payee name. Editable only for
-    /// a Splitwise entry with a resolvable merchant; unused (and the row
-    /// hidden) otherwise.
+    /// Editable only for a Splitwise entry with a resolvable merchant; the row is
+    /// hidden otherwise.
     @State private var payeeText: String
 
     @Environment(\.dismiss) private var dismiss
@@ -215,21 +192,16 @@ private struct HistoryDetailContent: View {
         _payeeText = State(initialValue: info?.payeeName ?? "")
     }
 
-    /// Whether the typed Payee differs from what's currently on record —
-    /// drives the Save bar, mirroring TemplateEditView's `hasChanges`.
+    /// Drives the Save bar, mirroring TemplateEditView's `hasChanges`.
     private var hasPayeeChanges: Bool {
         guard let info = linkedInfo else { return false }
         let trimmed = payeeText.trimmingCharacters(in: .whitespaces)
         return !trimmed.isEmpty && trimmed != info.payeeName
     }
 
-    /// What the automation was actually handed, which the Payee/Description
-    /// row below is only the tidied-up form of — often the same string (a
-    /// merchant filed under a template starts out as its own payee), and
-    /// shown either way. Sits under the amount rather than in the card: it's
-    /// what this entry *was*, like Splitwise's "Paid by", not another field
-    /// of it. Nil for a manual/re-add entry, or one recorded before
-    /// `merchant` was.
+    /// What the automation was handed, which the Payee row below is the tidied-up
+    /// form of. Sits under the amount rather than in the card: it's what this
+    /// entry *was*, like Splitwise's "Paid by", not another field of it.
     private var merchantDetailLine: (icon: String, text: String)? {
         guard let merchant = entry.merchant, !merchant.isEmpty else { return nil }
         return ("storefront", merchant)
@@ -252,10 +224,9 @@ private struct HistoryDetailContent: View {
                 }
                 .cardRowBackground()
 
-                // Only for a Splitwise wallet-automation entry with a still-
-                // resolvable merchant mapping — description and payee are the
-                // same value at creation time, but the Payee field here edits
-                // the merchant's *go-forward* mapping, not this frozen entry.
+                // Description and payee are the same value at creation time, but
+                // this field edits the merchant's *go-forward* mapping rather
+                // than the frozen entry.
                 if entry.service == .splitwise, let info = linkedInfo {
                     DraftDetailRow(icon: Const.Symbol.template, title: "Template", isEditable: false) {
                         Text(info.templateName)
@@ -295,11 +266,9 @@ private struct HistoryDetailContent: View {
                 }
             }
 
-            // Later automation runs recognised as this same purchase and
-            // dropped (see TransactionClaim) — the only place the dedupe is
-            // inspectable after the fact, and the merchant string each run
-            // was given is what shows whether the match was right. If one
-            // wasn't, "Re-add" on this row is the way to put it back.
+            // Runs dropped as duplicates of this one (see TransactionClaim) — the
+            // only place the dedupe is inspectable after the fact, and each run's
+            // merchant string is what shows whether the match was right.
             if !entry.suppressed.isEmpty {
                 Section("Duplicates Skipped") {
                     ForEach(entry.suppressed) { run in

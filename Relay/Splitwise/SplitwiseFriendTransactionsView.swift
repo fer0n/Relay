@@ -2,41 +2,33 @@
 //  SplitwiseFriendTransactionsView.swift
 //  Relay
 //
-//  Pushed from ContentView's Splitwise balance card — a read-only history of
-//  expenses shared with the default friend. Reuses TransactionSummaryRow for
-//  each row and TransactionDetailView for the tapped-row detail, same as
-//  ContentView's own "Recent" list, instead of hand-rolling either.
+//  Pushed from ContentView's Splitwise balance card — the history of expenses
+//  shared with one friend, reusing the same row/detail views as ContentView's
+//  own "Recent" list.
 //
 
 import SwiftUI
 
 struct SplitwiseFriendTransactionsView: View {
-    /// The friend as ContentView had them cached at push time — the source
-    /// of truth for identity (id, name) and the initial balance shown before
-    /// the first live fetch here.
+    /// Cached at push time — the source of truth for identity, and the balance
+    /// shown before the first live fetch here.
     let friend: SplitwiseFriend
 
     @State private var expenses: [SplitwiseExpense] = []
     @State private var loadError: String?
     @State private var selectedExpense: SplitwiseExpense?
     @State private var deleteError: String?
-    /// Set once `load()` re-fetches the friend list, so the balance card at
-    /// the top tracks the same data that refreshes ContentView's own card
-    /// rather than staying frozen on the push-time snapshot.
+    /// Set once `load()` re-fetches, so the balance card doesn't stay frozen on
+    /// the push-time snapshot.
     @State private var refreshedFriend: SplitwiseFriend?
-    /// When this friend's expenses were last live-fetched — passed to the
-    /// balance card's "Last refreshed …" line, same as ContentView's card.
+    /// Feeds the balance card's "Last refreshed …" line.
     @State private var lastRefreshedAt: Date?
-    /// Set by the swipe action's "Delete" button to gate a confirmation
-    /// before actually deleting — attached to the row itself (not the swipe
-    /// button) so the dialog gets the correct appear transition on iOS 26;
-    /// anchoring it to a control inside `.swipeActions` animates wrong since
-    /// that control is already being torn down as the swipe closes.
+    /// The confirmation dialog is attached to the row itself, not the swipe
+    /// button: on iOS 26 a dialog anchored to a control inside `.swipeActions`
+    /// animates wrong, since that control is torn down as the swipe closes.
     @State private var expensePendingDelete: SplitwiseExpense?
     @Namespace private var detailNamespace
 
-    /// The freshest friend we have: the live-refreshed record if `load()` has
-    /// run, otherwise the push-time snapshot.
     private var displayFriend: SplitwiseFriend { refreshedFriend ?? friend }
 
     var body: some View {
@@ -104,9 +96,8 @@ struct SplitwiseFriendTransactionsView: View {
                 expenses = SplitwiseExpenseCacheStore.load(friendId: friend.id) ?? []
             }
             lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
-            // Navigating away and back recreates this view, re-running
-            // `.task`; load(force: false) throttles each fetch on its own
-            // cache staleness so that doesn't hit the API on every visit.
+            // Navigating away and back re-runs this `.task`; load(force: false)
+            // throttles on cache staleness so that doesn't hit the API each time.
             await load(force: false)
         }
         .sheet(item: $selectedExpense) { expense in
@@ -143,39 +134,32 @@ struct SplitwiseFriendTransactionsView: View {
         )
     }
 
-    /// The signed share for the current user (e.g. "-12.50" if they owe,
-    /// "12.50" if they're owed), falling back to the plain unsigned cost if
-    /// the signed-in user's id isn't cached yet.
+    /// Negative when the signed-in user owes. Falls back to the plain unsigned
+    /// cost when their id isn't cached yet.
     private func amountText(for expense: SplitwiseExpense) -> String {
         let amount = expense.currentUserNetBalance ?? Double(expense.cost)
         return amount?.asMoneyString ?? expense.cost
     }
 
-    /// Accent color when the signed-in user is owed money on this expense (a
-    /// positive net balance, "get back"); the default neutral text color
-    /// when they owe (negative) or the sign isn't known yet — matches the
-    /// balance card's convention (SplitwiseBalanceCard.balanceColor).
+    /// Accent when the signed-in user is owed, neutral otherwise — matching
+    /// `SplitwiseBalanceCard.balanceColor`.
     private func amountColor(for expense: SplitwiseExpense) -> Color? {
         guard let net = expense.currentUserNetBalance, net > 0 else { return nil }
         return Color.accentColor
     }
 
-    /// Refreshes the expense list and the friend balance, each throttled on
-    /// its own cache's staleness unless `force` (pull-to-refresh) bypasses it.
-    /// Gating them independently means arriving from ContentView /
-    /// SplitwiseBalancesView — which may have just refreshed the friend list —
-    /// doesn't redundantly re-fetch it, and a fresh expense cache doesn't
-    /// block refreshing a stale balance (or vice versa).
+    /// Refreshes the expense list and the friend balance, each throttled on its
+    /// own cache's staleness unless `force`. Gating them independently means
+    /// arriving from a screen that just refreshed the friend list doesn't re-fetch
+    /// it, and a fresh cache on one side doesn't block the other.
     private func load(force: Bool) async {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             loadError = "Not connected to Splitwise."
             return
         }
         // Backfills SplitwiseCurrentUserStore for accounts signed in before
-        // SplitwiseAuthService started warming it on sign-in — without it,
-        // currentUserNetBalance can't resolve, so every row falls back to
-        // the plain unsigned cost (no sign, no color). Only runs once ever,
-        // since the guard is "not cached yet", not a staleness check.
+        // sign-in started warming it — without it every row falls back to the
+        // plain unsigned cost. Runs once ever: the guard is "not cached yet".
         if SplitwiseCurrentUserStore.load() == nil,
            let user = try? await SplitwiseService.fetchCurrentUser(token: token) {
             try? SplitwiseCurrentUserStore.save(user)
@@ -190,23 +174,18 @@ struct SplitwiseFriendTransactionsView: View {
                 loadError = "Couldn't load transactions."
             }
         }
-        // The friend fetch refreshes the same SplitwiseFriendCacheStore that
-        // backs ContentView's balance card, so popping back shows an
-        // up-to-date balance (reloadMainListState re-reads that cache on pop).
-        // Non-fatal — the expense list is what this view is for, so only an
-        // expense failure surfaces an error above.
+        // Refreshes the same cache backing ContentView's balance card, so popping
+        // back shows an up-to-date balance. Non-fatal: the expense list is what
+        // this view is for, so only an expense failure surfaces an error.
         if force || SplitwiseFriendCacheStore.isStale,
            let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
             refreshedFriend = updated
         }
     }
 
-    /// Saves an edited `expense` (new total and/or shares) to Splitwise, then
-    /// puts the saved version back into the in-memory list and the cache so
-    /// this list — and ContentView's balance card, via the friend refresh
-    /// below — reflect it straight away rather than after the next staleness
-    /// window. Mirrors `delete(_:)`; the detail sheet builds the request and
-    /// surfaces any error this throws.
+    /// Writes the saved version back into the list and cache so both reflect it
+    /// straight away rather than after the next staleness window. The detail sheet
+    /// builds the request and surfaces any error this throws.
     private func update(_ expense: SplitwiseExpense, with request: SplitwiseExpenseUpdateRequest) async throws {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             throw SplitwiseAPIError.unauthorized
@@ -220,8 +199,8 @@ struct SplitwiseFriendTransactionsView: View {
             }
             SplitwiseExpenseCacheStore.save(friendId: friend.id, expenses)
         } else if let refetched = try? await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token) {
-            // Saved fine, but Splitwise didn't hand back the stored expense —
-            // re-fetch rather than leaving the row showing pre-edit values.
+            // Saved, but Splitwise didn't hand back the stored expense — re-fetch
+            // rather than leave the row on pre-edit values.
             withAnimation { expenses = refetched }
             lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
         }
@@ -230,13 +209,8 @@ struct SplitwiseFriendTransactionsView: View {
         }
     }
 
-    /// Deletes `expense` on Splitwise, then drops it from the in-memory list
-    /// and re-saves the cache so popping back to this list (or ContentView's
-    /// balance card) doesn't show stale data. Also force-refreshes the
-    /// friend's balance right away — deleting an expense changes it, and
-    /// waiting on SplitwiseFriendCacheStore's normal staleness window would
-    /// leave the balance card showing a stale amount until it happens to
-    /// expire.
+    /// Force-refreshes the friend's balance right away, since a deletion changes
+    /// it and the normal staleness window would leave the balance card stale.
     private func delete(_ expense: SplitwiseExpense) async throws {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             throw SplitwiseAPIError.unauthorized
@@ -249,9 +223,8 @@ struct SplitwiseFriendTransactionsView: View {
         }
     }
 
-    /// Row swipe action's entry point into `delete(_:)` — unlike the sheet's
-    /// `onDelete`, a swipe action isn't already inside a `do/catch` showing
-    /// its own alert, so this adds that here.
+    /// A swipe action isn't already inside a `do/catch` showing its own alert, as
+    /// the sheet's `onDelete` is, so this adds one.
     private func deleteWithSwipe(_ expense: SplitwiseExpense) async {
         do {
             try await delete(expense)

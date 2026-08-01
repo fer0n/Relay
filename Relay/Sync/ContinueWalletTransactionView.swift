@@ -2,22 +2,15 @@
 //  ContinueWalletTransactionView.swift
 //  Relay
 //
-//  In-app equivalent of AddWalletTransactionToYNABIntent.perform() and
-//  AddWalletTransactionToSplitwiseIntent.perform(), reached by tapping a
-//  "Continue Adding Transaction" notification (or a draft row in
-//  TransactionDraftsView) after a Shortcuts run got interrupted before
-//  finishing. A single unified form that handles both wallet draft kinds —
-//  a `.ynabWallet` draft shows the YNAB fields (payee, account, category)
-//  plus an optional Split section, while a `.splitwiseWallet` draft (the
-//  leftover-split half of a YNAB run, or a Splitwise-primary run) hides the
-//  YNAB-only fields and shows just the split.
+//  In-app equivalent of the wallet intents' perform(), reached from a draft
+//  reminder after a Shortcuts run was interrupted. One form for both draft
+//  kinds: a `.ynabWallet` draft shows the YNAB fields plus an optional Split
+//  section, a `.splitwiseWallet` one shows just the split.
 //
-//  All the field state and load/submit work lives in
-//  ContinueWalletTransactionModel; this view is just the SwiftUI layout that
-//  binds to it. Unlike the intents, this doesn't replicate auto-match
-//  patterns or multi-merchant template linking — creating a template here
-//  just links this one merchant, using the payee/description as the template
-//  name. Anything fancier can still be set up afterwards in Templates.
+//  All field state and load/submit work lives in
+//  ContinueWalletTransactionModel; this is just the layout that binds to it.
+//  Creating a template here links only this one merchant, named after the
+//  payee — auto-match patterns and the rest are set up in Templates.
 //
 
 import SwiftUI
@@ -28,8 +21,7 @@ struct ContinueWalletTransactionView: View {
     @State private var editingTemplateName: String?
     @Environment(\.dismiss) private var dismiss
 
-    /// Called when the user taps "Discard" — typically deletes the draft and
-    /// dismisses. Nil hides the section entirely (e.g. manual entries).
+    /// Nil hides the Discard section entirely, e.g. for manual entries.
     let onDiscard: (() -> Void)?
 
     init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil) {
@@ -52,11 +44,9 @@ struct ContinueWalletTransactionView: View {
         .toolbar {
             if model.isManual {
                 ToolbarItem(placement: .principal) {
-                    // Only a real choice when both services are connected —
-                    // with just one connected, the other option in the menu
-                    // would just lead to a "Connect ___" dead end, so show a
-                    // plain (non-interactive) label naming the only usable
-                    // service instead.
+                    // With one service connected the menu's other option would
+                    // only lead to a "Connect ___" dead end, so show a plain
+                    // label naming the usable one instead.
                     if model.ynabAuth.isAuthenticated, model.splitwiseAuth.isAuthenticated {
                         Menu {
                             Picker("Type", selection: manualModeBinding) {
@@ -138,13 +128,10 @@ struct ContinueWalletTransactionView: View {
                     )
                     MemoFieldRow(text: $model.memoText)
                 } else {
-                    // Splitwise-primary: a shortcut draft splits the one field
-                    // into Payee (the merchant's clean name, stored on the
-                    // merchant→template mapping) and Description (the expense
-                    // text, defaulting to the payee). A manual entry has no
-                    // merchant to name, so it keeps the single Description
-                    // field. Friend/split/share follow since they *are* the
-                    // transaction.
+                    // A shortcut draft splits the one field into Payee (the
+                    // merchant's clean name, stored on the merchant→template
+                    // mapping) and Description (the expense text). A manual entry
+                    // has no merchant to name, so it keeps the single field.
                     if model.isManual {
                         payeeTextRow(title: "Description", placeholder: String(localized: "Description"))
                     } else {
@@ -187,10 +174,9 @@ struct ContinueWalletTransactionView: View {
         .onChange(of: model.templateChoice) { _, newTemplate in
             model.applyTemplate(newTemplate)
         }
-        // Description mirrors Payee (like a template's pattern mirrors its
-        // payee name, see TemplateEditSections) until typed into directly.
-        // `initial: true` also seeds it on first appearance, covering a
-        // resolved-merchant draft that opens with Payee already filled in.
+        // Description mirrors Payee until typed into directly. `initial: true`
+        // also seeds it on first appearance, covering a resolved-merchant draft
+        // that opens with Payee already filled in.
         .onChange(of: model.payeeText, initial: true) { _, newValue in
             guard !model.isDescriptionManuallyEdited else { return }
             model.descriptionText = newValue
@@ -227,24 +213,19 @@ struct ContinueWalletTransactionView: View {
 
     // MARK: - Rows
 
-    /// Uses `InstantFocusTextField` rather than a plain `TextField` focused in
-    /// `.onAppear`: focusing through `@FocusState` doesn't raise the keyboard
-    /// until the sheet's presentation transition has committed, which is a
-    /// visible delay on every open. See that file for the details.
-    ///
-    /// A re-add skips that automatic focus — its amount is already filled in
-    /// and the form is there to be reviewed, so opening straight into the
-    /// keyboard would just cover the fields being checked.
+    /// Uses `InstantFocusTextField` rather than `@FocusState`, which doesn't raise
+    /// the keyboard until the sheet's presentation transition has committed — a
+    /// visible delay on every open. A re-add skips the automatic focus, since its
+    /// amount is already filled in and the form is there to be reviewed.
     private var manualAmountField: some View {
         InstantFocusTextField(text: $model.amountText, placeholder: "0", autoFocuses: !model.isPrefilled)
             .frame(maxWidth: .infinity)
             .frame(height: 60)
     }
 
-    /// The `payeeText`-bound text field with its auto-match suggestion bar —
-    /// the YNAB payee, the Splitwise Payee, or a manual Splitwise entry's
-    /// single Description field. `allowsEmpty` lets the shortcut Splitwise
-    /// Payee fall back to its merchant placeholder without being flagged.
+    /// The `payeeText`-bound field with its auto-match suggestion bar.
+    /// `allowsEmpty` lets a shortcut draft's Payee fall back to its merchant
+    /// placeholder without being flagged.
     private func payeeTextRow(title: LocalizedStringKey, placeholder: String, allowsEmpty: Bool = false) -> some View {
         PayeeFieldRow(
             title: title,
@@ -258,10 +239,8 @@ struct ContinueWalletTransactionView: View {
         )
     }
 
-    /// The Splitwise expense Description field (shortcut drafts only). No
-    /// suggestion bar — payee-name autocomplete belongs to the Payee field
-    /// above it — and its placeholder mirrors the effective payee so leaving
-    /// it blank files the expense under that name.
+    /// Shortcut drafts only. No suggestion bar — payee-name autocomplete belongs
+    /// to the Payee field above it.
     private var descriptionRow: some View {
         PayeeFieldRow(
             title: "Description",

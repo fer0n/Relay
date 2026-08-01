@@ -5,38 +5,32 @@
 //  Turns a Splitwise notification's `content` HTML into an AttributedString
 //  for SplitwiseActivityView's rows.
 //
-//  Hand-rolled rather than going through NSAttributedString's `.html`
-//  document type: that pulls in the full WebKit-backed HTML importer, has to
-//  run on the main thread, and takes milliseconds per string — far too much
-//  for 50 list rows. Splitwise also documents the exact, tiny tag set it
-//  emits (`<strong>`, `<strike>`, `<small>`, `<br>`, `<font color="…">`), so
-//  a single pass over the string covers all of it.
+//  Hand-rolled rather than NSAttributedString's `.html` document type, which
+//  pulls in the WebKit-backed importer, must run on the main thread, and takes
+//  milliseconds per string — far too much for 50 list rows. Splitwise documents
+//  the exact, tiny tag set it emits, so one pass covers all of it.
 //
-//  Deliberately lenient, since this is untrusted remote text: an unknown tag
-//  is dropped while its inner text is kept, a stray `<` with no `>` is
-//  treated as a literal character, and an unbalanced closing tag is ignored.
-//  Worst case a run renders unstyled — never dropped or crashed.
+//  Deliberately lenient, since this is untrusted remote text: an unknown tag is
+//  dropped but its inner text kept, a stray `<` renders literally, and an
+//  unbalanced closing tag is ignored. Worst case a run renders unstyled.
 //
 
 import SwiftUI
 
 nonisolated enum SplitwiseNotificationContent {
-    /// The styles that can be in effect for a run of text, as a stack — so
-    /// nesting (`<strike><strong>…</strong></strike>`, which Splitwise emits
-    /// for a deleted expense's description) composes instead of the inner tag
-    /// replacing the outer one.
+    /// A stack, so nesting composes instead of the inner tag replacing the outer
+    /// one — Splitwise emits `<strike><strong>…</strong></strike>` for a deleted
+    /// expense's description.
     private enum Style {
         case bold
         case strikethrough
         case small
-        /// Nil for a `<font>` whose color Relay doesn't translate — it still
-        /// belongs on the stack so its `</font>` pops itself, but it leaves the
-        /// run's color alone rather than resetting it and overriding an
-        /// enclosing `<small>`.
+        /// Nil for a `<font>` whose color Relay doesn't translate: it still belongs
+        /// on the stack so its `</font>` pops itself, but it must leave the run's
+        /// color alone rather than overriding an enclosing `<small>`.
         case color(Color?)
 
-        /// The canonical opening tag this style came from, so a closing tag
-        /// pops the matching entry rather than whatever happens to be on top.
+        /// So a closing tag pops the matching entry rather than whatever's on top.
         var tagName: String {
             switch self {
             case .bold: "strong"
@@ -50,8 +44,7 @@ nonisolated enum SplitwiseNotificationContent {
     static func attributedString(from html: String) -> AttributedString {
         var result = AttributedString()
         var styles: [Style] = []
-        /// Literal characters seen since the last tag, flushed as one run
-        /// once the styles are about to change.
+        /// Flushed as one run once the styles are about to change.
         var pending = ""
 
         func flushPending() {
@@ -73,17 +66,15 @@ nonisolated enum SplitwiseNotificationContent {
             let tag = html[html.index(after: index)..<end].trimmingCharacters(in: .whitespaces)
             if tag.hasPrefix("/") {
                 let name = canonicalName(of: String(tag.dropFirst()))
-                // Innermost first, and only when it's actually open — a
-                // stray closing tag is a no-op rather than popping something
-                // it didn't open.
+                // Innermost first, and only when actually open — a stray closing
+                // tag mustn't pop something it didn't open.
                 if let match = styles.lastIndex(where: { $0.tagName == name }) {
                     styles.remove(at: match)
                 }
             } else if let opened = style(forTag: tag) {
                 styles.append(opened)
             } else if canonicalName(of: tag) == "br" {
-                // Not a style, and self-closing — emit the break directly
-                // rather than pushing anything onto the stack.
+                // Not a style, and self-closing — nothing to push.
                 result += AttributedString("\n")
             }
             index = html.index(after: end)
@@ -92,14 +83,13 @@ nonisolated enum SplitwiseNotificationContent {
         return result
     }
 
-    /// The `>` closing the tag opened by the `<` at `start`, or nil when that
-    /// `<` isn't opening a tag after all and should render as itself.
+    /// The `>` closing the tag at `start`, or nil when that `<` isn't opening a
+    /// tag and should render as itself.
     ///
-    /// Both rejections matter for an unescaped `<` in the middle of real text —
-    /// an expense called "1 < 2 but 3 > 2", say. Requiring a letter or `/` next
-    /// rules out the `<` there, and stopping the search at the next `<` keeps a
-    /// genuinely unclosed tag from swallowing the rest of the string up to some
-    /// unrelated `>` much later on.
+    /// Both rejections matter for an unescaped `<` in real text — an expense
+    /// called "1 < 2 but 3 > 2", say. Requiring a letter or `/` next rules that
+    /// one out, and stopping at the next `<` keeps a genuinely unclosed tag from
+    /// swallowing the rest of the string up to some unrelated `>`.
     private static func tagEnd(in html: String, openedAt start: String.Index) -> String.Index? {
         let nameStart = html.index(after: start)
         guard nameStart < html.endIndex, html[nameStart].isLetter || html[nameStart] == "/" else { return nil }
@@ -107,9 +97,8 @@ nonisolated enum SplitwiseNotificationContent {
         return end
     }
 
-    /// The style an opening tag turns on, or nil for a tag that carries no
-    /// styling (`<br>`) or that Relay doesn't recognize — in which case only
-    /// the tag itself is dropped and its inner text still renders.
+    /// Nil for a tag carrying no styling (`<br>`) or one Relay doesn't recognize,
+    /// in which case only the tag is dropped and its inner text still renders.
     private static func style(forTag tag: String) -> Style? {
         switch canonicalName(of: tag) {
         case "strong": .bold
@@ -120,9 +109,8 @@ nonisolated enum SplitwiseNotificationContent {
         }
     }
 
-    /// The tag's name, lowercased, with any attributes and self-closing slash
-    /// stripped — and the HTML synonyms Splitwise's documented set doesn't
-    /// promise to avoid folded onto one spelling, so `</b>` closes `<strong>`.
+    /// Lowercased, with attributes and any self-closing slash stripped, and HTML
+    /// synonyms folded onto one spelling so `</b>` closes `<strong>`.
     private static func canonicalName(of tag: String) -> String {
         let name = tag.prefix { !$0.isWhitespace && $0 != "/" }.lowercased()
         switch name {
@@ -136,9 +124,8 @@ nonisolated enum SplitwiseNotificationContent {
         var container = AttributeContainer()
         for style in styles {
             switch style {
-            // `inlinePresentationIntent` rather than an explicit bold font so
-            // the run keeps whatever font the row applies from outside,
-            // exactly as a Markdown-parsed AttributedString would.
+            // `inlinePresentationIntent` rather than an explicit bold font, so the
+            // run keeps whatever font the row applies from outside.
             case .bold: container.inlinePresentationIntent = .stronglyEmphasized
             case .strikethrough: container.strikethroughStyle = .single
             case .small: container.foregroundColor = .secondary
@@ -148,22 +135,15 @@ nonisolated enum SplitwiseNotificationContent {
         return container
     }
 
-    /// Translates the hex in `<font color="#5BC5A7">` into Relay's palette
-    /// rather than using it directly: the greens Splitwise puts on money coming
-    /// back become the accent color — the same signal
-    /// `SplitwiseBalanceCard.balanceColor` gives a positive balance — and the
-    /// reds/oranges on money owed become `.red`. Nil for everything else (the
-    /// greys on secondary detail, named colors, unparsable values), leaving the
-    /// run at the row's own text color.
-    ///
-    /// Translating also keeps these legible: Splitwise chooses its colors
-    /// against its own white background, so a literal hex can land anywhere
-    /// from washed-out to invisible in dark mode, while both of these adapt.
+    /// Maps Splitwise's greens (money coming back) to the accent color and its
+    /// reds/oranges (money owed) to `.red`, rather than using the hex directly:
+    /// Splitwise picks its colors against a white background, so a literal hex
+    /// lands anywhere from washed-out to invisible in dark mode. Nil for
+    /// everything else, leaving the run at the row's own text color.
     ///
     /// Channels are compared against each other rather than matched to known
-    /// hexes, since Splitwise uses more than one shade of each and doesn't
-    /// document them as fixed. The margin keeps a near-grey from reading as
-    /// either.
+    /// hexes, since Splitwise uses several shades and documents none as fixed.
+    /// The margin keeps a near-grey from reading as either.
     private static func semanticColor(inFontTag tag: String) -> Color? {
         guard let colorAttribute = tag.range(of: "color", options: .caseInsensitive) else { return nil }
         let value = tag[colorAttribute.upperBound...].drop { $0 == " " || $0 == "=" || $0 == "\"" || $0 == "'" || $0 == "#" }

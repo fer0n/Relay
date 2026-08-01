@@ -6,24 +6,18 @@
 import Foundation
 
 nonisolated enum CacheStore {
-    /// Shared throttle for the on-disk caches: below this age, a view's
-    /// re-run `.task` (or a picker re-opening) shows the cache instead of
-    /// re-fetching — keeping navigation cheap and staying well under the
-    /// YNAB/Splitwise rate limits. Pull-to-refresh bypasses it. Kept here so
-    /// the stores can't drift out of sync.
+    /// Below this age a re-run `.task` shows the cache instead of re-fetching,
+    /// keeping navigation cheap and staying under the API rate limits.
+    /// Pull-to-refresh bypasses it.
     static let refreshInterval: TimeInterval = 5 * 60
 
-    /// True once `interval` has passed since `lastFetchedAt`, or there's
-    /// never been a fetch (nil).
     static func isStale(_ lastFetchedAt: Date?, interval: TimeInterval = refreshInterval) -> Bool {
         guard let lastFetchedAt else { return true }
         return Date().timeIntervalSince(lastFetchedAt) > interval
     }
 
-    /// Live fetch, updating the cache on success; falls back to the cache
-    /// on failure, only rethrowing when the cache is also empty. Shared by
-    /// every "fetch live, fall back to disk cache" store (YNAB accounts/
-    /// categories, Splitwise friends).
+    /// Live fetch, updating the cache on success and falling back to it on
+    /// failure — only rethrowing when the cache is empty too.
     static func fetch<T>(
         load: () -> T?,
         save: (T) -> Void,
@@ -40,12 +34,9 @@ nonisolated enum CacheStore {
     }
 }
 
-/// A file-backed cache of a single `Codable` value plus the timestamp of its
-/// last successful live fetch. Collapses the YNAB category/account and
-/// Splitwise friend caches — previously identical `load`/`save`/`fetch`
-/// boilerplate — into one type, and gives them all a uniform `isStale` so
-/// every call site can throttle re-fetching the same way. (The expense cache
-/// stays separate: it's a single slot keyed by friend id, not a plain list.)
+/// A file-backed cache of a single `Codable` value plus the timestamp of its last
+/// successful live fetch, so every call site throttles re-fetching the same way.
+/// (The expense cache stays separate — it's a slot keyed by friend id.)
 nonisolated struct FileCache<Value: Codable> {
     private let fileURL: URL
     private let lastFetchedKey: String
@@ -56,26 +47,20 @@ nonisolated struct FileCache<Value: Codable> {
         lastFetchedKey = "cache.\(fileName).lastFetchedAt"
     }
 
-    /// In-memory copy of the last decoded value, so repeated `load()`s don't
-    /// re-read and re-decode the whole file. `load()` is called from view
-    /// bodies — every row of ContentView's "Recent" list resolves a category
-    /// or friend name through it (see `PendingOperation.Payload.detail`) — so
-    /// a fresh read plus a full decode per call meant a dozen file reads per
-    /// body pass, which showed up as dropped frames while scrolling.
+    /// `load()` is called from view bodies — every row of ContentView's "Recent"
+    /// list resolves a name through it — so a read plus full decode per call meant
+    /// a dozen file reads per body pass, and dropped frames while scrolling.
     ///
-    /// Keyed on the file's modification date rather than only being
-    /// invalidated by `save()`: that costs one stat instead of a decode, and
-    /// stays honest if the file is ever replaced by something other than
-    /// this instance (a restore, a future intent) instead of silently
-    /// serving a stale value.
+    /// Keyed on the file's modification date rather than invalidated by `save()`:
+    /// that costs one stat instead of a decode, and stays honest if the file is
+    /// replaced by something other than this instance.
     private final class Memo: @unchecked Sendable {
         private let lock = NSLock()
         private var value: Value?
         private var modifiedAt: Date?
 
-        /// The memoized value, or nil when there isn't one for `date` and the
-        /// caller should decode. Only successful decodes are stored, so a nil
-        /// return is unambiguously a miss rather than a cached failure.
+        /// Only successful decodes are stored, so nil is unambiguously a miss
+        /// rather than a cached failure.
         func value(modifiedAt date: Date) -> Value? {
             lock.lock()
             defer { lock.unlock() }
@@ -91,8 +76,7 @@ nonisolated struct FileCache<Value: Codable> {
     }
 
     /// A fresh stat every call — `FileManager` doesn't cache these the way
-    /// `URL.resourceValues` can, which matters since this is exactly what
-    /// tells the memo the file changed underneath it.
+    /// `URL.resourceValues` can, and this is what tells the memo the file changed.
     private static func modificationDate(of url: URL) -> Date? {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false)) else { return nil }
         return attributes[.modificationDate] as? Date
@@ -114,38 +98,28 @@ nonisolated struct FileCache<Value: Codable> {
     func save(_ value: Value) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         let didWrite = (try? data.write(to: fileURL, options: .atomic)) != nil
-        // Only memo a value that actually reached disk — otherwise it'd be
-        // filed under the *previous* file's modification date and served as
-        // though it were the file's contents.
+        // Only memo a value that reached disk — otherwise it'd be filed under the
+        // *previous* file's modification date and served as its contents.
         if didWrite, let modifiedAt = Self.modificationDate(of: fileURL) {
             memo.store(value, modifiedAt: modifiedAt)
         }
         UserDefaults.standard.set(Date(), forKey: lastFetchedKey)
     }
 
-    /// When `save` last ran (i.e. the last successful live fetch), or nil if
-    /// never — e.g. shown as "… ago" on ContentView's balance card.
-    var lastFetchedAt: Date? {
+    /// The last successful live fetch — shown as "… ago" on the balance card.
+var lastFetchedAt: Date? {
         UserDefaults.standard.object(forKey: lastFetchedKey) as? Date
     }
 
-    /// True once `CacheStore.refreshInterval` has passed since the last live
-    /// fetch, or there's never been one.
-    var isStale: Bool { CacheStore.isStale(lastFetchedAt) }
+var isStale: Bool { CacheStore.isStale(lastFetchedAt) }
 
-    /// Live fetch through `CacheStore.fetch`: updates the cache + timestamp
-    /// on success, falls back to disk on failure.
-    func fetch(remote: () async throws -> Value) async throws -> Value {
+func fetch(remote: () async throws -> Value) async throws -> Value {
         try await CacheStore.fetch(load: load, save: save, remote: remote)
     }
 
-    /// Drops the cached file and its fetch timestamp — for signing out of the
-    /// service the data came from, so nothing read through its API outlives
-    /// the token that fetched it.
-    ///
-    /// The in-memory memo needs no separate clearing: it's keyed on the file's
-    /// modification date, and `load()` stats the file before consulting it, so
-    /// a deleted file can never be served from it.
+    /// For signing out, so nothing read through an API outlives the token that
+    /// fetched it. The in-memory memo needs no separate clearing: `load()` stats
+    /// the file before consulting it, so a deleted file can't be served from it.
     func delete() {
         try? FileManager.default.removeItem(at: fileURL)
         UserDefaults.standard.removeObject(forKey: lastFetchedKey)

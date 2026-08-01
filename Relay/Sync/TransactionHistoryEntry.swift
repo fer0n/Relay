@@ -2,17 +2,13 @@
 //  TransactionHistoryEntry.swift
 //  Relay
 //
-//  A YNAB transaction or Splitwise expense that was actually created,
-//  recorded by PendingSync (immediate creates) and PendingOperationQueue
-//  (synced-after-being-queued creates) so ContentView can show the last few
-//  as a quick "re-add" shortcut. Reuses PendingOperation's payload/service
-//  shape since it's the exact same YNAB/Splitwise request data.
+//  A YNAB transaction or Splitwise expense that was actually created, so
+//  ContentView can offer the last few as a quick "re-add". Reuses
+//  PendingOperation's payload/service shape, being the same request data.
 //
-//  A single wallet automation run can create both a YNAB transaction and a
-//  Splitwise split; those share a `groupId` so TransactionHistoryStore
-//  folds them into one entry (the YNAB transaction in `payload`, the
-//  Splitwise expense in `split`) shown as one combined row and re-added
-//  together, rather than as two separate entries.
+//  One wallet run can create both a YNAB transaction and a Splitwise split;
+//  those share a `groupId` so TransactionHistoryStore folds them into a single
+//  entry, shown as one row and re-added together.
 //
 
 import Foundation
@@ -22,35 +18,24 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     let createdAt: Date
     let summary: String
     let payload: PendingOperation.Payload
-    /// Shared by every write from the same wallet automation run, so the
-    /// YNAB transaction and its Splitwise split merge into one entry rather
-    /// than showing up as two. Nil for standalone (non-wallet) writes.
+    /// Shared by every write from the same run; nil for standalone writes.
     var groupId: UUID?
-    /// Set when this entry's YNAB transaction (`payload`) was created
-    /// alongside a Splitwise split in the same run — the two are shown as
-    /// one combined row and re-added together.
+    /// The Splitwise split created alongside this entry's YNAB transaction.
     var split: Split?
-    /// The Shortcuts-supplied merchant string this entry resolved from, when
-    /// created by a wallet automation run rather than a manual/re-add entry.
-    /// Nil for those, and for any entry recorded before this field existed
-    /// (Optional decodes to nil for a missing key, no tolerant init needed).
-    /// Shown under the amount in the detail view — the one place it appears,
-    /// deliberately not in the summary rows — and lets that view resolve the
-    /// current Payee/Template mapping for this merchant and write an edited
-    /// payee back to WalletTransactionConfig.
+    /// The Shortcuts-supplied merchant string this entry resolved from; nil for a
+    /// manual/re-add entry. Shown under the amount in the detail view — the one
+    /// place it appears, deliberately not in the summary rows — which also uses it
+    /// to resolve and edit the merchant's Payee/Template mapping.
     var merchant: String?
-    /// Later runs recognised as this same purchase arriving through a
-    /// second automation (Wallet vs. a bank notification) and therefore not
-    /// written — see TransactionClaim. They collapse into this entry rather
-    /// than becoming rows of their own, so re-adding this row is also the
-    /// "actually, add it anyway" escape hatch if a match was wrong.
+    /// Later runs dropped as duplicates of this one — see TransactionClaim. They
+    /// collapse into this entry rather than becoming rows of their own, so
+    /// re-adding is the "add it anyway" escape hatch when a match was wrong.
     ///
-    /// Non-optional with a default, which means the synthesized decoder
-    /// throws `keyNotFound` on entries written before this field existed and
-    /// `TransactionHistoryStore.load()` starts empty — a deliberate one-time
-    /// reset of at most `historyLimit` rows of re-add shortcuts, not worth a
-    /// tolerant decoder. (`WalletTransactionConfig` is the opposite case: it
-    /// holds mappings built up over months and does need one.)
+    /// Non-optional with a default, so the synthesized decoder throws
+    /// `keyNotFound` on older entries and history starts empty. A deliberate
+    /// one-time reset of at most `historyLimit` re-add shortcuts, not worth a
+    /// tolerant decoder — unlike `WalletTransactionConfig`, which holds mappings
+    /// built up over months.
     var suppressed: [SuppressedRun] = []
 
     struct Split: Codable {
@@ -65,8 +50,7 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
         }
     }
 
-    /// The second service icon/name shown for a combined YNAB+Splitwise
-    /// entry — nil for a plain single-service entry.
+    /// Nil for a plain single-service entry.
     var secondaryService: TransactionService? {
         split == nil ? nil : .splitwise
     }
@@ -76,8 +60,7 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
 
     var formattedAmount: String { payload.formattedAmount }
 
-    /// The row's "· detail" suffix: the YNAB category and, for a combined
-    /// entry, the friend's split share too.
+    /// The row's "· detail" suffix.
     var detail: String? {
         guard let split else { return payload.detail }
         let splitDetail = PendingOperation.Payload.splitwiseExpense(split.expense).detail
@@ -87,25 +70,21 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
 }
 
 nonisolated extension TransactionHistoryEntry {
-    /// YNAB category name for the primary transaction, resolved from the
-    /// local cache. Nil for a Splitwise-only entry, if no category was set,
-    /// or if nothing's cached yet.
+    /// Resolved from the local cache, so nil until something's cached.
     var categoryName: String? {
         guard case .ynabTransaction(let transaction) = payload,
               let categoryId = transaction.categoryId else { return nil }
         return YNABCategoryCacheStore.load()?.first { $0.id == categoryId }?.name
     }
 
-    /// YNAB account name for the primary transaction, resolved from the
-    /// local cache. Nil for a Splitwise-only entry or if uncached.
+    /// Resolved from the local cache, so nil until something's cached.
     var accountName: String? {
         guard case .ynabTransaction(let transaction) = payload else { return nil }
         return YNABAccountCacheStore.load()?.first { $0.id == transaction.accountId }?.name
     }
 
-    /// The Splitwise friend and their share, e.g. "Alex: 12.00 €" — drawn
-    /// from the combined entry's `split` or a Splitwise-only entry's
-    /// `payload`. Nil for a YNAB-only entry or if the friend isn't cached.
+    /// The friend and their share, e.g. "Alex: 12.00 €". Nil for a YNAB-only entry
+    /// or while the friend isn't cached.
     var splitSummary: String? {
         let request: SplitwiseExpenseRequest
         if let split {
