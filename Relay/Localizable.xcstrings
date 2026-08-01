@@ -586,6 +586,9 @@
         }
       }
     },
+    "Any merchants matched to this template will need a new one assigned." : {
+
+    },
     "Ask Each Time" : {
       "localizations" : {
         "de" : {

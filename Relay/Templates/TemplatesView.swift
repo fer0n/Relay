@@ -74,18 +74,6 @@ struct TemplatesView: View {
             }
         }
         .onAppear(perform: reload)
-        .confirmationDialog(
-            "Delete \"\(pendingDeletion ?? "")\"?",
-            isPresented: Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }),
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                if let pendingDeletion {
-                    deleteTemplate(pendingDeletion)
-                }
-                pendingDeletion = nil
-            }
-        }
     }
 
     @ViewBuilder
@@ -99,10 +87,36 @@ struct TemplatesView: View {
                 splitwiseConnected: splitwiseAuth.isAuthenticated
             )
         }
+        .transition(.contentRow)
         .swipeActions {
-            Button("Delete", role: .destructive) {
+            Button {
                 pendingDeletion = name
+            } label: {
+                Image(systemName: Const.Symbol.delete)
             }
+            .tint(.red)
+        }
+        // Attached to the row itself, not the swipe button: on iOS 26 a dialog
+        // anchored to a control inside `.swipeActions` animates wrong, since
+        // that control is torn down as the swipe closes.
+        .confirmationDialog(
+            "Delete \"\(name)\"?",
+            isPresented: Binding(
+                get: { pendingDeletion == name },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                // Deferred a tick so the dialog finishes dismissing on its own
+                // before the row-removal animation starts — doing both in the
+                // same transaction made the dialog flicker back in.
+                Task { @MainActor in
+                    withAnimation { deleteTemplate(name) }
+                }
+            }
+        } message: {
+            Text("Any merchants matched to this template will need a new one assigned.")
         }
     }
 
