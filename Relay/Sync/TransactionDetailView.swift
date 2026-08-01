@@ -17,8 +17,10 @@
 //    of a YNAB transaction or Splitwise expense still waiting to be sent.
 //    Retry/delete stay on the row's swipe actions.
 //  - `.splitwiseExpense(_:)` — a tapped row in
-//    SplitwiseFriendTransactionsView: a read-only summary of an expense
-//    fetched live from Splitwise (rather than one Relay itself created).
+//    SplitwiseFriendTransactionsView: an expense fetched live from Splitwise
+//    (rather than one Relay itself created), whose total and per-person
+//    shares can be edited back onto Splitwise. Lives in
+//    SplitwiseExpenseDetailView.swift, next to the rest of the Splitwise code.
 //
 
 import SwiftUI
@@ -31,7 +33,12 @@ struct TransactionDetailView: View {
         case draft(id: UUID)
         case history(TransactionHistoryEntry)
         case pending(PendingOperation)
-        case splitwiseExpense(SplitwiseExpense, friendName: String, onDelete: () async throws -> Void)
+        case splitwiseExpense(
+            SplitwiseExpense,
+            friendName: String,
+            onSave: (SplitwiseExpenseUpdateRequest) async throws -> Void,
+            onDelete: () async throws -> Void
+        )
     }
 
     let source: Source
@@ -44,8 +51,8 @@ struct TransactionDetailView: View {
             HistoryDetailContent(entry: entry)
         case .pending(let operation):
             PendingDetailContent(operation: operation)
-        case .splitwiseExpense(let expense, let friendName, let onDelete):
-            SplitwiseExpenseDetailContent(expense: expense, friendName: friendName, onDelete: onDelete)
+        case .splitwiseExpense(let expense, let friendName, let onSave, let onDelete):
+            SplitwiseExpenseDetailView(expense: expense, friendName: friendName, onSave: onSave, onDelete: onDelete)
         }
     }
 }
@@ -87,13 +94,18 @@ private struct DraftDetailContent: View {
     }
 }
 
-// MARK: - Shared read-only layout
+// MARK: - Shared layout
 
 /// Hero amount/service-icons/timestamp header, plus caller-supplied detail
 /// sections — the common shell behind `HistoryDetailContent`,
-/// `PendingDetailContent`, and `SplitwiseExpenseDetailContent`.
-private struct ReadOnlyDetailContent<Sections: View>: View {
+/// `PendingDetailContent`, and `SplitwiseExpenseDetailView`. Mostly read-only
+/// screens, but not exclusively: history edits the merchant's payee mapping,
+/// and a Splitwise expense edits the hero amount itself (`editableAmount`).
+struct TransactionDetailContent<Sections: View>: View {
     let amount: String
+    /// Set to make the hero amount a text field bound to it, for the one
+    /// screen whose amount is editable. Nil renders `amount` as plain text.
+    var editableAmount: Binding<String>? = nil
     let serviceIcons: [String]
     /// When this transaction happened — shown as a single-unit relative time
     /// (e.g. "1 day ago") alongside `serviceIcons`, live-updating via
@@ -122,11 +134,21 @@ private struct ReadOnlyDetailContent<Sections: View>: View {
         List {
             Section {
                 VStack(spacing: 4) {
-                    Text(amount)
-                        .foregroundStyle(Color.foregroundColor)
-                        .fontWeight(.heavy)
-                        .font(.system(size: 50))
-                        .minimumScaleFactor(0.5)
+                    if let editableAmount {
+                        // Same UIKit field the manual-entry amount uses, for
+                        // the matching 50pt heavy centered look — but never
+                        // auto-focusing: this screen opens on an amount that
+                        // already exists, to be read before it's changed.
+                        InstantFocusTextField(text: editableAmount, placeholder: "0", autoFocuses: false)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 60)
+                    } else {
+                        Text(amount)
+                            .foregroundStyle(Color.foregroundColor)
+                            .fontWeight(.heavy)
+                            .font(.system(size: 50))
+                            .minimumScaleFactor(0.5)
+                    }
                     if let detailLine {
                         HStack(spacing: 6) {
                             Image(systemName: detailLine.icon)
@@ -214,7 +236,7 @@ private struct HistoryDetailContent: View {
     }
 
     var body: some View {
-        ReadOnlyDetailContent(
+        TransactionDetailContent(
             amount: entry.formattedAmount,
             serviceIcons: [entry.service.systemImage] + (entry.secondaryService.map { [$0.systemImage] } ?? []),
             date: entry.createdAt,
@@ -313,79 +335,6 @@ private struct HistoryDetailContent: View {
     }
 }
 
-// MARK: - Splitwise expense (read-only, fetched live from Splitwise)
-
-private struct SplitwiseExpenseDetailContent: View {
-    let expense: SplitwiseExpense
-    let friendName: String
-    let onDelete: () async throws -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var showDeleteError = false
-
-    /// The full cost of the expense (not the signed-in user's share) — no
-    /// currency symbol, since the currency is implied by context here.
-    /// Falls back to the raw string if it won't parse.
-    private var amount: String {
-        guard let total = Double(expense.cost) else { return expense.cost }
-        return total.asMoneyString
-    }
-
-    private var payerDetailLine: (icon: String, text: String)? {
-        expense.payerName(friendName: friendName).map { (Const.Symbol.account, $0) }
-    }
-
-    var body: some View {
-        ReadOnlyDetailContent(
-            amount: amount,
-            serviceIcons: [TransactionService.splitwise.systemImage],
-            date: expense.date,
-            detailLine: payerDetailLine,
-            destroyLabel: "Delete",
-            destroyConfirmationTitle: "Delete this expense?",
-            destroyConfirmationMessage: "This will delete the expense on Splitwise for everyone involved.",
-            onDestroy: delete
-        ) {
-            Section {
-                DraftDetailRow(icon: Const.Symbol.titleField, title: "Description", isEditable: false) {
-                    Text(expense.description)
-                }
-                .cardRowBackground()
-            }
-
-            Section("Split") {
-                ForEach(expense.paidBreakdown(friendName: friendName)) { paid in
-                    DraftDetailRow(icon: Const.Symbol.account, title: "\(paid.name) paid", isEditable: false) {
-                        Text(paid.amount.formatted(.currency(code: expense.currencyCode)))
-                    }
-                    .cardRowBackground()
-                }
-
-                ForEach(expense.shareBreakdown(friendName: friendName)) { share in
-                    DraftDetailRow(icon: Const.Symbol.person, title: "\(share.name)", isEditable: false) {
-                        Text(share.amount.formatted(.currency(code: expense.currencyCode)))
-                    }
-                    .cardRowBackground()
-                }
-            }
-        }
-        .alert("Couldn't Delete", isPresented: $showDeleteError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Please check your connection and try again.")
-        }
-    }
-
-    private func delete() async {
-        do {
-            try await onDelete()
-            dismiss()
-        } catch {
-            showDeleteError = true
-        }
-    }
-}
-
 // MARK: - Pending (read-only)
 
 private struct PendingDetailContent: View {
@@ -394,7 +343,7 @@ private struct PendingDetailContent: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ReadOnlyDetailContent(
+        TransactionDetailContent(
             amount: operation.payload.formattedAmount,
             serviceIcons: [operation.service.systemImage],
             date: operation.queuedAt,

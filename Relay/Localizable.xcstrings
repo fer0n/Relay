@@ -876,6 +876,16 @@
         }
       }
     },
+    "Couldn't Save" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speichern fehlgeschlagen"
+          }
+        }
+      }
+    },
     "Create a New Shortcut" : {
       "localizations" : {
         "de" : {
@@ -1176,6 +1186,68 @@
         }
       }
     },
+    "Enter a description." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib eine Beschreibung ein."
+          }
+        }
+      }
+    },
+    "Enter a valid amount for every payer." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib für jeden Zahler einen gültigen Betrag ein."
+          }
+        }
+      }
+    },
+    "Enter a valid amount for every share." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib für jeden Anteil einen gültigen Betrag ein."
+          }
+        }
+      }
+    },
+    "Enter a valid share for everyone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib für alle einen gültigen Anteil ein."
+          }
+        }
+      }
+    },
+    "Enter a valid total." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib einen gültigen Gesamtbetrag ein."
+          }
+        }
+      }
+    },
+    "Equally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gleichmäßig"
+          }
+        }
+      }
+    },
     "Everything's Ready" : {
       "localizations" : {
         "de" : {
@@ -1232,6 +1304,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dateiimport"
+          }
+        }
+      }
+    },
+    "Full amount" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voller Betrag"
+          }
+        }
+      }
+    },
+    "Give at least one person a share." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib mindestens einer Person einen Anteil."
           }
         }
       }
@@ -1746,6 +1838,16 @@
         }
       }
     },
+    "Paid by" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bezahlt von"
+          }
+        }
+      }
+    },
     "Parsed %lld transactions from %@." : {
       "localizations" : {
         "de" : {
@@ -2128,6 +2230,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geteilte Ausgaben"
+          }
+        }
+      }
+    },
+    "Shares" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anteile"
           }
         }
       }
@@ -2532,6 +2644,23 @@
         }
       }
     },
+    "The shares add up to %@, but the total is %@." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anteile ergeben zusammen %1$@, der Gesamtbetrag ist aber %2$@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The shares add up to %1$@, but the total is %2$@."
+          }
+        }
+      }
+    },
     "The total expense amount, e.g. 12.34" : {
       "localizations" : {
         "de" : {
@@ -2568,6 +2697,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird nur lokal gelöscht, YNAB/Splitwise bleiben unverändert."
+          }
+        }
+      }
+    },
+    "Total" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesamt"
           }
         }
       }
@@ -2752,6 +2891,16 @@
         }
       }
     },
+    "You" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du"
+          }
+        }
+      }
+    },
     "Your Data" : {
       "localizations" : {
         "de" : {
@@ -2794,6 +2943,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Anteil, z.B. 12,50"
+          }
+        }
+      }
+    },
+    "Manual" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuell"
+          }
+        }
+      }
+    },
+    "Enter a valid amount for everyone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib für alle einen gültigen Betrag ein."
+          }
+        }
+      }
+    },
+    "The amounts add up to %@, but the total is %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Beträge ergeben zusammen %1$@, der Gesamtbetrag ist aber %2$@."
+          }
+        }
+      }
+    },
+    "Remaining" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest"
+          }
+        }
+      }
+    },
+    "Remaining %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest %@"
           }
         }
       }

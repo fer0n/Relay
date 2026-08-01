@@ -111,26 +111,74 @@ nonisolated struct SplitwiseExpenseRequest: Codable {
 
     var asJSONObject: [String: Any] {
         var object: [String: Any] = [
-            "cost": Self.decimalString(costCents),
+            "cost": splitwiseDecimalString(costCents),
             "description": description,
             "currency_code": currencyCode,
             "group_id": 0,
             "users__0__user_id": payerUserId,
-            "users__0__paid_share": Self.decimalString(costCents),
-            "users__0__owed_share": Self.decimalString(payerOwedCents),
+            "users__0__paid_share": splitwiseDecimalString(costCents),
+            "users__0__owed_share": splitwiseDecimalString(payerOwedCents),
             "users__1__user_id": friendUserId,
             "users__1__paid_share": "0.00",
-            "users__1__owed_share": Self.decimalString(friendOwedCents),
+            "users__1__owed_share": splitwiseDecimalString(friendOwedCents),
         ]
         if let date {
             object["date"] = date
         }
         return object
     }
+}
 
-    private static func decimalString(_ cents: Int) -> String {
-        String(format: "%.2f", Double(cents) / Const.centsPerUnit)
+/// Edit of an expense that already exists on Splitwise — the payload for
+/// `update_expense/{id}`, sent from the expense detail screen after the total
+/// or someone's share was changed. Distinct from `SplitwiseExpenseRequest`
+/// above in more than the endpoint: that one only ever describes the shape
+/// Relay itself creates (the signed-in user fronts the whole cost, split with
+/// exactly one friend), whereas an expense being edited can have any number
+/// of participants and payers, and Splitwise overwrites *every* share as soon
+/// as one is supplied — so all of them travel together here.
+nonisolated struct SplitwiseExpenseUpdateRequest {
+    /// One participant's new shares. `paidCents` is what they fronted,
+    /// `owedCents` the portion they're responsible for; Splitwise requires
+    /// each of those to add up to `costCents` across all participants.
+    struct UserShare {
+        let userId: Int
+        let paidCents: Int
+        let owedCents: Int
     }
+
+    let costCents: Int
+    let description: String
+    let currencyCode: String
+    /// Passed back exactly as Splitwise reported it (0 for a personal
+    /// expense) — `update_expense` treats a missing/zero `group_id` as "not
+    /// in a group", which would move a group expense out of its group.
+    let groupId: Int
+    let users: [UserShare]
+
+    var asJSONObject: [String: Any] {
+        // `date` is deliberately absent: update_expense leaves out-of-payload
+        // fields alone, and this screen doesn't edit the date.
+        var object: [String: Any] = [
+            "cost": splitwiseDecimalString(costCents),
+            "description": description,
+            "currency_code": currencyCode,
+            "group_id": groupId,
+        ]
+        for (index, user) in users.enumerated() {
+            object["users__\(index)__user_id"] = user.userId
+            object["users__\(index)__paid_share"] = splitwiseDecimalString(user.paidCents)
+            object["users__\(index)__owed_share"] = splitwiseDecimalString(user.owedCents)
+        }
+        return object
+    }
+}
+
+/// Splitwise takes amounts as decimal strings with at most two places.
+/// `String(format:)` rather than a locale-aware formatter on purpose: the API
+/// wants a `.` decimal separator whatever the device's locale does.
+nonisolated private func splitwiseDecimalString(_ cents: Int) -> String {
+    String(format: "%.2f", Double(cents) / Const.centsPerUnit)
 }
 
 // MARK: - Response envelopes
@@ -144,6 +192,16 @@ nonisolated struct SplitwiseFriendsResponse: Codable {
 }
 
 nonisolated struct SplitwiseCreateExpenseResponse: Codable {
+    let errors: [String: [String]]?
+}
+
+/// `update_expense`'s body: the saved expense (Splitwise returns it as a
+/// one-element list) plus the same 200-with-`errors` failure channel
+/// `create_expense` uses. Both are Optional so a response that only carries
+/// one of them still decodes — see `SplitwiseService.updateExpense` for how a
+/// missing `expenses` is handled.
+nonisolated struct SplitwiseUpdateExpenseResponse: Codable {
+    let expenses: [SplitwiseExpense]?
     let errors: [String: [String]]?
 }
 

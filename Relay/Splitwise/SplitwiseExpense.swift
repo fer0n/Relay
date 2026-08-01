@@ -42,6 +42,15 @@ nonisolated struct SplitwiseExpenseUser: Codable {
     func displayName(fallback: String) -> String {
         user?.shortName ?? fallback
     }
+
+    /// How this participant is labeled in a split breakdown: "You" for the
+    /// signed-in user, `displayName(fallback:)` for everyone else. The
+    /// signed-in id is passed in rather than read from
+    /// SplitwiseCurrentUserStore here, so labeling a whole expense's
+    /// participants is one lookup instead of one per person.
+    func label(currentUserId: Int?, fallback: String) -> String {
+        userId == currentUserId ? String(localized: "You") : displayName(fallback: fallback)
+    }
 }
 
 /// A participant's own name, nested under each `SplitwiseExpenseUser` entry
@@ -69,6 +78,14 @@ nonisolated struct SplitwiseExpense: Codable, Identifiable {
     let date: Date
     let deletedAt: Date?
     let users: [SplitwiseExpenseUser]
+    /// The group this expense belongs to, or 0/nil when it's a personal
+    /// (non-group) one. Only read back out to be sent unchanged on
+    /// `update_expense`, which requires `group_id` — passing 0 there would
+    /// silently pull a group expense out of its group. Optional so a cache
+    /// file written before this field existed still decodes (see
+    /// SplitwiseExpenseCacheStore); the Optional alone is what buys that, so
+    /// it must not be given a default value.
+    let groupId: Int?
 }
 
 nonisolated struct SplitwiseExpensesResponse: Codable {
@@ -111,51 +128,5 @@ nonisolated extension SplitwiseExpense {
             return "\(friendName) paid"
         }
         return "\(payer.displayName(fallback: friendName)) paid \(payerPaidShare.formatted(.currency(code: currencyCode)))"
-    }
-
-    /// One participant's portion of the expense, for the detail view's split
-    /// breakdown — labeled "You" for the signed-in user and their own name
-    /// (falling back to `friendName`) for everyone else. Reused for both the
-    /// owed-share rows and the paid rows.
-    struct Share: Identifiable {
-        let id: Int
-        let name: String
-        let amount: Double
-    }
-
-    /// How the cost is split, one entry per participant, e.g. "You: 12.50 €",
-    /// "Kim: 12.50 €". A shared group expense has more than one non-"You"
-    /// participant, so each is labeled with their own name — `friendName` is
-    /// only a fallback for the rare case Splitwise didn't provide one (e.g.
-    /// a cache written before that field existed).
-    func shareBreakdown(friendName: String) -> [Share] {
-        let currentUserId = SplitwiseCurrentUserStore.load()?.id
-        return users.compactMap { user in
-            guard let owed = user.owedShare else { return nil }
-            let name = user.userId == currentUserId ? "You" : user.displayName(fallback: friendName)
-            return Share(id: user.userId, name: name, amount: owed)
-        }
-    }
-
-    /// Who fronted how much, for the detail view's split breakdown — omits
-    /// participants with a zero paid share, since the typical case is one
-    /// person paying the full cost and everyone else paying nothing.
-    func paidBreakdown(friendName: String) -> [Share] {
-        let currentUserId = SplitwiseCurrentUserStore.load()?.id
-        return users.compactMap { user in
-            guard let paid = user.paid, paid > 0 else { return nil }
-            let name = user.userId == currentUserId ? "You" : user.displayName(fallback: friendName)
-            return Share(id: user.userId, name: name, amount: paid)
-        }
-    }
-
-    /// Who fronted the cost, labeled for the detail view's "Paid by" row —
-    /// "You" if the signed-in user paid, otherwise that payer's own name
-    /// (falling back to `friendName`). Nil if the signed-in user's id isn't
-    /// cached yet or no one shows a paid share.
-    func payerName(friendName: String) -> String? {
-        guard let currentUserId = SplitwiseCurrentUserStore.load()?.id else { return nil }
-        guard let payer = users.first(where: { ($0.paid ?? 0) > 0 }) else { return nil }
-        return payer.userId == currentUserId ? "You" : payer.displayName(fallback: friendName)
     }
 }

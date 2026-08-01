@@ -111,7 +111,14 @@ struct SplitwiseFriendTransactionsView: View {
         }
         .sheet(item: $selectedExpense) { expense in
             NavigationStack {
-                TransactionDetailView(source: .splitwiseExpense(expense, friendName: friend.shortName, onDelete: { try await delete(expense) }))
+                TransactionDetailView(
+                    source: .splitwiseExpense(
+                        expense,
+                        friendName: friend.shortName,
+                        onSave: { try await update(expense, with: $0) },
+                        onDelete: { try await delete(expense) }
+                    )
+                )
             }
             .navigationTransition(.zoom(sourceID: expense.id, in: detailNamespace))
             .presentationBackground(Color.sheetBackgroundColor)
@@ -190,6 +197,35 @@ struct SplitwiseFriendTransactionsView: View {
         // expense failure surfaces an error above.
         if force || SplitwiseFriendCacheStore.isStale,
            let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
+            refreshedFriend = updated
+        }
+    }
+
+    /// Saves an edited `expense` (new total and/or shares) to Splitwise, then
+    /// puts the saved version back into the in-memory list and the cache so
+    /// this list — and ContentView's balance card, via the friend refresh
+    /// below — reflect it straight away rather than after the next staleness
+    /// window. Mirrors `delete(_:)`; the detail sheet builds the request and
+    /// surfaces any error this throws.
+    private func update(_ expense: SplitwiseExpense, with request: SplitwiseExpenseUpdateRequest) async throws {
+        guard let token = SplitwiseAuthService.currentAccessToken else {
+            throw SplitwiseAPIError.unauthorized
+        }
+        let saved = try await SplitwiseService.updateExpense(id: expense.id, request, token: token)
+        if let saved {
+            withAnimation {
+                if let index = expenses.firstIndex(where: { $0.id == expense.id }) {
+                    expenses[index] = saved
+                }
+            }
+            SplitwiseExpenseCacheStore.save(friendId: friend.id, expenses)
+        } else if let refetched = try? await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token) {
+            // Saved fine, but Splitwise didn't hand back the stored expense —
+            // re-fetch rather than leaving the row showing pre-edit values.
+            withAnimation { expenses = refetched }
+            lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
+        }
+        if let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
             refreshedFriend = updated
         }
     }

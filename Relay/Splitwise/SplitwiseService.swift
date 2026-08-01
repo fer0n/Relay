@@ -94,6 +94,31 @@ nonisolated enum SplitwiseService {
         }
     }
 
+    /// Saves an edited expense via the documented `update_expense` endpoint —
+    /// backs the editable total/shares in SplitwiseExpenseDetailView. Returns
+    /// the expense as Splitwise stored it, or nil when the response didn't
+    /// carry one (the save still succeeded — see the `errors` check — so the
+    /// caller re-fetches rather than treating that as a failure).
+    static func updateExpense(id: Int, _ expense: SplitwiseExpenseUpdateRequest, token: String) async throws -> SplitwiseExpense? {
+        var request = URLRequest(url: baseURL.appendingPathComponent("update_expense/\(id)"))
+        request.httpMethod = Const.HTTP.post
+        request.setValue(Const.HTTP.bearer(token), forHTTPHeaderField: Const.HTTP.authorizationHeader)
+        request.setValue(Const.HTTP.jsonContentType, forHTTPHeaderField: Const.HTTP.contentTypeHeader)
+        request.httpBody = try JSONSerialization.data(withJSONObject: expense.asJSONObject)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response, data: data)
+
+        // Same 200-with-"errors" convention as create_expense (e.g. shares
+        // that don't add up to the cost), so a 2xx alone isn't enough here.
+        let result = try decoder.decode(SplitwiseUpdateExpenseResponse.self, from: data)
+        let messages = result.errors?.values.flatMap { $0 } ?? []
+        if !messages.isEmpty {
+            throw SplitwiseAPIError.validation(messages.joined(separator: " "))
+        }
+        return result.expenses?.first
+    }
+
     /// Soft-deletes an expense via Splitwise's documented `delete_expense`
     /// endpoint — used by the detail sheet in SplitwiseFriendTransactionsView.
     static func deleteExpense(id: Int, token: String) async throws {
