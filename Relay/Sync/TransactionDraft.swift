@@ -98,8 +98,19 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
         return nil
     }
 
+    /// True when the shortcut's Merchant/Amount magic variables resolved to
+    /// nothing — e.g. no network to fetch the Wallet transaction's details —
+    /// rather than this being a real (if interrupted) purchase for $0 at a
+    /// blank payee. Also matches the placeholder draft a manual entry starts
+    /// from, which is exactly the case where its amount should be editable
+    /// too (see ContinueWalletTransactionModel.amountIsEditable).
+    var receivedNoValues: Bool {
+        merchant.isEmpty && amount == 0
+    }
+
     var summary: String {
-        String(localized: "\(amount.asMoneyString) at \(merchant)")
+        guard !receivedNoValues else { return String(localized: "No values received") }
+        return String(localized: "\(amount.asMoneyString) at \(merchant)")
     }
 
     var formattedAmount: String {

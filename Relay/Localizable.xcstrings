@@ -1218,6 +1218,16 @@
         }
       }
     },
+    "Enter a valid amount for everyone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib für alle einen gültigen Betrag ein."
+          }
+        }
+      }
+    },
     "Enter a valid share for everyone." : {
       "localizations" : {
         "de" : {
@@ -1558,6 +1568,16 @@
         }
       }
     },
+    "Manual" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuell"
+          }
+        }
+      }
+    },
     "Mark as Cleared" : {
       "localizations" : {
         "de" : {
@@ -1737,6 +1757,9 @@
           }
         }
       }
+    },
+    "No values received" : {
+
     },
     "None" : {
       "localizations" : {
@@ -2020,6 +2043,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Relay erstellt die Transaktionen und Ausgaben, die du in YNAB und Splitwise anforderst. Importierte Kontoauszugsdateien werden nur auf deinem Gerät gelesen. Relay führt keine eigene Datenbank und gibt deine Finanzdaten niemals weiter."
+          }
+        }
+      }
+    },
+    "Remaining" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest"
+          }
+        }
+      }
+    },
+    "Remaining %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest %@"
           }
         }
       }
@@ -2624,6 +2667,16 @@
         }
       }
     },
+    "The amounts add up to %@, but the total is %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Beträge ergeben zusammen %1$@, der Gesamtbetrag ist aber %2$@."
+          }
+        }
+      }
+    },
     "The expense amount, e.g. 12.34" : {
       "localizations" : {
         "de" : {
@@ -2943,56 +2996,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Anteil, z.B. 12,50"
-          }
-        }
-      }
-    },
-    "Manual" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manuell"
-          }
-        }
-      }
-    },
-    "Enter a valid amount for everyone." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gib für alle einen gültigen Betrag ein."
-          }
-        }
-      }
-    },
-    "The amounts add up to %@, but the total is %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Beträge ergeben zusammen %1$@, der Gesamtbetrag ist aber %2$@."
-          }
-        }
-      }
-    },
-    "Remaining" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rest"
-          }
-        }
-      }
-    },
-    "Remaining %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rest %@"
           }
         }
       }

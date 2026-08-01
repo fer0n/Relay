@@ -77,8 +77,10 @@ final class ContinueWalletTransactionModel {
     /// appended to the Splitwise description too — see `splitDescription`.
     /// Unused in `.splitwise` mode, which has its own Description field.
     var memoText = ""
-    /// Raw amount text — only used for a manual entry (isManual); a
-    /// shortcut-started draft's amount comes fixed from the payload.
+    /// Raw amount text — used for a manual entry (isManual), and for a
+    /// shortcut-started draft whose amount never arrived (see
+    /// `amountIsEditable`); any other shortcut-started draft's amount comes
+    /// fixed from the payload instead.
     var amountText = ""
     /// Selected mode for a manual entry (isManual) — switchable via the
     /// nav-bar menu; ignored otherwise (mode comes from the payload).
@@ -335,15 +337,23 @@ final class ContinueWalletTransactionModel {
         return splitwiseRuntimeChoice ?? .never
     }
 
-    /// Parsed amount for a manual entry — nil while the field is empty or
-    /// not yet a positive number. Unused for shortcut-started drafts.
+    /// Parsed amount from `amountText` — nil while the field is empty or not
+    /// yet a positive number. Only meaningful while `amountIsEditable`.
     var manualAmount: Double? {
         guard let parsed = try? AmountParser.parse(amountText), parsed > 0 else { return nil }
         return parsed
     }
 
+    /// True when the amount field should be a typed-in field rather than the
+    /// fixed header — a manual entry, or a shortcut-started draft whose
+    /// Merchant/Amount never arrived (draft.receivedNoValues, e.g. no
+    /// network when the automation ran) and so has nothing real to show.
+    var amountIsEditable: Bool {
+        isManual || draft.receivedNoValues
+    }
+
     var canSubmit: Bool {
-        if isManual, manualAmount == nil { return false }
+        if amountIsEditable, manualAmount == nil { return false }
         switch mode {
         case .ynab:
             if payeeText.trimmingCharacters(in: .whitespaces).isEmpty { return false }
@@ -774,7 +784,7 @@ final class ContinueWalletTransactionModel {
             guard case .ynabWallet(let m, let a, let c) = draft.payload else { return false }
             merchant = m
             card = c
-            amount = a
+            amount = draft.receivedNoValues ? (manualAmount ?? 0) : a
         }
         guard let token = await YNABAuthService.validAccessToken() else {
             notAuthenticated = true
@@ -908,7 +918,7 @@ final class ContinueWalletTransactionModel {
         } else {
             guard case .splitwiseWallet(let m, let a, _) = draft.payload else { return false }
             merchant = m
-            amount = a
+            amount = draft.receivedNoValues ? (manualAmount ?? 0) : a
         }
         guard SplitwiseAuthService.currentAccessToken != nil else {
             notAuthenticated = true

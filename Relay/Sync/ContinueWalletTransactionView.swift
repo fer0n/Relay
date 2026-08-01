@@ -102,7 +102,7 @@ struct ContinueWalletTransactionView: View {
     private var content: some View {
         List {
             Section {
-                if model.isManual {
+                if model.amountIsEditable {
                     manualAmountField
                 } else {
                     TransactionDraftHeader(amount: model.draft.formattedAmount, merchant: model.draft.merchant, startedAt: model.draft.startedAt)
