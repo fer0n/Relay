@@ -32,9 +32,7 @@ struct SplitwiseBalancesView: View {
                 VStack(spacing: 16) {
                     LazyVGrid(columns: columns, spacing: SplitwiseBalancesView.spacing) {
                         ForEach(friends, id: \.id) { friend in
-                            NavigationLink {
-                                SplitwiseFriendTransactionsView(friend: friend)
-                            } label: {
+                            NavigationLink(value: ContentRoute.splitwiseFriendTransactions(friendId: friend.id)) {
                                 SplitwiseBalanceCard(friend: friend, size: .compact, maxWidth: .infinity)
                             }
                             .buttonStyle(.plain)
@@ -85,5 +83,11 @@ struct SplitwiseBalancesView: View {
     SplitwiseFriendCacheStore.save([friend1, friend2])
     return NavigationStack {
         SplitwiseBalancesView()
+            .navigationDestination(for: ContentRoute.self) { route in
+                if case .splitwiseFriendTransactions(let friendId) = route,
+                   let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == friendId }) {
+                    SplitwiseFriendTransactionsView(friend: friend)
+                }
+            }
     }
 }

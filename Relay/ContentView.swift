@@ -43,6 +43,7 @@ struct ContentView: View {
     struct ManualEntry: Identifiable {
         let draft: TransactionDraft
         let prefill: TransactionHistoryEntry?
+        let friendOverride: SplitwiseFriendEntity?
 
         var id: UUID { draft.id }
     }
@@ -90,22 +91,13 @@ struct ContentView: View {
                 .navigationDestination(for: ContentRoute.self) { route in
                     destination(for: route)
                 }
-                .safeAreaInset(edge: .bottom) {
-                    Button {
-                        startManualEntry(prefill: nil)
-                    } label: {
-                        Image(systemName: Const.Symbol.add)
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .padding(18)
-                            .glassEffect(.regular.tint(Color.accentColor).interactive())
-                    }
-                    .foregroundStyle(Color.backgroundColor)
-                    .matchedTransitionSource(id: "add", in: addNamespace)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.horizontal, 30)
-                }
         }
+        .floatingAddButton(
+            path: path,
+            namespace: addNamespace,
+            onTapDefault: { startManualEntry(prefill: nil) },
+            onTapFriend: { addTransaction(withFriend: $0) }
+        )
         // Popping back to the root never fires the scenePhase or root onAppear
         // handlers, so reload whenever the stack empties — that's how a
         // just-completed draft leaves the list.
@@ -125,9 +117,9 @@ struct ContentView: View {
             PendingQueueView()
         case .transactionDrafts:
             TransactionDraftsView()
-        case .splitwiseFriendTransactions:
-            if let visibleSplitwiseFriend {
-                SplitwiseFriendTransactionsView(friend: visibleSplitwiseFriend)
+        case .splitwiseFriendTransactions(let friendId):
+            if let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == friendId }) {
+                SplitwiseFriendTransactionsView(friend: friend)
             }
         case .splitwiseBalances:
             SplitwiseBalancesView()
@@ -150,7 +142,9 @@ struct ContentView: View {
     private var mainList: some View {
         List {
             ContentBalanceHeaderSection(friend: visibleSplitwiseFriend, lastRefreshedAt: splitwiseFriendLastRefreshedAt) {
-                path.append(.splitwiseFriendTransactions)
+                if let visibleSplitwiseFriend {
+                    path.append(.splitwiseFriendTransactions(friendId: visibleSplitwiseFriend.id))
+                }
             }
 
             ContentQuickLinksSection(splitwiseConnected: splitwiseAuth.isAuthenticated)
@@ -246,11 +240,18 @@ struct ContentView: View {
 
     /// Blank for the "+" button and the quick action, or seeded from a history
     /// entry for "Re-add" — either way the user reviews before submitting.
-    func startManualEntry(prefill: TransactionHistoryEntry?) {
+    func startManualEntry(prefill: TransactionHistoryEntry?, friendOverride: SplitwiseFriendEntity? = nil) {
         manualEntry = ManualEntry(
             draft: TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: "")),
-            prefill: prefill
+            prefill: prefill,
+            friendOverride: friendOverride
         )
+    }
+
+    /// Splitwise's "Add Transaction" button on a friend's page — opens the
+    /// same manual-entry sheet pre-scoped to that friend.
+    func addTransaction(withFriend friend: SplitwiseFriend) {
+        startManualEntry(prefill: nil, friendOverride: SplitwiseFriendEntity(friend: friend))
     }
 }
 

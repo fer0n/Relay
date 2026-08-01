@@ -27,6 +27,10 @@ final class ContinueWalletTransactionModel {
     let isAuthenticatedOverride: Bool?
 
     private let defaultFriend: SplitwiseDefaultFriend?
+    /// Wins over both a template's cached friend and the app-wide default —
+    /// e.g. "Add Transaction" from a specific friend's page. See the
+    /// equivalent precedence in AddWalletTransactionToSplitwiseIntent.resolveFriend.
+    private let friendOverride: SplitwiseFriendEntity?
 
     // MARK: Services / status
 
@@ -70,21 +74,26 @@ final class ContinueWalletTransactionModel {
 
     // MARK: Init
 
-    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, isAuthenticatedOverride: Bool? = nil) {
+    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseFriendEntity? = nil) {
         self.draft = draft
         self.isManual = isManual
         self.isPrefilled = prefill != nil
         self.isAuthenticatedOverride = isAuthenticatedOverride
+        self.friendOverride = friendOverride
         defaultFriend = SplitwiseDefaultFriendStore.load()
 
         if isManual {
-            let startMode = prefill.map { $0.service == .splitwise ? Mode.splitwise : Mode.ynab }
-                ?? Self.resolveManualMode(ynabAuthenticated: ynabAuth.isAuthenticated, splitwiseAuthenticated: splitwiseAuth.isAuthenticated)
+            let startMode = friendOverride != nil
+                ? Mode.splitwise
+                : prefill.map { $0.service == .splitwise ? Mode.splitwise : Mode.ynab }
+                    ?? Self.resolveManualMode(ynabAuthenticated: ynabAuth.isAuthenticated, splitwiseAuthenticated: splitwiseAuth.isAuthenticated)
             manualMode = startMode
             let config = WalletTransactionConfigStore.load()
             availableTemplates = Array(config.templates.keys)
             cachedTemplatePayeeNames = Self.payeeNamesByTemplate(config)
-            if let defaultFriend {
+            if let friendOverride {
+                selectedFriendId = friendOverride.id
+            } else if let defaultFriend {
                 selectedFriendId = defaultFriend.id
             }
             if let prefill {
@@ -405,7 +414,11 @@ final class ContinueWalletTransactionModel {
                 // picked template's option, or stay unset to force a pick.
                 splitwiseRuntimeChoice = name == nil ? nil : (template?.splitwiseOption ?? .never).splitRuntimeChoice
             }
-            if let friend = template?.splitwiseFriend {
+            if let friendOverride {
+                templateHasFriend = false
+                templateFriend = nil
+                selectedFriendId = friendOverride.id
+            } else if let friend = template?.splitwiseFriend {
                 templateHasFriend = true
                 templateFriend = SplitwiseFriendEntity(templateFriend: friend)
                 selectedFriendId = friend.id

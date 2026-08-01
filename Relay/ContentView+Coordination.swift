@@ -113,12 +113,12 @@ extension ContentView {
                 Group {
                     if entry.prefill == nil {
                         NavigationStack {
-                            ContinueWalletTransactionView(draft: entry.draft, isManual: true, prefill: nil)
+                            ContinueWalletTransactionView(draft: entry.draft, isManual: true, prefill: nil, friendOverride: entry.friendOverride)
                         }
                         .navigationTransition(.zoom(sourceID: "add", in: addNamespace))
                     } else {
                         NavigationStack {
-                            ContinueWalletTransactionView(draft: entry.draft, isManual: true, prefill: entry.prefill)
+                            ContinueWalletTransactionView(draft: entry.draft, isManual: true, prefill: entry.prefill, friendOverride: entry.friendOverride)
                         }
                     }
                 }

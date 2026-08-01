@@ -34,6 +34,10 @@ extension SplitwiseFriendEntity {
     init(templateFriend: WalletTransactionConfig.CachedFriend) {
         self.init(id: templateFriend.id, firstName: templateFriend.firstName, fullName: templateFriend.fullName)
     }
+
+    init(friend: SplitwiseFriend) {
+        self.init(id: friend.id, firstName: friend.firstName, fullName: friend.fullName)
+    }
 }
 
 nonisolated struct SplitwiseFriendQuery: EntityQuery {

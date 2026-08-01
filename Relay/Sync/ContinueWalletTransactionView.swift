@@ -24,8 +24,8 @@ struct ContinueWalletTransactionView: View {
     /// Nil hides the Discard section entirely, e.g. for manual entries.
     let onDiscard: (() -> Void)?
 
-    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil) {
-        _model = State(initialValue: ContinueWalletTransactionModel(draft: draft, isManual: isManual, prefill: prefill, isAuthenticatedOverride: isAuthenticatedOverride))
+    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseFriendEntity? = nil) {
+        _model = State(initialValue: ContinueWalletTransactionModel(draft: draft, isManual: isManual, prefill: prefill, isAuthenticatedOverride: isAuthenticatedOverride, friendOverride: friendOverride))
         self.onDiscard = onDiscard
     }
 
