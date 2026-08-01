@@ -67,10 +67,15 @@ final class ContinueWalletTransactionModel {
     /// via `splitwisePayeeName`.
     var payeeText = ""
     /// The Splitwise expense description, shown below the Payee field on a
-    /// shortcut-started Splitwise draft. Blank means "use the payee name" —
-    /// its placeholder mirrors `splitwisePayeeName`. Unused for YNAB drafts;
-    /// a manual Splitwise entry keeps its single field bound to `payeeText`.
+    /// shortcut-started Splitwise draft. Mirrors `payeeText` (see the view's
+    /// `onChange(of: model.payeeText)`, same "copy until it diverges"
+    /// pattern as a template's auto-match pattern mirroring its payee name —
+    /// see `TemplateEditSections`) until typed into directly, at which point
+    /// `isDescriptionManuallyEdited` decouples it for good. Unused for YNAB
+    /// drafts; a manual Splitwise entry keeps its single field bound to
+    /// `payeeText`.
     var descriptionText = ""
+    var isDescriptionManuallyEdited = false
     /// The YNAB memo, shown only in `.ynab` mode (YNAB, plus an optional
     /// Splitwise split — the "Both" option on a manual entry). Optional:
     /// blank means no memo. When the transaction is also split, it's

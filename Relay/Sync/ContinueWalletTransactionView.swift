@@ -187,6 +187,18 @@ struct ContinueWalletTransactionView: View {
         .onChange(of: model.templateChoice) { _, newTemplate in
             model.applyTemplate(newTemplate)
         }
+        // Description mirrors Payee (like a template's pattern mirrors its
+        // payee name, see TemplateEditSections) until typed into directly.
+        // `initial: true` also seeds it on first appearance, covering a
+        // resolved-merchant draft that opens with Payee already filled in.
+        .onChange(of: model.payeeText, initial: true) { _, newValue in
+            guard !model.isDescriptionManuallyEdited else { return }
+            model.descriptionText = newValue
+        }
+        .onChange(of: model.descriptionText) { _, newValue in
+            guard newValue != model.payeeText else { return }
+            model.isDescriptionManuallyEdited = true
+        }
         .sheet(isPresented: $showTemplateEditor) {
             NavigationStack {
                 TemplateEditView(
