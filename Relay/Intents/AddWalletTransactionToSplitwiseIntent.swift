@@ -140,14 +140,15 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             }
         }
 
-        // `existing` (a template's cached friend), then the shortcut parameter,
+        // The shortcut parameter wins first, then the template's cached friend,
         // then the app-wide default, then ask live.
         func resolveFriend(existing: WalletTransactionConfig.CachedFriend?, dialog: IntentDialog) async throws -> WalletTransactionConfig.CachedFriend {
+            if let friendOverride {
+                return (friendOverride.id, friendOverride.firstName, friendOverride.fullName)
+            }
             if let existing { return existing }
             let friend: SplitwiseFriendEntity
-            if let friendOverride {
-                friend = friendOverride
-            } else if let defaultFriend = SplitwiseDefaultFriendStore.load() {
+            if let defaultFriend = SplitwiseDefaultFriendStore.load() {
                 logger.log("using app-wide default Splitwise friend")
                 friend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
             } else {
