@@ -178,8 +178,9 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             ? TransactionDraftGuard.begin(.ynabWallet(merchant: merchant, amount: amount, card: card))
             : nil
 
-        // Called after every follow-up question is answered, so a slow-to-answer
-        // run doesn't get a premature nudge mid-flow.
+        // Only for the split choice: the questions restore the quiet period
+        // themselves (see withHeartbeat), but that one needs one more
+        // rescheduling after its quick-reply actions are disarmed.
         func touchDraft() {
             if let activeDraftId {
                 TransactionDraftGuard.touch(activeDraftId)
@@ -228,8 +229,9 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 } else {
                     logger.log("no merchant match — requesting template choice")
                     let prompt = String(format: String(localized: "Which template for \"%@\"?"), merchant)
-                    resolvedTemplateChoice = try await $templateChoice.requestValue(IntentDialog(stringLiteral: prompt))
-                    touchDraft()
+                    resolvedTemplateChoice = try await TransactionDraftGuard.withHeartbeat(activeDraftId) {
+                        try await $templateChoice.requestValue(IntentDialog(stringLiteral: prompt))
+                    }
                 }
 
                 // A missing template also covers the old "Create New Template"
@@ -270,12 +272,15 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                     account = accountOverride
                 } else {
                     logger.log("no account match for card — requesting account")
+                    // Fetched outside the heartbeat — a slow call isn't an
+                    // interrupted run.
                     let accounts = try await YNABAccountEntity.defaultQuery.suggestedEntities()
-                    account = try await $accountOverride.requestDisambiguation(
-                        among: accounts,
-                        dialog: IntentDialog(stringLiteral: String(format: String(localized: "YNAB account for card \"%@\"?"), card))
-                    )
-                    touchDraft()
+                    account = try await TransactionDraftGuard.withHeartbeat(activeDraftId) {
+                        try await $accountOverride.requestDisambiguation(
+                            among: accounts,
+                            dialog: IntentDialog(stringLiteral: String(format: String(localized: "YNAB account for card \"%@\"?"), card))
+                        )
+                    }
                 }
                 logger.log("accountId=\(account.id, privacy: .public)")
                 config.cards[card] = account.id
@@ -443,8 +448,9 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                     payeeName,
                     friend.firstName
                 )
-                resolvedOwnShare = try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
-                touchDraft()
+                resolvedOwnShare = try await TransactionDraftGuard.withHeartbeat(activeDraftId) {
+                    try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
+                }
             }
             if splitwiseAction == .manual, let resolvedOwnShare {
                 try SplitwiseExpenseHelper.validateOwnShare(resolvedOwnShare, amount: amount)

@@ -131,8 +131,9 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
             ? TransactionDraftGuard.begin(.splitwiseWallet(merchant: merchant, amount: amount))
             : nil
 
-        // Called after every follow-up question is answered, so a slow-to-answer
-        // run doesn't get a premature nudge mid-flow.
+        // Only for the split choice: the questions restore the quiet period
+        // themselves (see withHeartbeat), but that one needs one more
+        // rescheduling after its quick-reply actions are disarmed.
         func touchDraft() {
             if let draftId {
                 TransactionDraftGuard.touch(draftId)
@@ -151,12 +152,15 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 friend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
             } else {
                 logger.log("requesting Splitwise friend")
+                // Fetched outside the heartbeat — a slow call isn't an
+                // interrupted run.
                 let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
-                friend = try await $friendOverride.requestDisambiguation(
-                    among: friends,
-                    dialog: dialog
-                )
-                touchDraft()
+                friend = try await TransactionDraftGuard.withHeartbeat(draftId) {
+                    try await $friendOverride.requestDisambiguation(
+                        among: friends,
+                        dialog: dialog
+                    )
+                }
             }
             return (friend.id, friend.firstName, friend.fullName)
         }
@@ -308,8 +312,9 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     expenseDescription,
                     friendFirstName
                 )
-                resolvedOwnShare = try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
-                touchDraft()
+                resolvedOwnShare = try await TransactionDraftGuard.withHeartbeat(draftId) {
+                    try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
+                }
             }
             if splitwiseAction == .manual, let resolvedOwnShare {
                 try SplitwiseExpenseHelper.validateOwnShare(resolvedOwnShare, amount: amount)
