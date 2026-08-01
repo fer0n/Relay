@@ -335,8 +335,13 @@ private var hasChanges: Bool {
         do {
             try WalletTransactionConfigStore.save(config)
             logger.log("deleted template \(templateName, privacy: .public)")
-            onDelete()
-            dismiss()
+            // Deferred a tick so the confirmation dialog finishes dismissing on
+            // its own before the pop/row-removal animation starts, matching
+            // TemplatesView's swipe-to-delete handling.
+            Task { @MainActor in
+                withAnimation { onDelete() }
+                dismiss()
+            }
         } catch {
             logger.error("failed to delete template: \(String(describing: error), privacy: .public)")
             errorMessage = "Failed to delete: \(error.localizedDescription)"
