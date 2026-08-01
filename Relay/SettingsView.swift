@@ -102,6 +102,15 @@ struct SettingsView: View {
                 }
             }
             .cardRowBackground()
+
+            Section {
+                Text(Bundle.main.versionAndBuildNumber)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+            }
+            .listRowBackground(Color.clear)
         }
         .themedList(background: .backgroundColor)
         .navigationTitle("Settings")
