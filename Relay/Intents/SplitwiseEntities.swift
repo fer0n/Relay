@@ -38,6 +38,10 @@ extension SplitwiseFriendEntity {
     init(friend: SplitwiseFriend) {
         self.init(id: friend.id, firstName: friend.firstName, fullName: friend.fullName)
     }
+
+    init(defaultFriend: SplitwiseDefaultFriend) {
+        self.init(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
+    }
 }
 
 nonisolated struct SplitwiseFriendQuery: EntityQuery {

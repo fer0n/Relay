@@ -295,6 +295,27 @@ final class ContinueWalletTransactionModel {
         templateHasFriend ? templateFriend?.fullName : nil
     }
 
+    /// The friend a split will actually be booked against. A nil
+    /// `selectedFriendId` is the picker's "Default (…)" option — a real choice,
+    /// not a missing one — so the app-wide default resolves here rather than
+    /// being rejected at submit. Matches canSubmit's `defaultFriend` allowance.
+    var resolvedSplitFriend: SplitwiseFriendEntity? {
+        if let templateFriend { return templateFriend }
+        guard let selectedFriendId else {
+            return defaultFriend.map { SplitwiseFriendEntity(defaultFriend: $0) }
+        }
+        if let match = friends.first(where: { $0.id == selectedFriendId }) {
+            return SplitwiseFriendEntity(friend: match)
+        }
+        // The friend list can still be empty (offline, cache not warmed), but a
+        // pick that came from the override or the default already carries names.
+        if let friendOverride, friendOverride.id == selectedFriendId { return friendOverride }
+        if let defaultFriend, defaultFriend.id == selectedFriendId {
+            return SplitwiseFriendEntity(defaultFriend: defaultFriend)
+        }
+        return nil
+    }
+
     var ynabPayeeName: String {
         payeeText.trimmingCharacters(in: .whitespaces)
     }
@@ -677,14 +698,11 @@ final class ContinueWalletTransactionModel {
 
         let friend: SplitwiseFriendEntity?
         if action != .never {
-            if let templateFriend {
-                friend = templateFriend
-            } else if let selectedFriendId, let match = friends.first(where: { $0.id == selectedFriendId }) {
-                friend = SplitwiseFriendEntity(id: match.id, firstName: match.firstName, fullName: match.fullName)
-            } else {
+            guard let resolved = resolvedSplitFriend else {
                 errorMessage = "Pick a Splitwise friend."
                 return false
             }
+            friend = resolved
         } else {
             friend = nil
         }
@@ -776,11 +794,11 @@ final class ContinueWalletTransactionModel {
         if templateHasFriend, let existing = config.templates[finalTemplateName]?.splitwiseFriend {
             finalFriend = existing
         } else {
-            guard let selectedFriendId, let match = friends.first(where: { $0.id == selectedFriendId }) else {
+            guard let resolved = resolvedSplitFriend else {
                 errorMessage = "Pick a Splitwise friend."
                 return false
             }
-            finalFriend = (match.id, match.firstName, match.fullName)
+            finalFriend = (resolved.id, resolved.firstName, resolved.fullName)
         }
 
         if !isManual {
