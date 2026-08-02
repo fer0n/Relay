@@ -50,6 +50,37 @@ nonisolated extension PendingOperation.Payload {
         }
     }
 
+    /// A copy with the payee (YNAB) or description (Splitwise) replaced —
+    /// used to rename a frozen TransactionHistoryEntry to match an edited
+    /// Payee mapping.
+    func withTitle(_ title: String) -> PendingOperation.Payload {
+        switch self {
+        case .ynabTransaction(let transaction):
+            .ynabTransaction(YNABTransactionRequest(
+                accountId: transaction.accountId,
+                date: transaction.date,
+                amount: transaction.amount,
+                payeeName: title,
+                categoryId: transaction.categoryId,
+                memo: transaction.memo,
+                cleared: transaction.cleared,
+                approved: transaction.approved,
+                importId: transaction.importId
+            ))
+        case .splitwiseExpense(let expense):
+            .splitwiseExpense(SplitwiseExpenseRequest(
+                costCents: expense.costCents,
+                description: title,
+                currencyCode: expense.currencyCode,
+                payerUserId: expense.payerUserId,
+                payerOwedCents: expense.payerOwedCents,
+                friendUserId: expense.friendUserId,
+                friendOwedCents: expense.friendOwedCents,
+                date: expense.date
+            ))
+        }
+    }
+
     var formattedAmount: String {
         switch self {
         case .ynabTransaction(let transaction):

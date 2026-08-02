@@ -97,6 +97,31 @@ nonisolated enum TransactionHistoryStore {
         }
     }
 
+    /// Renames every entry recorded from `merchant`'s frozen title
+    /// (payee/description, equal to the mapping's payeeName at creation time —
+    /// see TransactionHistoryEntry.merchant) to match an edited Payee mapping,
+    /// so "Recent" rows don't keep showing a name the mapping moved on from.
+    /// Called right after `WalletTransactionConfig` saves that mapping. A
+    /// no-op if nothing recorded from this merchant is still around.
+    static func updateTitles(forMerchant merchant: String, title: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var entries = load()
+        var changed = false
+        for index in entries.indices where entries[index].merchant == merchant {
+            entries[index].payload = entries[index].payload.withTitle(title)
+            changed = true
+        }
+        guard changed else { return }
+        do {
+            let data = try encoder.encode(entries)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            logger.error("failed to save transaction history: \(String(describing: error), privacy: .public)")
+        }
+    }
+
     /// Annotates an entry with runs dropped as duplicates of it (see
     /// TransactionClaim) — called both when a duplicate arrives after the original
     /// committed, and by the original at commit time to fold in ones that arrived

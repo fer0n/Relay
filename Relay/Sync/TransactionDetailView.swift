@@ -297,6 +297,11 @@ private struct HistoryDetailContent: View {
         do {
             try WalletTransactionConfigStore.save(config)
             linkedInfo = WalletTransactionConfig.MerchantInfo(payeeName: trimmed, templateName: info.templateName)
+            // Description and payee started out equal (see the comment on the
+            // Payee row above) — carry the rename onto this and any other
+            // frozen entry from the same merchant, rather than leaving
+            // "Recent" rows showing the stale name.
+            TransactionHistoryStore.updateTitles(forMerchant: merchant, title: trimmed)
             dismiss()
         } catch {
             logger.error("failed to save edited payee: \(String(describing: error), privacy: .public)")

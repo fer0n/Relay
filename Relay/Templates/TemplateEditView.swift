@@ -309,15 +309,25 @@ private var hasChanges: Bool {
 
         // Rewrites every kept merchant with its payee name and the template's
         // current name, covering plain edits and a rename in one pass.
+        var renamedMerchants: [(merchant: String, payeeName: String)] = []
         for linked in linkedMerchants {
+            let trimmedPayeeName = linked.payeeName.trimmingCharacters(in: .whitespaces)
+            if config.merchants[linked.merchant]?.payeeName != trimmedPayeeName {
+                renamedMerchants.append((linked.merchant, trimmedPayeeName))
+            }
             config.merchants[linked.merchant] = WalletTransactionConfig.MerchantInfo(
-                payeeName: linked.payeeName.trimmingCharacters(in: .whitespaces),
+                payeeName: trimmedPayeeName,
                 templateName: trimmedName
             )
         }
 
         do {
             try WalletTransactionConfigStore.save(config)
+            // Carries a payee rename onto any frozen "Recent" entry recorded
+            // from that merchant, so it doesn't keep showing the old name.
+            for renamed in renamedMerchants {
+                TransactionHistoryStore.updateTitles(forMerchant: renamed.merchant, title: renamed.payeeName)
+            }
             logger.log("saved template \(trimmedName, privacy: .public)")
             onSave(trimmedName)
             dismiss()

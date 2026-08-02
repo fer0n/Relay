@@ -17,7 +17,7 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     let id: UUID
     let createdAt: Date
     let summary: String
-    let payload: PendingOperation.Payload
+    var payload: PendingOperation.Payload
     /// Shared by every write from the same run; nil for standalone writes.
     var groupId: UUID?
     /// The Splitwise split created alongside this entry's YNAB transaction.
