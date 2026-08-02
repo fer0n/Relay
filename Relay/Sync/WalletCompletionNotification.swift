@@ -13,6 +13,8 @@ import os
 private nonisolated let walletCompletionLogger = Logger(subsystem: Const.loggerSubsystem, category: "WalletCompletionNotification")
 
 nonisolated enum WalletCompletionNotification {
+    static let categoryIdentifier = "WALLET_COMPLETION_CONFIRMATION"
+
     /// `historyEntryID`, when set, is the id of the just-recorded
     /// TransactionHistoryEntry this confirmation is for — carried in
     /// userInfo so tapping the notification opens that transaction's detail
@@ -28,6 +30,7 @@ nonisolated enum WalletCompletionNotification {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = dialog
+        content.categoryIdentifier = categoryIdentifier
         if let historyEntryID {
             content.userInfo = ["historyEntryID": historyEntryID.uuidString]
         }
@@ -43,5 +46,17 @@ nonisolated enum WalletCompletionNotification {
                 walletCompletionLogger.error("failed to post completion confirmation: \(String(describing: error), privacy: .public)")
             }
         }
+    }
+
+    /// Clears any success confirmations still sitting in Notification Center
+    /// once the user has opened the app — they've served their purpose.
+    static func clearDelivered() async {
+        let center = UNUserNotificationCenter.current()
+        let delivered = await center.deliveredNotifications()
+        let ids = delivered
+            .filter { $0.request.content.categoryIdentifier == categoryIdentifier }
+            .map(\.request.identifier)
+        guard !ids.isEmpty else { return }
+        center.removeDeliveredNotifications(withIdentifiers: ids)
     }
 }

@@ -23,6 +23,7 @@ extension ContentView {
                     Task { await pendingQueue.flush() }
                     reloadMainListState()
                     Task { await refreshDefaultSplitwiseFriend(force: false) }
+                    Task { await WalletCompletionNotification.clearDelivered() }
                 }
             }
             // `initial: true` covers the id being set before this view existed:
