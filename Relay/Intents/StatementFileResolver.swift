@@ -140,22 +140,22 @@ nonisolated enum StatementFileResolver {
             // closure resolves it live.
             let dateEntity = try await askDateColumn(
                 columnCandidates(header: table.header, sampleRow: sampleRow, excluding: []),
-                "Which column is the transaction date?"
+                String(localized: "Which column is the transaction date?")
             )
             let payeeEntity = try await askPayeeColumn(
                 columnCandidates(header: table.header, sampleRow: sampleRow, excluding: [dateEntity.index]),
-                "Which column is the payee?"
+                String(localized: "Which column is the payee?")
             )
             let memoEntity = try await askMemoColumn(
                 columnCandidates(header: table.header, sampleRow: sampleRow, excluding: [dateEntity.index, payeeEntity.index]),
-                "Which column is the memo?"
+                String(localized: "Which column is the memo?")
             )
             let amountEntity = try await askAmountColumn(
                 columnCandidates(
                     header: table.header, sampleRow: sampleRow,
                     excluding: [dateEntity.index, payeeEntity.index, memoEntity.index]
                 ),
-                "Which column is the amount?"
+                String(localized: "Which column is the amount?")
             )
 
             let dateSamples = distinctSamples(table.rows.map { $0.indices.contains(dateEntity.index) ? $0[dateEntity.index] : "" })
@@ -248,7 +248,7 @@ nonisolated enum StatementFileResolver {
                 let preview = DateFormatDetector.parse(samples[0], format: format)?.formatted(date: .abbreviated, time: .omitted)
                 return DateFormatEntity(format: format, parsedPreview: preview)
             }
-            let resolved = try await askDateFormat(entities, "What date format is \(samples[0])?")
+            let resolved = try await askDateFormat(entities, String(localized: "What date format is \(samples[0])?"))
             return resolved.format
         }
     }

@@ -62,7 +62,7 @@ nonisolated enum WalletAutomationDialog {
             case .created(let shareSummary):
                 return (" – \(shareSummary)", false)
             case .queued:
-                return (" – split queued for sync", true)
+                return (" – \(String(localized: "split queued for sync"))", true)
             }
         } catch {
             let message = (error as? SplitwiseIntentError)?.localizedStringResource
@@ -83,7 +83,7 @@ nonisolated enum WalletAutomationDialog {
     ) -> (title: String, body: String) {
         guard isQueued else { return (defaultTitle, dialog) }
         return (
-            "\(formattedAmount) at \(name)",
+            String(localized: "\(formattedAmount) at \(name)"),
             String(localized: "No connection, but added locally. Waiting to sync.")
         )
     }
@@ -253,9 +253,9 @@ nonisolated enum WalletAutomationDialog {
             if let categoryId {
                 YNABCategoryUsageStore.recordUsage(categoryId: categoryId)
             }
-            return "\(formattedAmount) at \(payeeName)"
+            return String(localized: "\(formattedAmount) at \(payeeName)")
         case .queued:
-            return "No connection – \(formattedAmount) at \(payeeName) – queued for sync"
+            return String(localized: "No connection – \(formattedAmount) at \(payeeName) – queued for sync")
         }
     }
 
@@ -268,13 +268,13 @@ nonisolated enum WalletAutomationDialog {
     ) -> String {
         switch outcome {
         case .created(let shareSummary):
-            "\(formattedAmount) at \(description) – \(shareSummary)"
+            String(localized: "\(formattedAmount) at \(description) – \(shareSummary)")
         case .queued:
-            "No connection – \(formattedAmount) at \(description) – queued for sync"
+            String(localized: "No connection – \(formattedAmount) at \(description) – queued for sync")
         }
     }
 
     static func splitwiseSkippedDialog(description: String) -> String {
-        "Skipping \(description) — merchant is set to not split."
+        String(localized: "Skipping \(description) — merchant is set to not split.")
     }
 }

@@ -79,6 +79,22 @@
         }
       }
     },
+    "%@ at %@ – %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ at %2$@ – %3$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ bei %2$@ – %3$@"
+          }
+        }
+      }
+    },
     "%@ at %@ – waiting on your split choice." : {
       "localizations" : {
         "de" : {
@@ -153,6 +169,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ hat bezahlt"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
           }
         }
       }
@@ -236,6 +268,16 @@
         }
       }
     },
+    "%lld duplicates found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Duplikate gefunden"
+          }
+        }
+      }
+    },
     "%lld rules" : {
       "localizations" : {
         "de" : {
@@ -272,6 +314,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld transactions created" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Transaktionen erstellt"
           }
         }
       }
@@ -587,7 +639,14 @@
       }
     },
     "Any merchants matched to this template will need a new one assigned." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Händler, die diesem Template zugeordnet sind, benötigen ein neues."
+          }
+        }
+      }
     },
     "Ask Each Time" : {
       "localizations" : {
@@ -1199,28 +1258,6 @@
         }
       }
     },
-    "Enter a valid amount for every payer." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gib für jeden Zahler einen gültigen Betrag ein."
-          }
-        }
-      }
-    },
-    "Enter a valid amount for every share." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gib für jeden Anteil einen gültigen Betrag ein."
-          }
-        }
-      }
-    },
     "Enter a valid amount for everyone." : {
       "localizations" : {
         "de" : {
@@ -1721,6 +1758,22 @@
         }
       }
     },
+    "No connection – %@ at %@ – queued for sync" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No connection – %1$@ at %2$@ – queued for sync"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Verbindung – %1$@ bei %2$@ – zur Synchronisierung in Warteschlange"
+          }
+        }
+      }
+    },
     "No connection, but added locally. Waiting to sync." : {
       "localizations" : {
         "de" : {
@@ -1751,6 +1804,16 @@
         }
       }
     },
+    "No new transactions created" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine neuen Transaktionen erstellt"
+          }
+        }
+      }
+    },
     "No transactions found to import from %@." : {
       "localizations" : {
         "de" : {
@@ -1762,7 +1825,14 @@
       }
     },
     "No values received" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Werte empfangen"
+          }
+        }
+      }
     },
     "None" : {
       "localizations" : {
@@ -2340,6 +2410,16 @@
         }
       }
     },
+    "Skipping %@ — merchant is set to not split." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird übersprungen — für diesen Händler ist „nicht teilen“ eingestellt."
+          }
+        }
+      }
+    },
     "Some transactions are still waiting to sync with YNAB/Splitwise." : {
       "localizations" : {
         "de" : {
@@ -2436,6 +2516,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Teilungsoption"
+          }
+        }
+      }
+    },
+    "split queued for sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zur Synchronisierung in Warteschlange"
           }
         }
       }
@@ -2700,23 +2790,6 @@
         }
       }
     },
-    "The shares add up to %@, but the total is %@." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Anteile ergeben zusammen %1$@, der Gesamtbetrag ist aber %2$@."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "The shares add up to %1$@, but the total is %2$@."
-          }
-        }
-      }
-    },
     "The total expense amount, e.g. 12.34" : {
       "localizations" : {
         "de" : {
@@ -2847,6 +2920,16 @@
         }
       }
     },
+    "What date format is %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welches Datumsformat hat %@?"
+          }
+        }
+      }
+    },
     "When this action finishes successfully, send a confirmation notification." : {
       "localizations" : {
         "de" : {
@@ -2863,6 +2946,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wenn du ein Konto verbindest, öffnet Relay die eigene Anmeldeseite von YNAB oder Splitwise in einem sicheren Browserfenster. Dein Benutzername und Passwort gehen direkt dorthin – Relay sieht oder speichert deine Anmeldedaten niemals."
+          }
+        }
+      }
+    },
+    "Which column is the amount?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Spalte enthält den Betrag?"
+          }
+        }
+      }
+    },
+    "Which column is the memo?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Spalte enthält den Vermerk?"
+          }
+        }
+      }
+    },
+    "Which column is the payee?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Spalte enthält den Zahlungsempfänger?"
+          }
+        }
+      }
+    },
+    "Which column is the transaction date?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Spalte enthält das Transaktionsdatum?"
           }
         }
       }

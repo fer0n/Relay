@@ -108,13 +108,13 @@ nonisolated struct YNABBulkImportResult: Codable {
             let amount = Double(transaction.amount) / Const.milliunitsPerUnit
             let formattedAmount = amount.asMoneyString
             if let payeeName = transaction.payeeName, !payeeName.isEmpty {
-                return "\(formattedAmount), \(payeeName)"
+                return String(localized: "\(formattedAmount), \(payeeName)")
             }
             return formattedAmount
         } else if transactions.count > 1 {
-            return "\(transactions.count) transactions created"
+            return String(localized: "\(transactions.count) transactions created")
         }
-        return "No new transactions created"
+        return String(localized: "No new transactions created")
     }
 
     /// YNAB's own `import_id` dedup count, if any — the secondary half of
@@ -122,7 +122,7 @@ nonisolated struct YNABBulkImportResult: Codable {
     /// render it on its own line instead of crammed into one sentence.
     var duplicatesLine: String? {
         guard !duplicateImportIds.isEmpty else { return nil }
-        return "\(duplicateImportIds.count) duplicates found"
+        return String(localized: "\(duplicateImportIds.count) duplicates found")
     }
 
     /// `summaryLine` + `duplicatesLine` joined into one string, for
