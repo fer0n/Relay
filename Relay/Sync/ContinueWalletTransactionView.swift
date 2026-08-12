@@ -85,7 +85,7 @@ struct ContinueWalletTransactionView: View {
         Binding(get: { model.selectedAccountId }, set: { model.setSelectedAccountId($0) })
     }
 
-    private var splitwiseChoiceBinding: Binding<SplitwiseSplitOption?> {
+    private var splitwiseChoiceBinding: Binding<SplitwiseSplitChoice?> {
         Binding(get: { model.splitwiseRuntimeChoice }, set: { model.setSplitwiseRuntimeChoice($0) })
     }
 
@@ -140,9 +140,7 @@ struct ContinueWalletTransactionView: View {
                     }
                     friendRow
                     splitPickerRow
-                    if model.resolvedSplitwiseAction == .manual {
-                        ownShareRow
-                    }
+                    splitDetailRows
                 }
             }
 
@@ -152,9 +150,7 @@ struct ContinueWalletTransactionView: View {
                     if model.resolvedSplitwiseAction != .never {
                         friendRow
                     }
-                    if model.resolvedSplitwiseAction == .manual {
-                        ownShareRow
-                    }
+                    splitDetailRows
                 }
             }
 
@@ -272,8 +268,27 @@ struct ContinueWalletTransactionView: View {
         )
     }
 
-    private var ownShareRow: some View {
-        SplitwiseOwnShareRow(ownShareText: $model.ownShareText, isIncomplete: Double(model.ownShareText) == nil)
+    /// Whatever the picked split mode still needs typed in: nothing for an even
+    /// split, the amount for `.manual`, a weight each for `.shares`.
+    @ViewBuilder
+    private var splitDetailRows: some View {
+        switch model.resolvedSplitwiseAction {
+        case .manual:
+            SplitwiseOwnShareRow(ownShareText: $model.ownShareText, isIncomplete: Double(model.ownShareText) == nil)
+        case .shares:
+            ShareWeightRow(
+                name: String(localized: "You"),
+                amountText: model.ownShareAmountText,
+                weight: $model.ownWeightText
+            )
+            ShareWeightRow(
+                name: model.splitFriendLabel,
+                amountText: model.friendShareAmountText,
+                weight: $model.friendWeightText
+            )
+        case .always, .never:
+            EmptyView()
+        }
     }
 }
 

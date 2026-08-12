@@ -441,50 +441,6 @@ private struct AmountFieldRow: View {
     }
 }
 
-/// A `.shares` row: the weight as a field, with the amount it works out to
-/// underneath. Its own view for the per-field `@FocusState`, as above.
-private struct ShareWeightRow: View {
-    let name: String
-    /// Nil while the total is unparseable.
-    let amountText: String?
-    @Binding var weight: String
-
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Image(systemName: Const.Symbol.person)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 24)
-                .padding(.trailing, 12)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(name)
-                    .foregroundStyle(.secondary)
-                if let amountText {
-                    Text(amountText)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .monospacedDigit()
-                }
-            }
-            .lineLimit(1)
-
-            Spacer(minLength: 10)
-
-            TextField("0", text: $weight)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .lineLimit(1)
-                .foregroundStyle(SplitwiseShareMath.cents(weight) == nil ? Color.accentColor : Color.primary)
-                .dismissButtonToolbar(isFocused: $isFocused)
-        }
-        .padding(.vertical, 3)
-        .cardRowBackground()
-    }
-}
-
 /// A `.manual` row: the owed amount typed in directly. While focused its
 /// keyboard carries a "Remaining" button filling in whatever's left of the
 /// total — the quick way to settle the last person so the amounts add up. Its

@@ -61,11 +61,16 @@ final class ContinueWalletTransactionModel {
     var selectedAccountId: String?
     var isLoadingAccounts = false
 
-    var splitwiseRuntimeChoice: SplitwiseSplitOption? = .never
+    var splitwiseRuntimeChoice: SplitwiseSplitChoice? = .never
     var friends: [SplitwiseFriend] = []
     var selectedFriendId: Int?
     var isLoadingFriends = false
     var ownShareText = ""
+    /// `.shares` only — relative weights for you and the friend, reset to an
+    /// even 1 each per form (like SplitwiseExpenseDetailView's shares mode),
+    /// since they describe this one transaction rather than a setting.
+    var ownWeightText = "1"
+    var friendWeightText = "1"
 
     /// A template's own friend beats the app-wide default and is shown
     /// read-only rather than re-offered as a choice.
@@ -124,7 +129,7 @@ final class ContinueWalletTransactionModel {
                 selectedCategoryId = template?.categoryId
                 // Never the global last-used choice, which would let the last
                 // manual entry's pick spill into this draft.
-                splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice.map(SplitwiseSplitChoice.init)
                 resolvedTemplateFriend = template?.splitwiseFriend
             } else {
                 payeeText = merchant
@@ -170,7 +175,7 @@ final class ContinueWalletTransactionModel {
                 let template = config.templates[info.templateName]
                 // Never the global last-used choice, which would let the last
                 // manual entry's pick spill into this draft.
-                splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice.map(SplitwiseSplitChoice.init)
                 if let friend = template?.splitwiseFriend {
                     templateHasFriend = true
                     templateFriend = SplitwiseFriendEntity(templateFriend: friend)
@@ -245,7 +250,7 @@ final class ContinueWalletTransactionModel {
         return "Account"
     }
 
-    var resolvedSplitwiseAction: SplitwiseSplitOption {
+    var resolvedSplitwiseAction: SplitwiseSplitChoice {
         // A template can carry a non-.never setting from before Splitwise was
         // disconnected; don't show a picker with nothing behind it.
         if mode == .ynab, !splitwiseAuth.isAuthenticated { return .never }
@@ -262,6 +267,49 @@ final class ContinueWalletTransactionModel {
         isManual || draft.receivedNoValues
     }
 
+    /// The amount a split is worked out against — the same value `submit()`
+    /// books, so the share rows can't show numbers the write disagrees with.
+    /// Nil while a typed amount is unparseable.
+    var splitAmount: Double? {
+        amountIsEditable ? manualAmount : draft.amount
+    }
+
+    /// The `.shares` split in whole cents, `[yours, theirs]`. Nil when the
+    /// amount or a weight is unparseable, or when both weights are zero —
+    /// there's no ratio to split by then.
+    private func sharesCents(amount: Double) -> [Int]? {
+        guard let mine = SplitwiseShareMath.cents(ownWeightText),
+              let theirs = SplitwiseShareMath.cents(friendWeightText),
+              mine + theirs > 0 else { return nil }
+        return SplitwiseShareMath.distribute(
+            totalCents: SplitwiseShareMath.cents(fromAmount: amount),
+            ratios: SplitwiseShareMath.ratios(of: [Double(mine), Double(theirs)])
+        )
+    }
+
+    /// What a `.shares` split books as your own share, i.e. what the `.manual`
+    /// field would have been typed as.
+    func sharesOwnShare(amount: Double) -> Double? {
+        sharesCents(amount: amount).map { Double($0[0]) / Const.centsPerUnit }
+    }
+
+    /// Labels under the two `.shares` weight fields. Nil while the amount or a
+    /// weight can't be read.
+    var ownShareAmountText: String? {
+        splitAmount.flatMap { sharesCents(amount: $0) }.map { SplitwiseShareMath.text(fromCents: $0[0]) }
+    }
+
+    var friendShareAmountText: String? {
+        splitAmount.flatMap { sharesCents(amount: $0) }.map { SplitwiseShareMath.text(fromCents: $0[1]) }
+    }
+
+    /// Names the friend's `.shares` row. Falls back to a generic label while no
+    /// friend is resolved yet — the row is still worth showing, since the
+    /// weight it takes doesn't depend on who ends up on the other side.
+    var splitFriendLabel: String {
+        resolvedSplitFriend?.firstName ?? String(localized: "Friend")
+    }
+
     var canSubmit: Bool {
         if amountIsEditable, manualAmount == nil { return false }
         switch mode {
@@ -273,14 +321,28 @@ final class ContinueWalletTransactionModel {
             if selectedCategoryId == nil { return false }
             if splitwiseAuth.isAuthenticated, splitwiseRuntimeChoice == nil { return false }
             if resolvedSplitwiseAction != .never, selectedFriendId == nil && defaultFriend == nil { return false }
-            if resolvedSplitwiseAction == .manual, Double(ownShareText) == nil { return false }
+            if !splitInputsValid { return false }
         case .splitwise:
             if splitwiseDescription.isEmpty { return false }
             if selectedFriendId == nil && defaultFriend == nil { return false }
             if splitwiseRuntimeChoice == nil { return false }
-            if resolvedSplitwiseAction == .manual, Double(ownShareText) == nil { return false }
+            if !splitInputsValid { return false }
         }
         return true
+    }
+
+    /// Whether the chosen split mode's own inputs are usable — a typed own
+    /// share for `.manual`, weights that add up to something for `.shares`.
+    private var splitInputsValid: Bool {
+        switch resolvedSplitwiseAction {
+        case .always, .never:
+            return true
+        case .manual:
+            return Double(ownShareText) != nil
+        case .shares:
+            guard let amount = splitAmount else { return false }
+            return sharesOwnShare(amount: amount) != nil
+        }
     }
 
     var friendNoneLabel: String {
@@ -378,7 +440,7 @@ final class ContinueWalletTransactionModel {
     }
 
     /// Bound in the view instead of the plain property so the choice persists.
-    func setSplitwiseRuntimeChoice(_ choice: SplitwiseSplitOption?) {
+    func setSplitwiseRuntimeChoice(_ choice: SplitwiseSplitChoice?) {
         splitwiseRuntimeChoice = choice
         if isManual {
             Self.saveLastSplitChoice(choice)
@@ -394,10 +456,10 @@ final class ContinueWalletTransactionModel {
     }
 
     private static let lastSplitChoiceKey = "lastManualTransactionSplitChoice"
-    private static func loadLastSplitChoice() -> SplitwiseSplitOption? {
-        UserDefaults.standard.string(forKey: lastSplitChoiceKey).flatMap(SplitwiseSplitOption.init(rawValue:))
+    private static func loadLastSplitChoice() -> SplitwiseSplitChoice? {
+        UserDefaults.standard.string(forKey: lastSplitChoiceKey).flatMap(SplitwiseSplitChoice.init(rawValue:))
     }
-    private static func saveLastSplitChoice(_ choice: SplitwiseSplitOption?) {
+    private static func saveLastSplitChoice(_ choice: SplitwiseSplitChoice?) {
         UserDefaults.standard.set(choice?.rawValue, forKey: lastSplitChoiceKey)
     }
 
@@ -428,12 +490,15 @@ final class ContinueWalletTransactionModel {
                 if name == nil {
                     splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (mode == .splitwise ? .always : .never)
                 } else {
-                    splitwiseRuntimeChoice = Self.loadLastSplitChoice() ?? (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                    splitwiseRuntimeChoice = Self.loadLastSplitChoice()
+                        ?? (template?.splitwiseOption ?? .never).splitRuntimeChoice.map(SplitwiseSplitChoice.init)
                 }
             } else {
                 // Drafts never read the global last-used choice: follow the
                 // picked template's option, or stay unset to force a pick.
-                splitwiseRuntimeChoice = name == nil ? nil : (template?.splitwiseOption ?? .never).splitRuntimeChoice
+                splitwiseRuntimeChoice = name == nil
+                    ? nil
+                    : (template?.splitwiseOption ?? .never).splitRuntimeChoice.map(SplitwiseSplitChoice.init)
             }
             if let friendOverride {
                 templateHasFriend = false
@@ -680,20 +745,17 @@ final class ContinueWalletTransactionModel {
             }
         }
 
-        let action = resolvedSplitwiseAction
+        let choice = resolvedSplitwiseAction
+        let action = choice.submitOption
 
         // `let`, not `var`: captured by the `async let` below, where a mutable
         // var trips Swift 6 strict concurrency checking.
         let ownShare: Double?
-        if action == .manual {
-            switch SplitwiseExpenseHelper.parseOwnShare(ownShareText, amount: amount) {
-            case .valid(let parsed): ownShare = parsed
-            case .invalid(let message):
-                errorMessage = message
-                return false
-            }
-        } else {
-            ownShare = nil
+        switch resolveOwnShare(for: choice, amount: amount) {
+        case .valid(let parsed): ownShare = parsed
+        case .invalid(let message):
+            errorMessage = message
+            return false
         }
 
         let friend: SplitwiseFriendEntity?
@@ -735,6 +797,31 @@ final class ContinueWalletTransactionModel {
         } catch {
             errorMessage = YNABIntentError.message(for: error)
             return false
+        }
+    }
+
+    private enum OwnShareResolution {
+        /// Nil means "no explicit share" — an equal split, or no split at all.
+        case valid(Double?)
+        case invalid(String)
+    }
+
+    /// The own share the chosen mode implies: typed for `.manual`, derived from
+    /// the weights for `.shares`, absent otherwise.
+    private func resolveOwnShare(for choice: SplitwiseSplitChoice, amount: Double) -> OwnShareResolution {
+        switch choice {
+        case .always, .never:
+            return .valid(nil)
+        case .manual:
+            switch SplitwiseExpenseHelper.parseOwnShare(ownShareText, amount: amount) {
+            case .valid(let parsed): return .valid(parsed)
+            case .invalid(let message): return .invalid(message)
+            }
+        case .shares:
+            guard let share = sharesOwnShare(amount: amount) else {
+                return .invalid(String(localized: "Give at least one of you a share."))
+            }
+            return .valid(share)
         }
     }
 
@@ -820,20 +907,18 @@ final class ContinueWalletTransactionModel {
             }
         }
 
-        let action = resolvedSplitwiseAction
-        guard action != .never else {
+        let choice = resolvedSplitwiseAction
+        guard choice != .never else {
             TransactionDraftGuard.complete(draft.id)
             return true
         }
 
-        var ownShare: Double?
-        if action == .manual {
-            switch SplitwiseExpenseHelper.parseOwnShare(ownShareText, amount: amount) {
-            case .valid(let parsed): ownShare = parsed
-            case .invalid(let message):
-                errorMessage = message
-                return false
-            }
+        let ownShare: Double?
+        switch resolveOwnShare(for: choice, amount: amount) {
+        case .valid(let parsed): ownShare = parsed
+        case .invalid(let message):
+            errorMessage = message
+            return false
         }
 
         do {

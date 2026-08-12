@@ -81,16 +81,16 @@
     },
     "%@ at %@ – %@" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ at %2$@ – %3$@"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ bei %2$@ – %3$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ at %2$@ – %3$@"
           }
         }
       }
@@ -175,15 +175,15 @@
     },
     "%@, %@" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$@"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "%1$@, %2$@"
           }
         }
@@ -1358,6 +1358,9 @@
         }
       }
     },
+    "Friend" : {
+
+    },
     "Full amount" : {
       "localizations" : {
         "de" : {
@@ -1367,6 +1370,9 @@
           }
         }
       }
+    },
+    "Give at least one of you a share." : {
+
     },
     "Give at least one person a share." : {
       "localizations" : {
@@ -1760,16 +1766,16 @@
     },
     "No connection – %@ at %@ – queued for sync" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No connection – %1$@ at %2$@ – queued for sync"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Verbindung – %1$@ bei %2$@ – zur Synchronisierung in Warteschlange"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No connection – %1$@ at %2$@ – queued for sync"
           }
         }
       }
@@ -2479,6 +2485,9 @@
           }
         }
       }
+    },
+    "Split by Shares" : {
+
     },
     "Split Equally" : {
       "localizations" : {

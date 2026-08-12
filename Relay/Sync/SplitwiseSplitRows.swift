@@ -87,7 +87,7 @@ struct SplitwiseFriendPickerRow: View {
 /// from the template's split setting. `nil` means the template uses "Ask Each
 /// Time" and the user still needs to choose for this transaction.
 struct SplitwiseSplitPickerRow: View {
-    @Binding var choice: SplitwiseSplitOption?
+    @Binding var choice: SplitwiseSplitChoice?
     var isIncomplete: Bool = false
 
     var body: some View {
@@ -100,12 +100,57 @@ struct SplitwiseSplitPickerRow: View {
                 selection: $choice,
                 label: choice?.label ?? "Choose"
             ) {
-                Text("Choose").tag(SplitwiseSplitOption?.none)
-                ForEach([SplitwiseSplitOption.always, .manual, .never], id: \.self) { option in
-                    Text(option.label).tag(SplitwiseSplitOption?.some(option))
+                Text("Choose").tag(SplitwiseSplitChoice?.none)
+                ForEach([SplitwiseSplitChoice.always, .shares, .manual, .never], id: \.self) { option in
+                    Text(option.label).tag(SplitwiseSplitChoice?.some(option))
                 }
             }
         }
+        .cardRowBackground()
+    }
+}
+
+/// One participant's relative weight in a `.shares` split, with the amount it
+/// works out to underneath. Its own view for the per-field `@FocusState`.
+/// Shared by SplitwiseExpenseDetailView and the draft forms' "Split by Shares".
+struct ShareWeightRow: View {
+    let name: String
+    /// Nil while the total is unparseable.
+    let amountText: String?
+    @Binding var weight: String
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Image(systemName: Const.Symbol.person)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+                .padding(.trailing, 12)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name)
+                    .foregroundStyle(.secondary)
+                if let amountText {
+                    Text(amountText)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
+                }
+            }
+            .lineLimit(1)
+
+            Spacer(minLength: 10)
+
+            TextField("0", text: $weight)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(1)
+                .foregroundStyle(SplitwiseShareMath.cents(weight) == nil ? Color.accentColor : Color.primary)
+                .dismissButtonToolbar(isFocused: $isFocused)
+        }
+        .padding(.vertical, 3)
         .cardRowBackground()
     }
 }
