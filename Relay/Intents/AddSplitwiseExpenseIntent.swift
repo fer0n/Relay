@@ -22,7 +22,7 @@ struct AddSplitwiseExpenseIntent: AppIntent {
     var expenseDescription: String
 
     @Parameter(title: "Split With")
-    var friend: SplitwiseFriendEntity
+    var friend: SplitwiseSplitTargetEntity
 
     @Parameter(title: "Your Share", description: "Leave blank to split the cost equally")
     var ownShare: Double?

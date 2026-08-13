@@ -50,7 +50,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
     /// Unset falls back to the template's cached friend, then the app-wide
     /// default; with neither, the split is parked as a draft.
     @Parameter(title: "Split With")
-    var splitwiseFriend: SplitwiseFriendEntity?
+    var splitwiseFriend: SplitwiseSplitTargetEntity?
 
     @Parameter(title: "Your Share")
     var splitwiseOwnShare: Double?
@@ -205,7 +205,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             let payeeName: String
             let categoryId: String?
             let splitwiseOption: SplitwiseTemplateOption
-            let templateFriend: (id: Int, firstName: String, fullName: String)?
+            let templateFriend: WalletTransactionConfig.CachedSplitTarget?
 
             if let info = config.resolvedMerchantInfo(for: merchant) {
                 logger.log("merchant resolved to payee=\(info.payeeName, privacy: .public) template=\(info.templateName, privacy: .public)")
@@ -217,7 +217,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 payeeName = info.payeeName
                 categoryId = template?.categoryId
                 splitwiseOption = template?.splitwiseOption ?? .never
-                templateFriend = template?.splitwiseFriend
+                templateFriend = template?.splitwiseTarget
             } else {
                 let resolvedTemplateChoice: String
                 if let templateChoice {
@@ -259,7 +259,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 payeeName = merchant
                 categoryId = template.categoryId
                 splitwiseOption = template.splitwiseOption
-                templateFriend = template.splitwiseFriend
+                templateFriend = template.splitwiseTarget
             }
 
             let accountId: String
@@ -359,9 +359,9 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
 
             // Resolved up front so it's on hand both for the split-choice
             // notification and for a background completion.
-            let resolvedFriend: SplitwiseFriendEntity? = splitwiseFriend
-                ?? templateFriend.map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
-                ?? SplitwiseDefaultFriendStore.load().map { SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) }
+            let resolvedFriend: SplitwiseSplitTargetEntity? = splitwiseFriend
+                ?? templateFriend.map { SplitwiseSplitTargetEntity(cachedTarget: $0) }
+                ?? SplitwiseDefaultFriendStore.load().map { SplitwiseSplitTargetEntity(defaultFriend: $0) }
 
             // Repoints the SAME draft — and so the same notification slot — at
             // the remaining split, rather than completing one and beginning
@@ -390,9 +390,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                         draftId: activeDraftId,
                         context: TransactionDraft.PendingSplitContext(
                             description: payeeName,
-                            friendId: resolvedFriend?.id,
-                            friendFirstName: resolvedFriend?.firstName,
-                            friendFullName: resolvedFriend?.fullName
+                            target: resolvedFriend
                         )
                     ) {
                         let splitDescription = payeeName.trimmingCharacters(in: .whitespacesAndNewlines)

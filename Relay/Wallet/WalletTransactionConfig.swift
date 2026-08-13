@@ -33,7 +33,15 @@ nonisolated struct WalletTransactionConfig: Codable {
         self.cards = try container.decodeIfPresent([String: String].self, forKey: .cards) ?? [:]
     }
 
-    typealias CachedFriend = (id: Int, firstName: String, fullName: String)
+    /// The one Splitwise target a template remembers. A group is a legitimate
+    /// value here — `isGroup` is what tells the two apart, since Splitwise
+    /// numbers friends and groups separately and an id alone is ambiguous.
+    struct CachedSplitTarget: Equatable {
+        var id: Int
+        var firstName: String
+        var fullName: String
+        var isGroup: Bool = false
+    }
 
     /// No defaulted fields, so the synthesized decoder is safe — a missing key is
     /// a genuinely corrupt entry. Adding a defaulted field means giving this the
@@ -60,26 +68,31 @@ nonisolated struct WalletTransactionConfig: Codable {
         var splitwiseFriendId: Int?
         var splitwiseFriendFirstName: String?
         var splitwiseFriendFullName: String?
+        /// Whether the three fields above describe a group rather than a
+        /// person. Kept beside them rather than folded into the id, so the
+        /// stored value stays a plain Splitwise id either way.
+        var splitwiseTargetIsGroup: Bool = false
 
-        /// nil unless all three fields are set — a partial friend is only
-        /// reachable via manual JSON edits, and means "ask when needed" too.
-        var splitwiseFriend: WalletTransactionConfig.CachedFriend? {
+        /// nil unless all three name/id fields are set — a partial target is
+        /// only reachable via manual JSON edits, and means "ask when needed" too.
+        var splitwiseTarget: WalletTransactionConfig.CachedSplitTarget? {
             guard let id = splitwiseFriendId, let firstName = splitwiseFriendFirstName, let fullName = splitwiseFriendFullName else { return nil }
-            return (id, firstName, fullName)
+            return WalletTransactionConfig.CachedSplitTarget(id: id, firstName: firstName, fullName: fullName, isGroup: splitwiseTargetIsGroup)
         }
 
         /// Returns whether it wrote anything, so callers can track `changed`.
-        mutating func cacheSplitwiseFriendIfMissing(_ friend: WalletTransactionConfig.CachedFriend) -> Bool {
-            guard splitwiseFriend == nil else { return false }
-            splitwiseFriendId = friend.id
-            splitwiseFriendFirstName = friend.firstName
-            splitwiseFriendFullName = friend.fullName
+        mutating func cacheSplitwiseTargetIfMissing(_ target: WalletTransactionConfig.CachedSplitTarget) -> Bool {
+            guard splitwiseTarget == nil else { return false }
+            splitwiseFriendId = target.id
+            splitwiseFriendFirstName = target.firstName
+            splitwiseFriendFullName = target.fullName
+            splitwiseTargetIsGroup = target.isGroup
             return true
         }
 
         enum CodingKeys: String, CodingKey {
             case categoryId, isSplitwiseDefault, autoMatch, splitwiseOption
-            case splitwiseFriendId, splitwiseFriendFirstName, splitwiseFriendFullName
+            case splitwiseFriendId, splitwiseFriendFirstName, splitwiseFriendFullName, splitwiseTargetIsGroup
         }
     }
 
@@ -117,11 +130,11 @@ nonisolated struct WalletTransactionConfig: Codable {
         merchant: String,
         payeeName: String,
         templateName: String,
-        friend: CachedFriend
+        target: CachedSplitTarget
     ) -> Bool {
         var changed = false
         var template = templates[templateName] ?? Template()
-        if template.cacheSplitwiseFriendIfMissing(friend) {
+        if template.cacheSplitwiseTargetIfMissing(target) {
             templates[templateName] = template
             changed = true
         }
@@ -201,5 +214,6 @@ nonisolated extension WalletTransactionConfig.Template {
         self.splitwiseFriendId = try container.decodeIfPresent(Int.self, forKey: .splitwiseFriendId)
         self.splitwiseFriendFirstName = try container.decodeIfPresent(String.self, forKey: .splitwiseFriendFirstName)
         self.splitwiseFriendFullName = try container.decodeIfPresent(String.self, forKey: .splitwiseFriendFullName)
+        self.splitwiseTargetIsGroup = try container.decodeIfPresent(Bool.self, forKey: .splitwiseTargetIsGroup) ?? false
     }
 }

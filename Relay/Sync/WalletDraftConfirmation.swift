@@ -159,12 +159,7 @@ case completed(title: String, dialog: String)
             // honest reading is "add it, but you still have to say how".
             TransactionDraftGuard.askSplitChoiceViaNotification(
                 draft.id,
-                context: TransactionDraft.PendingSplitContext(
-                    description: description,
-                    friendId: friend.id,
-                    friendFirstName: friend.firstName,
-                    friendFullName: friend.fullName
-                )
+                context: TransactionDraft.PendingSplitContext(description: description, target: friend)
             )
             logger.log("confirm: split choice still open — posted follow-up")
             return .followUpPosted
@@ -219,17 +214,12 @@ case completed(title: String, dialog: String)
         merchant: String,
         amount: Double,
         description: String,
-        friend: SplitwiseFriendEntity?
+        friend: SplitwiseSplitTargetEntity?
     ) {
         TransactionDraftGuard.transition(draft.id, to: .splitwiseWallet(merchant: merchant, amount: amount))
         TransactionDraftGuard.askSplitChoiceViaNotification(
             draft.id,
-            context: TransactionDraft.PendingSplitContext(
-                description: description,
-                friendId: friend?.id,
-                friendFirstName: friend?.firstName,
-                friendFullName: friend?.fullName
-            )
+            context: TransactionDraft.PendingSplitContext(description: description, target: friend)
         )
     }
 }

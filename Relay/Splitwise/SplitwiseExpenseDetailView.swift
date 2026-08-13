@@ -19,7 +19,7 @@ struct SplitwiseExpenseDetailView: View {
     let expense: SplitwiseExpense
     let friendName: String
     /// Saves the edit to Splitwise and refreshes whatever the caller shows —
-    /// see SplitwiseFriendTransactionsView.update(_:with:).
+    /// see SplitwiseTransactionsView.update(_:with:).
     let onSave: (SplitwiseExpenseUpdateRequest) async throws -> Void
     let onDelete: () async throws -> Void
 

@@ -44,8 +44,29 @@ nonisolated enum WalletAutomationDialog {
     static func splitDialogFragment(
         amount: Double,
         description: String,
-        friend: SplitwiseFriendEntity,
+        friend: SplitwiseSplitTargetEntity,
         ownShare: Double?,
+        groupId: UUID? = nil,
+        merchant: String? = nil
+    ) async -> (fragment: String, isQueued: Bool) {
+        await splitDialogFragment(
+            amount: amount,
+            description: description,
+            target: SplitwiseSplitTarget(friend: friend),
+            allocation: ownShare.map { .ownShare(cents: Int(($0 * Const.centsPerUnit).rounded())) } ?? .equal,
+            groupId: groupId,
+            merchant: merchant
+        )
+    }
+
+    /// The multi-participant form, used by the in-app forms — their picker can
+    /// name several friends or a group, which the Shortcuts-facing single-friend
+    /// parameters above can't express.
+    static func splitDialogFragment(
+        amount: Double,
+        description: String,
+        target: SplitwiseSplitTarget,
+        allocation: SplitwiseSplitAllocation,
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async -> (fragment: String, isQueued: Bool) {
@@ -53,8 +74,8 @@ nonisolated enum WalletAutomationDialog {
             let outcome = try await SplitwiseExpenseHelper.addExpense(
                 amount: amount,
                 description: description,
-                friend: friend,
-                ownShare: ownShare,
+                target: target,
+                allocation: allocation,
                 groupId: groupId,
                 merchant: merchant
             )
@@ -216,12 +237,7 @@ nonisolated enum WalletAutomationDialog {
         let friend = friendWithoutAsking(template: template)
         let draftId = TransactionDraftGuard.beginAwaitingSplitChoice(
             payload,
-            context: TransactionDraft.PendingSplitContext(
-                description: description,
-                friendId: friend?.id,
-                friendFirstName: friend?.firstName,
-                friendFullName: friend?.fullName
-            )
+            context: TransactionDraft.PendingSplitContext(description: description, target: friend)
         )
         TransactionClaimStore.awaitConfirmation(claimId, draftId: draftId)
         return String(
@@ -232,13 +248,11 @@ nonisolated enum WalletAutomationDialog {
     }
 
     /// Nil means the question genuinely can't be answered without asking.
-    static func friendWithoutAsking(template: WalletTransactionConfig.Template?) -> SplitwiseFriendEntity? {
-        if let cached = template?.splitwiseFriend {
-            return SplitwiseFriendEntity(id: cached.id, firstName: cached.firstName, fullName: cached.fullName)
+    static func friendWithoutAsking(template: WalletTransactionConfig.Template?) -> SplitwiseSplitTargetEntity? {
+        if let cached = template?.splitwiseTarget {
+            return SplitwiseSplitTargetEntity(cachedTarget: cached)
         }
-        return SplitwiseDefaultFriendStore.load().map {
-            SplitwiseFriendEntity(id: $0.id, firstName: $0.firstName, fullName: $0.fullName)
-        }
+        return SplitwiseDefaultFriendStore.load().map { SplitwiseSplitTargetEntity(defaultFriend: $0) }
     }
 
     /// Also records category usage on success.

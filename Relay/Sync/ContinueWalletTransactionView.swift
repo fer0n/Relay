@@ -24,7 +24,7 @@ struct ContinueWalletTransactionView: View {
     /// Nil hides the Discard section entirely, e.g. for manual entries.
     let onDiscard: (() -> Void)?
 
-    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseFriendEntity? = nil) {
+    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseSplitTargetEntity? = nil) {
         _model = State(initialValue: ContinueWalletTransactionModel(draft: draft, isManual: isManual, prefill: prefill, isAuthenticatedOverride: isAuthenticatedOverride, friendOverride: friendOverride))
         self.onDiscard = onDiscard
     }
@@ -251,12 +251,13 @@ struct ContinueWalletTransactionView: View {
     }
 
     private var friendRow: some View {
-        SplitwiseFriendPickerRow(
-            resolvedFriendName: model.resolvedFriendName,
+        SplitwiseParticipantPickerRow(
             isLoading: model.isLoadingFriends,
             friends: model.friends,
-            selectedFriendId: $model.selectedFriendId,
-            noneLabel: model.friendNoneLabel,
+            groups: model.groups,
+            selection: $model.participantSelection,
+            searchText: $model.participantSearchText,
+            emptyLabel: model.friendNoneLabel,
             isIncomplete: model.friendRowIsIncomplete
         )
     }
@@ -281,11 +282,16 @@ struct ContinueWalletTransactionView: View {
                 amountText: model.ownShareAmountText,
                 weight: $model.ownWeightText
             )
-            ShareWeightRow(
-                name: model.splitFriendLabel,
-                amountText: model.friendShareAmountText,
-                weight: $model.friendWeightText
-            )
+            ForEach(model.splitParticipants) { participant in
+                ShareWeightRow(
+                    name: participant.firstName,
+                    amountText: model.shareAmountText(for: participant.id),
+                    weight: Binding(
+                        get: { model.weightText(for: participant.id) },
+                        set: { model.setWeightText($0, for: participant.id) }
+                    )
+                )
+            }
         case .always, .never:
             EmptyView()
         }

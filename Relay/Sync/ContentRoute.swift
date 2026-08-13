@@ -16,6 +16,7 @@ enum ContentRoute: Hashable {
     case pendingQueue
     case transactionDrafts
     case splitwiseFriendTransactions(friendId: Int)
+    case splitwiseGroupTransactions(groupId: Int)
     case splitwiseBalances
     case splitwiseActivity
     case settings

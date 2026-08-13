@@ -72,10 +72,8 @@ nonisolated extension PendingOperation.Payload {
                 costCents: expense.costCents,
                 description: title,
                 currencyCode: expense.currencyCode,
-                payerUserId: expense.payerUserId,
-                payerOwedCents: expense.payerOwedCents,
-                friendUserId: expense.friendUserId,
-                friendOwedCents: expense.friendOwedCents,
+                groupId: expense.groupId,
+                participants: expense.participants,
                 date: expense.date
             ))
         }
@@ -90,9 +88,9 @@ nonisolated extension PendingOperation.Payload {
         }
     }
 
-    /// Category name (YNAB), or the friend's name and their share of the
+    /// Category name (YNAB), or who it's split with and their share of the
     /// cost, e.g. "Alex: 12.00 €" (Splitwise) — resolved from the locally
-    /// cached category/friend list. Nil if nothing's cached yet or no
+    /// cached category/friend/group lists. Nil if nothing's cached yet or no
     /// category was set.
     var detail: String? {
         switch self {
@@ -100,9 +98,7 @@ nonisolated extension PendingOperation.Payload {
             guard let categoryId = transaction.categoryId else { return nil }
             return YNABCategoryCacheStore.load()?.first { $0.id == categoryId }?.name
         case .splitwiseExpense(let expense):
-            guard let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == expense.friendUserId }) else { return nil }
-            let share = (Double(expense.friendOwedCents) / Const.centsPerUnit).formatted(.currency(code: expense.currencyCode))
-            return "\(friend.firstName): \(share)"
+            return expense.participantsShareSummary
         }
     }
 }

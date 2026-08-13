@@ -41,7 +41,7 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
     /// Unset falls back to the template's cached friend, then the app-wide
     /// default; only a merchant with neither is asked live.
     @Parameter(title: "Split With")
-    var friendOverride: SplitwiseFriendEntity?
+    var friendOverride: SplitwiseSplitTargetEntity?
 
     @Parameter(title: "Your Share", description: "Only used when Split is Manual")
     var splitwiseOwnShare: Double?
@@ -142,20 +142,20 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
 
         // The shortcut parameter wins first, then the template's cached friend,
         // then the app-wide default, then ask live.
-        func resolveFriend(existing: WalletTransactionConfig.CachedFriend?, dialog: IntentDialog) async throws -> WalletTransactionConfig.CachedFriend {
+        func resolveFriend(existing: WalletTransactionConfig.CachedSplitTarget?, dialog: IntentDialog) async throws -> WalletTransactionConfig.CachedSplitTarget {
             if let friendOverride {
-                return (friendOverride.id, friendOverride.firstName, friendOverride.fullName)
+                return friendOverride.cachedTarget
             }
             if let existing { return existing }
-            let friend: SplitwiseFriendEntity
+            let friend: SplitwiseSplitTargetEntity
             if let defaultFriend = SplitwiseDefaultFriendStore.load() {
                 logger.log("using app-wide default Splitwise friend")
-                friend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
+                friend = SplitwiseSplitTargetEntity(defaultFriend: defaultFriend)
             } else {
                 logger.log("requesting Splitwise friend")
                 // Fetched outside the heartbeat — a slow call isn't an
                 // interrupted run.
-                let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
+                let friends = try await SplitwiseSplitTargetEntity.defaultQuery.suggestedEntities()
                 friend = try await TransactionDraftGuard.withHeartbeat(draftId) {
                     try await $friendOverride.requestDisambiguation(
                         among: friends,
@@ -163,7 +163,7 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     )
                 }
             }
-            return (friend.id, friend.firstName, friend.fullName)
+            return friend.cachedTarget
         }
 
         do {
@@ -194,8 +194,8 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 splitOption = template?.splitwiseOption ?? .never
 
                 let resolved = try await resolveFriend(
-                    existing: template?.splitwiseFriend,
-                    dialog: "Split \(info.templateName) expenses with which friend?"
+                    existing: template?.splitwiseTarget,
+                    dialog: "Split \(info.templateName) expenses with which friend or group?"
                 )
                 friendId = resolved.id
                 friendFirstName = resolved.firstName
@@ -203,7 +203,7 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 // Backfill the friend when the template had none — e.g. it was
                 // only ever used from the YNAB intent — so future runs don't ask.
                 var updated = template ?? WalletTransactionConfig.Template()
-                if updated.cacheSplitwiseFriendIfMissing(resolved) {
+                if updated.cacheSplitwiseTargetIfMissing(resolved) {
                     config.templates[info.templateName] = updated
                     changed = true
                 }
@@ -216,8 +216,8 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 let template = config.templates[templateName]
 
                 let resolvedFriend = try await resolveFriend(
-                    existing: template?.splitwiseFriend,
-                    dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with which friend?"), templateName))
+                    existing: template?.splitwiseTarget,
+                    dialog: IntentDialog(stringLiteral: String(format: String(localized: "Split %@ expenses with which friend or group?"), templateName))
                 )
 
                 // `changed` stays true regardless, since
@@ -227,7 +227,7 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                     merchant: merchant,
                     payeeName: merchant,
                     templateName: templateName,
-                    friend: resolvedFriend
+                    target: resolvedFriend
                 )
                 expenseDescription = merchant
                 friendId = resolvedFriend.id
@@ -326,7 +326,7 @@ struct AddWalletTransactionToSplitwiseIntent: AppIntent {
                 let outcome = try await SplitwiseExpenseHelper.addExpense(
                     amount: amount,
                     description: expenseDescription,
-                    friend: SplitwiseFriendEntity(id: friendId, firstName: friendFirstName, fullName: friendFullName),
+                    friend: SplitwiseSplitTargetEntity(splitwiseId: friendId, firstName: friendFirstName, fullName: friendFullName),
                     ownShare: (splitwiseAction == .manual) ? resolvedOwnShare : nil,
                     merchant: merchant
                 )

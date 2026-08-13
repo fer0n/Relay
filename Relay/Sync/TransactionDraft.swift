@@ -48,18 +48,27 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
     struct PendingSplitContext: Codable {
         /// The resolved payee/template name, also used in the notification text.
         var description: String
-        /// Set when a friend was resolvable without asking. When nil, Split
+        /// Set when a target was resolvable without asking. When nil, Split
         /// Equally / Manually can't finish in the background and fall back to
         /// opening the draft; Don't Split still resolves it.
         var friendId: Int?
         var friendFirstName: String?
         var friendFullName: String?
+        /// Whether the three fields above name a group rather than a person —
+        /// a shortcut's "Split With" takes either. Optional so a context
+        /// written before this field existed still decodes.
+        var friendIsGroup: Bool?
 
-        /// nil unless all three fields are present, mirroring
-        /// `WalletTransactionConfig.Template.splitwiseFriend`.
-        var friend: SplitwiseFriendEntity? {
+        /// nil unless all three id/name fields are present, mirroring
+        /// `WalletTransactionConfig.Template.splitwiseTarget`.
+        var friend: SplitwiseSplitTargetEntity? {
             guard let friendId, let friendFirstName, let friendFullName else { return nil }
-            return SplitwiseFriendEntity(id: friendId, firstName: friendFirstName, fullName: friendFullName)
+            return SplitwiseSplitTargetEntity(
+                kind: friendIsGroup == true ? .group : .friend,
+                splitwiseId: friendId,
+                firstName: friendFirstName,
+                fullName: friendFullName
+            )
         }
     }
 
@@ -98,5 +107,20 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
 
     var formattedAmount: String {
         amount.asMoneyString
+    }
+}
+
+nonisolated extension TransactionDraft.PendingSplitContext {
+    /// Flattens a resolved "Split With" pick into the stored fields — a person
+    /// and a group differ only by `friendIsGroup`, and getting that wrong turns
+    /// a group split into an expense with a stranger's user id.
+    init(description: String, target: SplitwiseSplitTargetEntity?) {
+        self.init(
+            description: description,
+            friendId: target?.splitwiseId,
+            friendFirstName: target?.firstName,
+            friendFullName: target?.fullName,
+            friendIsGroup: target.map { $0.kind == .group }
+        )
     }
 }

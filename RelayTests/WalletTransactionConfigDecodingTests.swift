@@ -50,8 +50,8 @@ struct WalletTransactionConfigDecodingTests {
         #expect(template.isSplitwiseDefault == false)
         #expect(template.splitwiseOption == .ask)
         #expect(template.autoMatch == [.init(pattern: "REWE.*", payeeName: "Rewe")])
-        #expect(template.splitwiseFriend?.id == 42)
-        #expect(template.splitwiseFriend?.fullName == "Sam Rivera")
+        #expect(template.splitwiseTarget?.id == 42)
+        #expect(template.splitwiseTarget?.fullName == "Sam Rivera")
     }
 
     @Test

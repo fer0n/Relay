@@ -58,7 +58,7 @@ struct ContinueWalletTransactionDefaultFriendTests {
             #expect(!model.friendRowIsIncomplete)
 
             let resolved = model.resolvedSplitFriend
-            #expect(resolved?.id == 42)
+            #expect(resolved?.splitwiseId == 42)
             #expect(resolved?.fullName == "Alex Kim")
         }
     }
@@ -82,7 +82,48 @@ struct ContinueWalletTransactionDefaultFriendTests {
             #expect(model.friends.isEmpty)
             model.selectedFriendId = Self.alex.id
 
-            #expect(model.resolvedSplitFriend?.id == 42)
+            #expect(model.resolvedSplitFriend?.splitwiseId == 42)
+        }
+    }
+
+    /// The default can be a group (see DefaultSplitwiseFriendRow), which has to
+    /// resolve to that group's membership — and does so straight from the disk
+    /// cache, since a form can open and submit before any group list has loaded.
+    @Test
+    func aGroupDefaultResolvesToItsMembers() {
+        let group = SplitwiseGroup(
+            id: 7,
+            name: "Flat",
+            members: [
+                SplitwiseGroupMember(id: 42, firstName: "You", lastName: nil, picture: nil, balance: nil),
+                SplitwiseGroupMember(id: 2, firstName: "Alex", lastName: "Kim", picture: nil, balance: nil),
+                SplitwiseGroupMember(id: 3, firstName: "Sam", lastName: "Rivera", picture: nil, balance: nil),
+            ],
+            avatar: nil
+        )
+        let previousGroups = SplitwiseGroupCacheStore.load()
+        let previousUser = SplitwiseCurrentUserStore.load()
+        defer {
+            if let previousGroups { SplitwiseGroupCacheStore.save(previousGroups) } else { SplitwiseGroupCacheStore.delete() }
+            if let previousUser { try? SplitwiseCurrentUserStore.save(previousUser) } else { SplitwiseCurrentUserStore.delete() }
+        }
+        SplitwiseGroupCacheStore.save([group])
+        try? SplitwiseCurrentUserStore.save(SplitwiseUser(id: 42, firstName: "You"))
+
+        Self.withDefaultFriend(SplitwiseDefaultFriend(id: 7, firstName: "Flat", fullName: "Flat", isGroup: true)) {
+            let model = Self.splitwiseDraftModel()
+            model.splitwiseRuntimeChoice = .always
+
+            #expect(model.friendNoneLabel == "Default (Flat)")
+            #expect(!model.friendRowIsIncomplete)
+            #expect(model.canSubmit)
+
+            let target = model.resolvedSplitTarget
+            #expect(target?.groupId == 7)
+            // The signed-in user is the payer, not someone they owe.
+            #expect(target?.participants.map(\.id) == [2, 3])
+            // A group is never mistaken for the one friend a template caches.
+            #expect(model.resolvedSplitFriend == nil)
         }
     }
 

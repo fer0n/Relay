@@ -37,7 +37,7 @@ struct AddYNABTransactionIntent: AppIntent {
     var splitwiseOption: SplitwiseSplitOption
 
     @Parameter(title: "Split With")
-    var splitwiseFriend: SplitwiseFriendEntity?
+    var splitwiseFriend: SplitwiseSplitTargetEntity?
 
     @Parameter(title: "Your Share")
     var splitwiseOwnShare: Double?
@@ -70,7 +70,7 @@ struct AddYNABTransactionIntent: AppIntent {
         // duplicate transaction. (The wallet intents instead use the async
         // `requestValue`, which suspends in place.)
         if effectiveSplitwiseOption != .never, splitwiseFriend == nil {
-            throw $splitwiseFriend.needsValueError("Split with which Splitwise friend?")
+            throw $splitwiseFriend.needsValueError("Split with which Splitwise friend or group?")
         }
         if effectiveSplitwiseOption == .manual, splitwiseOwnShare == nil {
             let formattedAmount = amount.asMoneyString

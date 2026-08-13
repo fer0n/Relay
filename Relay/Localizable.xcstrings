@@ -328,6 +328,9 @@
         }
       }
     },
+    "+%lld more" : {
+
+    },
     "0" : {
       "localizations" : {
         "de" : {
@@ -497,6 +500,9 @@
           }
         }
       }
+    },
+    "Add someone" : {
+
     },
     "Add Splitwise Expense" : {
       "localizations" : {
@@ -1384,6 +1390,12 @@
         }
       }
     },
+    "Group" : {
+
+    },
+    "Group · %lld" : {
+
+    },
     "How Relay Works" : {
       "localizations" : {
         "de" : {
@@ -2156,6 +2168,12 @@
         }
       }
     },
+    "Remove" : {
+
+    },
+    "Remove %@" : {
+
+    },
     "Repeat for Merchant (and Card, YNAB action only). Confirm it looks right, then tap the checkmark to save." : {
       "localizations" : {
         "de" : {
@@ -2436,6 +2454,9 @@
         }
       }
     },
+    "Someone" : {
+
+    },
     "Source" : {
       "localizations" : {
         "de" : {
@@ -2456,7 +2477,11 @@
         }
       }
     },
+    "Split %@ expenses with which friend or group?" : {
+
+    },
     "Split %@ expenses with which friend?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2629,7 +2654,11 @@
         }
       }
     },
+    "Split with which Splitwise friend or group?" : {
+
+    },
     "Split with which Splitwise friend?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2650,6 +2679,7 @@
       }
     },
     "Splitwise Friend" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2658,6 +2688,9 @@
           }
         }
       }
+    },
+    "Splitwise Friend or Group" : {
+
     },
     "Splitwise is rate-limiting requests right now. Try again in a few minutes." : {
       "localizations" : {

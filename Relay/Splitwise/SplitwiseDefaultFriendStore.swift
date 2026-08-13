@@ -2,10 +2,11 @@
 //  SplitwiseDefaultFriendStore.swift
 //  Relay
 //
-//  A single app-wide default Splitwise friend, configured once in Relay's
-//  UI (see ContentView.swift) instead of being asked live every time
-//  AddWalletTransactionToYNABIntent wants to split a transaction. Same
-//  Application Support JSON pattern as WalletTransactionConfigStore.swift.
+//  A single app-wide default Splitwise split target, configured once in
+//  Relay's UI (see ContentView.swift) instead of being asked live every time
+//  AddWalletTransactionToYNABIntent wants to split a transaction. It can be a
+//  group as well as a friend. Same Application Support JSON pattern as
+//  WalletTransactionConfigStore.swift.
 //
 
 import Foundation
@@ -16,6 +17,27 @@ nonisolated struct SplitwiseDefaultFriend: Codable {
     /// Shown in ContentView as the current selection; AddWalletTransactionToYNABIntent
     /// uses `firstName` instead when building prompts/dialogs.
     let fullName: String
+    /// Whether the fields above name a group. Splitwise numbers friends and
+    /// groups separately, so the id alone can't say.
+    let isGroup: Bool
+
+    init(id: Int, firstName: String, fullName: String, isGroup: Bool = false) {
+        self.id = id
+        self.firstName = firstName
+        self.fullName = fullName
+        self.isGroup = isGroup
+    }
+
+    /// Tolerant of files written before `isGroup` existed — the synthesized
+    /// decoder would throw `keyNotFound` on every one of them, silently
+    /// dropping a configured default.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        firstName = try container.decode(String.self, forKey: .firstName)
+        fullName = try container.decode(String.self, forKey: .fullName)
+        isGroup = try container.decodeIfPresent(Bool.self, forKey: .isGroup) ?? false
+    }
 }
 
 nonisolated enum SplitwiseDefaultFriendStore {

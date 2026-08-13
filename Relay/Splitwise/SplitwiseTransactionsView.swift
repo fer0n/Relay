@@ -1,18 +1,37 @@
 //
-//  SplitwiseFriendTransactionsView.swift
+//  SplitwiseTransactionsView.swift
 //  Relay
 //
-//  Pushed from ContentView's Splitwise balance card — the history of expenses
-//  shared with one friend, reusing the same row/detail views as ContentView's
-//  own "Recent" list.
+//  Pushed from ContentView's Splitwise balance card and from the Balances grid
+//  — the history of expenses shared with one friend, or posted to one group,
+//  reusing the same row/detail views as ContentView's own "Recent" list.
+//
+//  One view for both: Splitwise serves the two through the same
+//  `get_expenses` endpoint (see SplitwiseExpenseScope), and everything from the
+//  rows down — edit, delete, restore-on-error — is identical. Only the header
+//  card, which balance to refresh afterwards, and the fallback name for a
+//  participant Splitwise didn't embed differ.
 //
 
 import SwiftUI
 
-struct SplitwiseFriendTransactionsView: View {
-    /// Cached at push time — the source of truth for identity, and the balance
-    /// shown before the first live fetch here.
-    let friend: SplitwiseFriend
+struct SplitwiseTransactionsView: View {
+    /// Whose history this is. Cached at push time — the source of truth for
+    /// identity, and the balance shown before the first live fetch here.
+    enum Subject {
+        case friend(SplitwiseFriend)
+        case group(SplitwiseGroup)
+    }
+
+    let subject: Subject
+
+    init(friend: SplitwiseFriend) {
+        subject = .friend(friend)
+    }
+
+    init(group: SplitwiseGroup) {
+        subject = .group(group)
+    }
 
     @State private var expenses: [SplitwiseExpense] = []
     @State private var loadError: String?
@@ -21,6 +40,7 @@ struct SplitwiseFriendTransactionsView: View {
     /// Set once `load()` re-fetches, so the balance card doesn't stay frozen on
     /// the push-time snapshot.
     @State private var refreshedFriend: SplitwiseFriend?
+    @State private var refreshedGroup: SplitwiseGroup?
     /// Feeds the balance card's "Last refreshed …" line.
     @State private var lastRefreshedAt: Date?
     /// The confirmation dialog is attached to the row itself, not the swipe
@@ -29,12 +49,42 @@ struct SplitwiseFriendTransactionsView: View {
     @State private var expensePendingDelete: SplitwiseExpense?
     @Namespace private var detailNamespace
 
-    private var displayFriend: SplitwiseFriend { refreshedFriend ?? friend }
+    private var scope: SplitwiseExpenseScope {
+        switch subject {
+        case .friend(let friend): .friend(id: friend.id)
+        case .group(let group): .group(id: group.id)
+        }
+    }
+
+    /// Labels a participant whose own name Splitwise didn't embed in the
+    /// expense. For a friend's history that's almost always them; a group
+    /// expense can involve anyone, so it says so rather than naming the group.
+    private var participantNameFallback: String {
+        switch subject {
+        case .friend(let friend): friend.shortName
+        case .group: String(localized: "Someone")
+        }
+    }
+
+    @ViewBuilder
+    private var balanceCard: some View {
+        switch subject {
+        case .friend(let friend):
+            SplitwiseBalanceCard(friend: refreshedFriend ?? friend, lastRefreshedAt: lastRefreshedAt, maxWidth: .infinity)
+        case .group(let group):
+            SplitwiseBalanceCard(
+                group: refreshedGroup ?? group,
+                currentUserId: SplitwiseCurrentUserStore.load()?.id,
+                lastRefreshedAt: lastRefreshedAt,
+                maxWidth: .infinity
+            )
+        }
+    }
 
     var body: some View {
         List {
             Section {
-                SplitwiseBalanceCard(friend: displayFriend, lastRefreshedAt: lastRefreshedAt, maxWidth: .infinity)
+                balanceCard
                     .frame(maxWidth: .infinity)
                     .listRowInsets(
                         .init(
@@ -93,9 +143,9 @@ struct SplitwiseFriendTransactionsView: View {
         .refreshable { await load(force: true) }
         .task {
             withAnimation {
-                expenses = SplitwiseExpenseCacheStore.load(friendId: friend.id) ?? []
+                expenses = SplitwiseExpenseCacheStore.load(scope) ?? []
             }
-            lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
+            lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(scope)
             // Navigating away and back re-runs this `.task`; load(force: false)
             // throttles on cache staleness so that doesn't hit the API each time.
             await load(force: false)
@@ -105,7 +155,7 @@ struct SplitwiseFriendTransactionsView: View {
                 TransactionDetailView(
                     source: .splitwiseExpense(
                         expense,
-                        friendName: friend.shortName,
+                        friendName: participantNameFallback,
                         onSave: { try await update(expense, with: $0) },
                         onDelete: { try await delete(expense) }
                     )
@@ -130,7 +180,7 @@ struct SplitwiseFriendTransactionsView: View {
             title: expense.description,
             amount: amountText(for: expense),
             amountColor: amountColor(for: expense),
-            detail: expense.payerDescription(friendName: friend.shortName)
+            detail: expense.payerDescription(friendName: participantNameFallback)
         )
     }
 
@@ -148,8 +198,8 @@ struct SplitwiseFriendTransactionsView: View {
         return Color.accentColor
     }
 
-    /// Refreshes the expense list and the friend balance, each throttled on its
-    /// own cache's staleness unless `force`. Gating them independently means
+    /// Refreshes the expense list and the subject's balance, each throttled on
+    /// its own cache's staleness unless `force`. Gating them independently means
     /// arriving from a screen that just refreshed the friend list doesn't re-fetch
     /// it, and a fresh cache on one side doesn't block the other.
     private func load(force: Bool) async {
@@ -164,22 +214,34 @@ struct SplitwiseFriendTransactionsView: View {
            let user = try? await SplitwiseService.fetchCurrentUser(token: token) {
             try? SplitwiseCurrentUserStore.save(user)
         }
-        if force || SplitwiseExpenseCacheStore.isStale(friendId: friend.id) {
+        if force || SplitwiseExpenseCacheStore.isStale(scope) {
             do {
-                let fetched = try await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token)
+                let fetched = try await SplitwiseExpenseCacheStore.fetch(scope, token: token)
                 withAnimation { expenses = fetched }
-                lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
+                lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(scope)
                 loadError = nil
             } catch {
                 loadError = "Couldn't load transactions."
             }
         }
-        // Refreshes the same cache backing ContentView's balance card, so popping
-        // back shows an up-to-date balance. Non-fatal: the expense list is what
-        // this view is for, so only an expense failure surfaces an error.
-        if force || SplitwiseFriendCacheStore.isStale,
-           let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
-            refreshedFriend = updated
+        await refreshBalance(force: force, token: token)
+    }
+
+    /// Refreshes the same cache backing the card that pushed this screen, so
+    /// popping back shows an up-to-date balance. Non-fatal: the expense list is
+    /// what this view is for, so only an expense failure surfaces an error.
+    private func refreshBalance(force: Bool, token: String) async {
+        switch subject {
+        case .friend(let friend):
+            if force || SplitwiseFriendCacheStore.isStale,
+               let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
+                refreshedFriend = updated
+            }
+        case .group(let group):
+            if force || SplitwiseGroupCacheStore.isStale,
+               let updated = (try? await SplitwiseGroupCacheStore.fetch(token: token))?.first(where: { $0.id == group.id }) {
+                refreshedGroup = updated
+            }
         }
     }
 
@@ -197,30 +259,26 @@ struct SplitwiseFriendTransactionsView: View {
                     expenses[index] = saved
                 }
             }
-            SplitwiseExpenseCacheStore.save(friendId: friend.id, expenses)
-        } else if let refetched = try? await SplitwiseExpenseCacheStore.fetch(friendId: friend.id, token: token) {
+            SplitwiseExpenseCacheStore.save(scope, expenses)
+        } else if let refetched = try? await SplitwiseExpenseCacheStore.fetch(scope, token: token) {
             // Saved, but Splitwise didn't hand back the stored expense — re-fetch
             // rather than leave the row on pre-edit values.
             withAnimation { expenses = refetched }
-            lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(friendId: friend.id)
+            lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(scope)
         }
-        if let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
-            refreshedFriend = updated
-        }
+        await refreshBalance(force: true, token: token)
     }
 
-    /// Force-refreshes the friend's balance right away, since a deletion changes
-    /// it and the normal staleness window would leave the balance card stale.
+    /// Force-refreshes the balance right away, since a deletion changes it and
+    /// the normal staleness window would leave the balance card stale.
     private func delete(_ expense: SplitwiseExpense) async throws {
         guard let token = SplitwiseAuthService.currentAccessToken else {
             throw SplitwiseAPIError.unauthorized
         }
         try await SplitwiseService.deleteExpense(id: expense.id, token: token)
         withAnimation { expenses.removeAll { $0.id == expense.id } }
-        SplitwiseExpenseCacheStore.save(friendId: friend.id, expenses)
-        if let updated = (try? await SplitwiseFriendCacheStore.fetch(token: token))?.first(where: { $0.id == friend.id }) {
-            refreshedFriend = updated
-        }
+        SplitwiseExpenseCacheStore.save(scope, expenses)
+        await refreshBalance(force: true, token: token)
     }
 
     /// A swipe action isn't already inside a `do/catch` showing its own alert, as
@@ -234,8 +292,19 @@ struct SplitwiseFriendTransactionsView: View {
     }
 }
 
-#Preview {
+#Preview("Friend") {
     NavigationStack {
-        SplitwiseFriendTransactionsView(friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: nil, picture: nil))
+        SplitwiseTransactionsView(friend: SplitwiseFriend(id: 1, firstName: "Alex", lastName: nil, balance: nil, picture: nil))
+    }
+}
+
+#Preview("Group") {
+    NavigationStack {
+        SplitwiseTransactionsView(group: SplitwiseGroup(
+            id: 7,
+            name: "Flat",
+            members: [SplitwiseGroupMember(id: 1, firstName: "Alex", lastName: nil, picture: nil, balance: nil)],
+            avatar: nil
+        ))
     }
 }

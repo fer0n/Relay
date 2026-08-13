@@ -15,7 +15,7 @@ import Testing
 
 @MainActor
 struct WalletTransactionConfigLinkTests {
-    private static let friend = (id: 7, firstName: "Sam", fullName: "Sam Rivera")
+    private static let friend = WalletTransactionConfig.CachedSplitTarget(id: 7, firstName: "Sam", fullName: "Sam Rivera")
 
     private static func template(withFriend: Bool = false, rules: [WalletTransactionConfig.AutoMatchRule] = []) -> WalletTransactionConfig.Template {
         var t = WalletTransactionConfig.Template()
@@ -34,13 +34,13 @@ struct WalletTransactionConfigLinkTests {
         config.templates["Shared"] = Self.template()
 
         let changed = config.recordSplitwiseMerchantLink(
-            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", friend: Self.friend
+            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", target: Self.friend
         )
 
         #expect(changed)
         #expect(config.merchants["REWE SAGT DANKE"]?.payeeName == "Rewe")
         #expect(config.merchants["REWE SAGT DANKE"]?.templateName == "Shared")
-        #expect(config.templates["Shared"]?.splitwiseFriend?.id == 7)
+        #expect(config.templates["Shared"]?.splitwiseTarget?.id == 7)
     }
 
     @Test
@@ -50,13 +50,13 @@ struct WalletTransactionConfigLinkTests {
         config.merchants["REWE SAGT DANKE"] = .init(payeeName: "Old Name", templateName: "Shared")
 
         let changed = config.recordSplitwiseMerchantLink(
-            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", friend: (id: 9, firstName: "Alex", fullName: "Alex Kim")
+            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", target: WalletTransactionConfig.CachedSplitTarget(id: 9, firstName: "Alex", fullName: "Alex Kim")
         )
 
         #expect(changed)
         #expect(config.merchants["REWE SAGT DANKE"]?.payeeName == "Rewe")
         // The template already had a friend, so it's left untouched.
-        #expect(config.templates["Shared"]?.splitwiseFriend?.id == 7)
+        #expect(config.templates["Shared"]?.splitwiseTarget?.id == 7)
     }
 
     @Test
@@ -66,7 +66,7 @@ struct WalletTransactionConfigLinkTests {
         config.merchants["REWE SAGT DANKE"] = .init(payeeName: "Rewe", templateName: "Shared")
 
         let changed = config.recordSplitwiseMerchantLink(
-            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", friend: Self.friend
+            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", target: Self.friend
         )
 
         #expect(!changed)
@@ -79,7 +79,7 @@ struct WalletTransactionConfigLinkTests {
 
         // "REWE SAGT DANKE" already resolves to (Rewe, Shared) via the rule.
         let changed = config.recordSplitwiseMerchantLink(
-            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", friend: Self.friend
+            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", target: Self.friend
         )
 
         #expect(!changed)
@@ -92,7 +92,7 @@ struct WalletTransactionConfigLinkTests {
         config.templates["Shared"] = Self.template(withFriend: true, rules: [.init(pattern: "REWE.*", payeeName: "Rewe")])
 
         let changed = config.recordSplitwiseMerchantLink(
-            merchant: "REWE SAGT DANKE", payeeName: "Rewe Berlin", templateName: "Shared", friend: Self.friend
+            merchant: "REWE SAGT DANKE", payeeName: "Rewe Berlin", templateName: "Shared", target: Self.friend
         )
 
         #expect(changed)
@@ -110,10 +110,10 @@ struct WalletTransactionConfigLinkTests {
 
         // Mapping name unchanged, but the template gains its first friend.
         let changed = config.recordSplitwiseMerchantLink(
-            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", friend: Self.friend
+            merchant: "REWE SAGT DANKE", payeeName: "Rewe", templateName: "Shared", target: Self.friend
         )
 
         #expect(changed)
-        #expect(config.templates["Shared"]?.splitwiseFriend?.id == 7)
+        #expect(config.templates["Shared"]?.splitwiseTarget?.id == 7)
     }
 }

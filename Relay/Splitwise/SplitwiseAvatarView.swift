@@ -20,6 +20,9 @@ struct SplitwiseAvatarView: View {
     let url: URL?
     let diameter: CGFloat
     let iconFont: Font
+    /// What stands in for a missing picture. A group's placeholder is the
+    /// two-person symbol, so an avatar-less group doesn't read as a person.
+    var fallbackSymbol: String = Const.Symbol.person
 
     @State private var image: Image?
 
@@ -32,7 +35,7 @@ struct SplitwiseAvatarView: View {
                     .frame(width: diameter, height: diameter)
                     .clipShape(Circle())
             } else {
-                Image(systemName: Const.Symbol.person)
+                Image(systemName: fallbackSymbol)
                     .font(iconFont)
                     .foregroundStyle(.secondary)
                     .frame(width: diameter, height: diameter)

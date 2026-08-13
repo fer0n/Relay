@@ -83,8 +83,8 @@ nonisolated extension TransactionHistoryEntry {
         return YNABAccountCacheStore.load()?.first { $0.id == transaction.accountId }?.name
     }
 
-    /// The friend and their share, e.g. "Alex: 12.00 €". Nil for a YNAB-only entry
-    /// or while the friend isn't cached.
+    /// Who it was split with and their share, e.g. "Alex: 12.00 €". Nil for a
+    /// YNAB-only entry or while nobody on it is cached.
     var splitSummary: String? {
         let request: SplitwiseExpenseRequest
         if let split {
@@ -94,8 +94,6 @@ nonisolated extension TransactionHistoryEntry {
         } else {
             return nil
         }
-        guard let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == request.friendUserId }) else { return nil }
-        let share = (Double(request.friendOwedCents) / Const.centsPerUnit).formatted(.currency(code: request.currencyCode))
-        return "\(friend.firstName): \(share)"
+        return request.participantsShareSummary
     }
 }

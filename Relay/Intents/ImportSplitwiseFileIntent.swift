@@ -33,7 +33,7 @@ struct ImportSplitwiseFileIntent: AppIntent {
     var file: IntentFile
 
     @Parameter(title: "Split With")
-    var friend: SplitwiseFriendEntity?
+    var friend: SplitwiseSplitTargetEntity?
 
     // Resolved interactively via requestDisambiguation, only when this
     // file's CSV header (or QIF account type) hasn't been imported before —
@@ -82,14 +82,14 @@ struct ImportSplitwiseFileIntent: AppIntent {
         // Explicit override → app-configured default → live ask, same
         // fallback order AddWalletTransactionToYNABIntent uses for its
         // Splitwise friend.
-        let resolvedFriend: SplitwiseFriendEntity
+        let resolvedFriend: SplitwiseSplitTargetEntity
         if let friend {
             resolvedFriend = friend
         } else if let defaultFriend = SplitwiseDefaultFriendStore.load() {
-            resolvedFriend = SplitwiseFriendEntity(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
+            resolvedFriend = SplitwiseSplitTargetEntity(defaultFriend: defaultFriend)
         } else {
-            let friends = try await SplitwiseFriendEntity.defaultQuery.suggestedEntities()
-            resolvedFriend = try await $friend.requestDisambiguation(among: friends, dialog: "Split with which Splitwise friend?")
+            let friends = try await SplitwiseSplitTargetEntity.defaultQuery.suggestedEntities()
+            resolvedFriend = try await $friend.requestDisambiguation(among: friends, dialog: "Split with which Splitwise friend or group?")
         }
 
         let candidateRows = FileImportRowBuilder.build(from: rows)
@@ -104,9 +104,10 @@ struct ImportSplitwiseFileIntent: AppIntent {
                 selectedIDs: Set(candidateRows.map(\.id)),
                 sourceFilename: filename,
                 importedAt: Date(),
-                friendId: resolvedFriend.id,
+                friendId: resolvedFriend.splitwiseId,
                 friendFirstName: resolvedFriend.firstName,
-                friendFullName: resolvedFriend.fullName
+                friendFullName: resolvedFriend.fullName,
+                friendIsGroup: resolvedFriend.kind == .group
             ))
         } catch {
             throw SplitwiseIntentError.requestFailed

@@ -18,7 +18,7 @@ private struct TemplateDraft: Equatable {
     var name: String
     var categoryId: String?
     var splitwiseOption: SplitwiseTemplateOption
-    var friendId: Int?
+    var target: WalletTransactionConfig.CachedSplitTarget?
     var autoMatchRules: [WalletTransactionConfig.AutoMatchRule]
     var linkedMerchants: [LinkedMerchant]
 }
@@ -41,7 +41,8 @@ struct TemplateEditView: View {
     @State private var isLoadingCategories = false
 
     @State private var friends: [SplitwiseFriend] = []
-    @State private var selectedFriendId: Int?
+    @State private var groups: [SplitwiseGroup] = []
+    @State private var selectedTarget: WalletTransactionConfig.CachedSplitTarget?
     @State private var splitwiseOption: SplitwiseTemplateOption
     @State private var isLoadingFriends = false
 
@@ -51,9 +52,6 @@ struct TemplateEditView: View {
     @State private var errorMessage: String?
     @State private var showDeleteConfirmation = false
 
-    /// Save-time fallback for when the template's friend no longer appears in a
-    /// fresh fetchFriends() but the selection hasn't changed either.
-    private let existingFriend: (id: Int, firstName: String, fullName: String)?
 
     /// Leaving this template's friend unset means "use the app-wide default", not
     /// "split with no one", so the picker names it rather than showing "None".
@@ -72,8 +70,7 @@ struct TemplateEditView: View {
         _name = State(initialValue: templateName ?? "")
         _selectedCategoryId = State(initialValue: existing?.categoryId)
         _splitwiseOption = State(initialValue: existing?.splitwiseOption ?? .never)
-        _selectedFriendId = State(initialValue: existing?.splitwiseFriendId)
-        existingFriend = existing?.splitwiseFriend
+        _selectedTarget = State(initialValue: existing?.splitwiseTarget)
         defaultFriend = SplitwiseDefaultFriendStore.load()
         _autoMatchRules = State(initialValue: existing?.autoMatch ?? [])
         let linkedMerchants = config.merchants
@@ -89,7 +86,7 @@ struct TemplateEditView: View {
             name: templateName ?? "",
             categoryId: existing?.categoryId,
             splitwiseOption: existing?.splitwiseOption ?? .never,
-            friendId: existing?.splitwiseFriendId,
+            target: existing?.splitwiseTarget,
             autoMatchRules: existing?.autoMatch ?? [],
             linkedMerchants: linkedMerchants
         )
@@ -102,7 +99,7 @@ struct TemplateEditView: View {
             name: name.trimmingCharacters(in: .whitespaces),
             categoryId: selectedCategoryId,
             splitwiseOption: splitwiseOption,
-            friendId: selectedFriendId,
+            target: selectedTarget,
             autoMatchRules: autoMatchRules.filter { !$0.pattern.isEmpty && !$0.payeeName.isEmpty },
             linkedMerchants: linkedMerchants.map {
                 LinkedMerchant(merchant: $0.merchant, payeeName: $0.payeeName.trimmingCharacters(in: .whitespaces))
@@ -151,10 +148,11 @@ private var hasChanges: Bool {
                         resolvedOption: .never,
                         newOption: $splitwiseOption
                     )
-                    SplitwiseFriendPickerRow(
+                    SplitwiseTargetPickerRow(
                         isLoading: isLoadingFriends,
                         friends: friends,
-                        selectedFriendId: $selectedFriendId,
+                        groups: groups,
+                        target: $selectedTarget,
                         noneLabel: defaultFriend.map { "Default (\($0.firstName))" } ?? "None"
                     )
                 } header: {
@@ -243,13 +241,24 @@ private var hasChanges: Bool {
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
         }
-        guard SplitwiseFriendCacheStore.isStale else { return }
-        isLoadingFriends = friends.isEmpty
+        if let cached = SplitwiseGroupCacheStore.load() {
+            groups = cached
+        }
+        isLoadingFriends = friends.isEmpty && groups.isEmpty
         defer { isLoadingFriends = false }
-        do {
-            friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
-        } catch {
-            logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
+        if SplitwiseFriendCacheStore.isStale {
+            do {
+                friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
+            } catch {
+                logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
+            }
+        }
+        if SplitwiseGroupCacheStore.isStale {
+            do {
+                groups = try await SplitwiseGroupCacheStore.fetch(token: token)
+            } catch {
+                logger.error("failed to load groups: \(String(describing: error), privacy: .public)")
+            }
         }
     }
 
@@ -265,18 +274,9 @@ private var hasChanges: Bool {
 
         let cleanedRules = autoMatchRules.filter { !$0.pattern.isEmpty && !$0.payeeName.isEmpty }
 
-        let resolvedFriend: (id: Int, firstName: String, fullName: String)?
-        if let selectedFriendId {
-            if let match = friends.first(where: { $0.id == selectedFriendId }) {
-                resolvedFriend = (match.id, match.firstName, match.fullName)
-            } else if let existingFriend, existingFriend.id == selectedFriendId {
-                resolvedFriend = existingFriend
-            } else {
-                resolvedFriend = nil
-            }
-        } else {
-            resolvedFriend = nil
-        }
+        // The picker hands over the names as well as the id, so nothing here
+        // has to survive the friend list changing under it.
+        let resolvedFriend = selectedTarget
 
         // save() rebuilds the template from the form's fields, which don't include
         // the "default Splitwise template" flag, so carry it across by hand.
@@ -289,7 +289,8 @@ private var hasChanges: Bool {
             splitwiseOption: splitwiseOption,
             splitwiseFriendId: resolvedFriend?.id,
             splitwiseFriendFirstName: resolvedFriend?.firstName,
-            splitwiseFriendFullName: resolvedFriend?.fullName
+            splitwiseFriendFullName: resolvedFriend?.fullName,
+            splitwiseTargetIsGroup: resolvedFriend?.isGroup ?? false
         )
 
         if let templateName {
@@ -385,12 +386,11 @@ extension TemplateEditView {
         self.templateName = nil
         self.onSave = { _ in }
         self.onDelete = {}
-        existingFriend = nil
         defaultFriend = nil
         _name = State(initialValue: "Groceries")
         _selectedCategoryId = State(initialValue: nil)
         _splitwiseOption = State(initialValue: .never)
-        _selectedFriendId = State(initialValue: nil)
+        _selectedTarget = State(initialValue: nil)
         _autoMatchRules = State(initialValue: previewAutoMatchRules)
         _linkedMerchants = State(initialValue: [])
         _otherTemplateNames = State(initialValue: [])
@@ -398,7 +398,7 @@ extension TemplateEditView {
             name: "Groceries",
             categoryId: nil,
             splitwiseOption: .never,
-            friendId: nil,
+            target: nil,
             autoMatchRules: previewAutoMatchRules,
             linkedMerchants: []
         )

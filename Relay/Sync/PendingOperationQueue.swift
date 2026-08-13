@@ -120,7 +120,9 @@ final class PendingOperationQueue {
                     throw SplitwiseIntentError.notAuthenticated
                 }
                 try await SplitwiseService.createExpense(expense, token: token)
-                SplitwiseFriendUsageStore.recordUsage(friendId: expense.friendUserId)
+                for participant in expense.others {
+                    SplitwiseFriendUsageStore.recordUsage(friendId: participant.userId)
+                }
             }
             TransactionHistoryStore.record(summary: operation.summary, payload: operation.payload, groupId: operation.groupId, merchant: operation.merchant)
             logger.log("synced queued operation: \(operation.summary, privacy: .public)")

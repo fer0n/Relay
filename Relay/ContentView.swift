@@ -43,7 +43,7 @@ struct ContentView: View {
     struct ManualEntry: Identifiable {
         let draft: TransactionDraft
         let prefill: TransactionHistoryEntry?
-        let friendOverride: SplitwiseFriendEntity?
+        let friendOverride: SplitwiseSplitTargetEntity?
 
         var id: UUID { draft.id }
     }
@@ -61,8 +61,11 @@ struct ContentView: View {
         FileImportStagingStore.load()?.rows.count ?? 0
     }
 
+    /// Nil when the app-wide default is a group: the balance card is a
+    /// per-friend view, and a group has no single balance to show.
     private static func loadDefaultSplitwiseFriendFromCache() -> SplitwiseFriend? {
-        guard let defaultId = SplitwiseDefaultFriendStore.load()?.id else { return nil }
+        guard let stored = SplitwiseDefaultFriendStore.load(), !stored.isGroup else { return nil }
+        let defaultId = stored.id
         return SplitwiseFriendCacheStore.load()?.first { $0.id == defaultId }
     }
 
@@ -96,7 +99,7 @@ struct ContentView: View {
             path: path,
             namespace: addNamespace,
             onTapDefault: { startManualEntry(prefill: nil) },
-            onTapFriend: { addTransaction(withFriend: $0) }
+            onTapTarget: { startManualEntry(prefill: nil, friendOverride: $0) }
         )
         // Popping back to the root never fires the scenePhase or root onAppear
         // handlers, so reload whenever the stack empties — that's how a
@@ -119,7 +122,11 @@ struct ContentView: View {
             TransactionDraftsView()
         case .splitwiseFriendTransactions(let friendId):
             if let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == friendId }) {
-                SplitwiseFriendTransactionsView(friend: friend)
+                SplitwiseTransactionsView(friend: friend)
+            }
+        case .splitwiseGroupTransactions(let groupId):
+            if let group = SplitwiseGroupCacheStore.load()?.first(where: { $0.id == groupId }) {
+                SplitwiseTransactionsView(group: group)
             }
         case .splitwiseBalances:
             SplitwiseBalancesView()
@@ -230,8 +237,9 @@ struct ContentView: View {
     /// pull-to-refresh so pulling down always re-fetches.
     func refreshDefaultSplitwiseFriend(force: Bool) async {
         guard force || SplitwiseFriendCacheStore.isStale else { return }
-        guard let defaultId = SplitwiseDefaultFriendStore.load()?.id,
+        guard let stored = SplitwiseDefaultFriendStore.load(), !stored.isGroup,
               let token = SplitwiseAuthService.currentAccessToken else { return }
+        let defaultId = stored.id
         if let fetched = try? await SplitwiseFriendCacheStore.fetch(token: token) {
             defaultSplitwiseFriend = fetched.first { $0.id == defaultId }
             splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
@@ -240,7 +248,7 @@ struct ContentView: View {
 
     /// Blank for the "+" button and the quick action, or seeded from a history
     /// entry for "Re-add" — either way the user reviews before submitting.
-    func startManualEntry(prefill: TransactionHistoryEntry?, friendOverride: SplitwiseFriendEntity? = nil) {
+    func startManualEntry(prefill: TransactionHistoryEntry?, friendOverride: SplitwiseSplitTargetEntity? = nil) {
         manualEntry = ManualEntry(
             draft: TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: "")),
             prefill: prefill,
@@ -248,11 +256,6 @@ struct ContentView: View {
         )
     }
 
-    /// Splitwise's "Add Transaction" button on a friend's page — opens the
-    /// same manual-entry sheet pre-scoped to that friend.
-    func addTransaction(withFriend friend: SplitwiseFriend) {
-        startManualEntry(prefill: nil, friendOverride: SplitwiseFriendEntity(friend: friend))
-    }
 }
 
 #Preview {

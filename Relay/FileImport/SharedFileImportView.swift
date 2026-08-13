@@ -52,7 +52,10 @@ struct SharedFileImportView: View {
     @State private var splitwiseNotAuthenticated = false
     @State private var friends: [SplitwiseFriend] = []
     @State private var isLoadingFriends = false
-    @State private var selectedFriendId: Int?
+    @State private var groups: [SplitwiseGroup] = []
+    /// Who every imported row gets split with — a friend or a group, whether
+    /// picked here, staged by a shortcut, or the app-wide default.
+    @State private var splitTarget: WalletTransactionConfig.CachedSplitTarget?
 
     @State private var isParsing = false
     /// The initial `.task` and a foreground re-entry can both reach
@@ -93,7 +96,14 @@ struct SharedFileImportView: View {
         self.onDone = onDone
         // An app-wide default friend pre-fills the picker; overwritten by the
         // originally-staged friend once reopening loads one, below.
-        _selectedFriendId = State(initialValue: SplitwiseDefaultFriendStore.load()?.id)
+        if let storedDefault = SplitwiseDefaultFriendStore.load() {
+            _splitTarget = State(initialValue: WalletTransactionConfig.CachedSplitTarget(
+                id: storedDefault.id,
+                firstName: storedDefault.firstName,
+                fullName: storedDefault.fullName,
+                isGroup: storedDefault.isGroup
+            ))
+        }
 
         if source == nil {
             // Reopening — load the staged import and land back on whatever
@@ -105,7 +115,12 @@ struct SharedFileImportView: View {
                 _selectedAccountId = State(initialValue: staged.accountId)
                 _includeMemos = State(initialValue: staged.includeMemos)
                 if let friendId = staged.friendId {
-                    _selectedFriendId = State(initialValue: friendId)
+                    _splitTarget = State(initialValue: WalletTransactionConfig.CachedSplitTarget(
+                        id: friendId,
+                        firstName: staged.friendFirstName ?? "",
+                        fullName: staged.friendFullName ?? "",
+                        isGroup: staged.friendIsGroup == true
+                    ))
                 }
             } else {
                 _destination = State(initialValue: Self.loadLastDestination() ?? .splitwise)
@@ -133,7 +148,11 @@ struct SharedFileImportView: View {
     /// Whether the active destination has enough picked to submit. Parsing needs
     /// neither an account nor a friend.
     private var isActiveTargetResolved: Bool {
-        destination == .splitwise ? selectedFriendId != nil : selectedAccountId != nil
+        destination == .splitwise ? splitTargetEntity != nil : selectedAccountId != nil
+    }
+
+    private var splitTargetEntity: SplitwiseSplitTargetEntity? {
+        splitTarget.map { SplitwiseSplitTargetEntity(cachedTarget: $0) }
     }
 
     private var rowIDs: [String] { staging?.rows.map(\.id) ?? [] }
@@ -203,7 +222,14 @@ struct SharedFileImportView: View {
                 hasStaged = true
                 destination = reloaded.destination
                 selectedAccountId = selectedAccountId ?? reloaded.accountId
-                selectedFriendId = selectedFriendId ?? reloaded.friendId
+                if splitTarget == nil, let friendId = reloaded.friendId {
+                    splitTarget = WalletTransactionConfig.CachedSplitTarget(
+                        id: friendId,
+                        firstName: reloaded.friendFirstName ?? "",
+                        fullName: reloaded.friendFullName ?? "",
+                        isGroup: reloaded.friendIsGroup == true
+                    )
+                }
                 includeMemos = reloaded.includeMemos
                 handledIDs = FileImportHistoryStore.handledIDs(destination: destination)
                 Task { await loadActiveTarget() }
@@ -220,7 +246,7 @@ struct SharedFileImportView: View {
             }
             // Keeps the staged target/settings in sync so a reopen restores them.
             .onChange(of: selectedAccountId) { syncStagingTargets() }
-            .onChange(of: selectedFriendId) { syncStagingTargets() }
+            .onChange(of: splitTarget) { _, _ in syncStagingTargets() }
             .onChange(of: includeMemos) { syncStagingTargets() }
             .onAuthenticated(ynabAuth.isAuthenticated) {
                 ynabNotAuthenticated = false
@@ -270,12 +296,12 @@ struct SharedFileImportView: View {
                     }
                     .cardRowBackground()
                 } else if destination == .splitwise {
-                    SplitwiseFriendPickerRow(
-                        resolvedFriendName: nil,
+                    SplitwiseTargetPickerRow(
                         isLoading: isLoadingFriends,
                         friends: friends,
-                        selectedFriendId: $selectedFriendId,
-                        isIncomplete: staging != nil && selectedFriendId == nil
+                        groups: groups,
+                        target: $splitTarget,
+                        isIncomplete: staging != nil && splitTarget == nil
                     )
                 } else {
                     accountRow
@@ -478,10 +504,16 @@ struct SharedFileImportView: View {
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
         }
+        if let cached = SplitwiseGroupCacheStore.load() {
+            groups = cached
+        }
+        if SplitwiseGroupCacheStore.isStale, let fetched = try? await SplitwiseGroupCacheStore.fetch(token: token) {
+            groups = fetched
+        }
         // Only hit the network when the cache is stale, so re-opening this sheet
         // doesn't re-fetch. Selection validation still runs either way.
         if SplitwiseFriendCacheStore.isStale {
-            isLoadingFriends = friends.isEmpty
+            isLoadingFriends = friends.isEmpty && groups.isEmpty
             defer { isLoadingFriends = false }
             do {
                 friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
@@ -491,8 +523,11 @@ struct SharedFileImportView: View {
         }
         // A default friend removed or blocked since being set would otherwise
         // leave the picker pointing at nothing.
-        if let selectedFriendId, !friends.contains(where: { $0.id == selectedFriendId }) {
-            self.selectedFriendId = nil
+        // A friend removed or blocked since being picked would otherwise leave
+        // the row pointing at nothing. Groups aren't in this list, so they're
+        // not this check's to clear.
+        if let splitTarget, !splitTarget.isGroup, !friends.contains(where: { $0.id == splitTarget.id }) {
+            self.splitTarget = nil
         }
     }
 
@@ -575,9 +610,10 @@ struct SharedFileImportView: View {
             importedAt: Date(),
             accountId: selectedAccountId,
             includeMemos: includeMemos,
-            friendId: selectedFriendId,
-            friendFirstName: friends.first { $0.id == selectedFriendId }?.firstName,
-            friendFullName: friends.first { $0.id == selectedFriendId }?.fullName
+            friendId: splitTarget?.id,
+            friendFirstName: splitTarget?.firstName,
+            friendFullName: splitTarget?.fullName,
+            friendIsGroup: splitTarget?.isGroup ?? false
         )
         do {
             try FileImportStagingStore.save(newStaging)
@@ -604,13 +640,11 @@ struct SharedFileImportView: View {
     /// removed, so a failure leaves them to retry.
     private func submitSplitwise() async {
         guard let staging else { return }
-        guard let friendId = selectedFriendId, let friend = friends.first(where: { $0.id == friendId }) else { return }
+        guard let friendEntity = splitTargetEntity else { return }
 
         errorMessage = nil
         isSubmitting = true
         defer { isSubmitting = false }
-
-        let friendEntity = SplitwiseFriendEntity(id: friend.id, firstName: friend.firstName, fullName: friend.fullName)
         let ids = selectedIDs.wrappedValue
         let selectedRows = staging.rows.filter { ids.contains($0.id) }
 
@@ -703,9 +737,10 @@ struct SharedFileImportView: View {
         guard var staging else { return }
         staging.accountId = selectedAccountId
         staging.includeMemos = includeMemos
-        staging.friendId = selectedFriendId
-        staging.friendFirstName = friends.first { $0.id == selectedFriendId }?.firstName
-        staging.friendFullName = friends.first { $0.id == selectedFriendId }?.fullName
+        staging.friendId = splitTarget?.id
+        staging.friendFirstName = splitTarget?.firstName
+        staging.friendFullName = splitTarget?.fullName
+        staging.friendIsGroup = splitTarget?.isGroup ?? false
         self.staging = staging
         try? FileImportStagingStore.save(staging)
     }

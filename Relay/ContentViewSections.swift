@@ -127,7 +127,7 @@ struct ContentRecentSection: View {
 
     /// Set by the swipe action's Delete button to gate a confirmation before
     /// actually deleting — attached to the row itself rather than the swipe
-    /// button, same reasoning as SplitwiseFriendTransactionsView.
+    /// button, same reasoning as SplitwiseTransactionsView.
     @State private var entryPendingDelete: TransactionHistoryEntry?
 
     var body: some View {

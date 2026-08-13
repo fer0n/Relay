@@ -46,23 +46,70 @@ nonisolated enum SplitwiseExpenseHelper {
         return .valid(parsed)
     }
 
-    /// Creates a non-group expense between the signed-in user, who fronts the whole
-    /// cost, and `friend`; a nil `ownShare` splits it equally. `groupId` folds this
+    /// The entity shape, used by the callers that split with one picked target
+    /// (the Shortcuts intents, the statement-file import): a nil `ownShare`
+    /// splits equally, otherwise everyone else shares the remainder.
+    static func addExpense(
+        amount: Double,
+        description: String,
+        friend: SplitwiseSplitTargetEntity,
+        ownShare: Double?,
+        date: Date? = nil,
+        groupId: UUID? = nil,
+        merchant: String? = nil
+    ) async throws -> SplitwiseExpenseOutcome {
+        if let ownShare {
+            try validateOwnShare(ownShare, amount: amount)
+        }
+        return try await addExpense(
+            amount: amount,
+            description: description,
+            target: try await splitTarget(for: friend),
+            allocation: ownShare.map { .ownShare(cents: Int(($0 * Const.centsPerUnit).rounded())) } ?? .equal,
+            date: date,
+            groupId: groupId,
+            merchant: merchant
+        )
+    }
+
+    /// Resolves a picked entity into the people it bills. A friend is itself; a
+    /// group is its membership, which has to be looked up — the entity only
+    /// carries the group's name.
+    static func splitTarget(for entity: SplitwiseSplitTargetEntity) async throws -> SplitwiseSplitTarget {
+        guard entity.kind == .group else {
+            return SplitwiseSplitTarget(friend: entity)
+        }
+        let groupId = entity.splitwiseId
+        var groups = SplitwiseGroupCacheStore.load() ?? []
+        if !groups.contains(where: { $0.id == groupId }), let token = SplitwiseAuthService.currentAccessToken {
+            // Cache miss rather than a routine refresh — a group picked in a
+            // shortcut months ago may never have been cached on this device.
+            groups = (try? await SplitwiseGroupCacheStore.fetch(token: token)) ?? groups
+        }
+        guard let group = groups.first(where: { $0.id == groupId }) else {
+            throw SplitwiseIntentError.validation("Couldn't find that Splitwise group.")
+        }
+        let members = group.others(excluding: SplitwiseCurrentUserStore.load()?.id)
+            .map(SplitwiseSplitParticipant.init(member:))
+        return SplitwiseSplitTarget(participants: members, groupId: group.id, groupName: group.name)
+    }
+
+    /// Creates an expense the signed-in user fronts the whole cost of, split
+    /// across `target` — a set of friends as a personal expense, or a group,
+    /// in which case it's posted under that group's id. `groupId` is Relay's
+    /// own history grouping id (unrelated to Splitwise groups): it folds this
     /// into the same history entry as its run's YNAB transaction.
     static func addExpense(
         amount: Double,
         description: String,
-        friend: SplitwiseFriendEntity,
-        ownShare: Double?,
+        target: SplitwiseSplitTarget,
+        allocation: SplitwiseSplitAllocation,
         date: Date? = nil,
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async throws -> SplitwiseExpenseOutcome {
         guard amount.isFinite, amount > 0 else {
             throw SplitwiseIntentError.validation("Amount must be a positive number.")
-        }
-        if let ownShare {
-            try validateOwnShare(ownShare, amount: amount)
         }
 
         guard let token = SplitwiseAuthService.currentAccessToken else {
@@ -85,18 +132,27 @@ nonisolated enum SplitwiseExpenseHelper {
             }
         }
 
+        // The signed-in user can be in the group they picked, and would
+        // otherwise be billed twice — once as payer, once as a member.
+        let others = target.participants.filter { $0.id != user.id }
+        guard !others.isEmpty else {
+            throw SplitwiseIntentError.validation("Pick at least one person to split with.")
+        }
+
         let costCents = Int((amount * Const.centsPerUnit).rounded())
-        let ownShareCents = ownShare.map { Int(($0 * Const.centsPerUnit).rounded()) } ?? costCents / 2
-        let friendShareCents = costCents - ownShareCents
+        guard let owed = allocation.owedCents(totalCents: costCents, participantCount: others.count) else {
+            throw SplitwiseIntentError.validation("Your share must be between 0 and the total amount.")
+        }
+
+        let participants = [SplitwiseExpenseRequest.Participant(userId: user.id, paidCents: costCents, owedCents: owed[0])]
+            + zip(others, owed.dropFirst()).map { SplitwiseExpenseRequest.Participant(userId: $0.id, paidCents: 0, owedCents: $1) }
 
         let expense = SplitwiseExpenseRequest(
             costCents: costCents,
             description: description,
             currencyCode: Const.currencyCode,
-            payerUserId: user.id,
-            payerOwedCents: ownShareCents,
-            friendUserId: friend.id,
-            friendOwedCents: friendShareCents,
+            groupId: target.groupId ?? 0,
+            participants: participants,
             date: date.map { DateFormatter.yyyyMMdd.string(from: $0) }
         )
 
@@ -104,20 +160,25 @@ nonisolated enum SplitwiseExpenseHelper {
         let outcome = try await PendingSync.createSplitwiseExpense(
             expense,
             token: token,
-            summary: "\(formattedAmount) expense for \(description), split with \(friend.firstName)",
+            summary: "\(formattedAmount) expense for \(description), split with \(target.displayName)",
             groupId: groupId,
             merchant: merchant
         )
 
         switch outcome {
         case .created:
-            SplitwiseFriendUsageStore.recordUsage(friendId: friend.id)
+            for participant in others {
+                SplitwiseFriendUsageStore.recordUsage(friendId: participant.id)
+            }
             // Force-refreshes the friend balance rather than leaving it to the next
             // staleness-based fetch, so a just-posted expense shows immediately.
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token) }
-            let ownAmount = (Double(ownShareCents) / Const.centsPerUnit).asMoneyString
-            let friendAmount = (Double(friendShareCents) / Const.centsPerUnit).asMoneyString
-            return .created(shareSummary: "You: \(ownAmount); \(friend.firstName): \(friendAmount)")
+            let shares = [(String(localized: "You"), owed[0])]
+                + zip(others, owed.dropFirst()).map { ($0.firstName, $1) }
+            let shareSummary = shares
+                .map { "\($0): \((Double($1) / Const.centsPerUnit).asMoneyString)" }
+                .joined(separator: "; ")
+            return .created(shareSummary: shareSummary)
         case .queued:
             // Queued for later, so there's nothing to refresh yet.
             return .queued

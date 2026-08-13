@@ -80,37 +80,150 @@ extension Array where Element == SplitwiseFriend {
     }
 }
 
-/// Non-group expense split between the signed-in user (who fronts the full cost)
-/// and one friend. Codable so PendingOperationQueue can persist one while offline.
+/// An expense the signed-in user fronts the full cost of, split across any
+/// number of other people — either as a personal expense (`groupId` 0) or
+/// posted into a Splitwise group. Codable so PendingOperationQueue can persist
+/// one while offline.
 nonisolated struct SplitwiseExpenseRequest: Codable {
+    /// One person's stake. `paidCents` is only non-zero for the payer, but is
+    /// stored per participant because Splitwise validates paid and owed shares
+    /// separately, each against the cost.
+    nonisolated struct Participant: Codable, Equatable {
+        let userId: Int
+        let paidCents: Int
+        let owedCents: Int
+    }
+
     let costCents: Int
     let description: String
     let currencyCode: String
-    let payerUserId: Int
-    let payerOwedCents: Int
-    let friendUserId: Int
-    let friendOwedCents: Int
+    /// 0 for a personal expense; a real group id posts the expense into that
+    /// group, where Splitwise shows it alongside the group's other expenses.
+    let groupId: Int
+    /// The payer first, then everyone they're splitting with. Their `owedCents`
+    /// must add up to `costCents` exactly, which is what Splitwise validates.
+    let participants: [Participant]
     /// ISO-8601. nil means "now" — only the statement-file import sets it, to
     /// carry the transaction's own date instead of today's.
     let date: String?
+
+    init(
+        costCents: Int,
+        description: String,
+        currencyCode: String,
+        groupId: Int = 0,
+        participants: [Participant],
+        date: String? = nil
+    ) {
+        self.costCents = costCents
+        self.description = description
+        self.currencyCode = currencyCode
+        self.groupId = groupId
+        self.participants = participants
+        self.date = date
+    }
+
+    /// The one-friend shape this type used to be limited to, kept as a
+    /// convenience for the single-friend callers (the Shortcuts intents, the
+    /// statement-file import) that have no reason to build a participant list.
+    init(
+        costCents: Int,
+        description: String,
+        currencyCode: String,
+        payerUserId: Int,
+        payerOwedCents: Int,
+        friendUserId: Int,
+        friendOwedCents: Int,
+        date: String?
+    ) {
+        self.init(
+            costCents: costCents,
+            description: description,
+            currencyCode: currencyCode,
+            participants: [
+                Participant(userId: payerUserId, paidCents: costCents, owedCents: payerOwedCents),
+                Participant(userId: friendUserId, paidCents: 0, owedCents: friendOwedCents),
+            ],
+            date: date
+        )
+    }
+
+    /// Whoever fronted the money — the first participant by construction, but
+    /// resolved by `paidCents` so a payload decoded from anywhere still reads
+    /// correctly.
+    var payer: Participant? {
+        participants.first { $0.paidCents > 0 } ?? participants.first
+    }
+
+    var payerUserId: Int { payer?.userId ?? 0 }
+    var payerOwedCents: Int { payer?.owedCents ?? 0 }
+
+    /// Everyone the payer split with.
+    var others: [Participant] {
+        let payerId = payer?.userId
+        return participants.filter { $0.userId != payerId }
+    }
 
     var asJSONObject: [String: Any] {
         var object: [String: Any] = [
             "cost": splitwiseDecimalString(costCents),
             "description": description,
             "currency_code": currencyCode,
-            "group_id": 0,
-            "users__0__user_id": payerUserId,
-            "users__0__paid_share": splitwiseDecimalString(costCents),
-            "users__0__owed_share": splitwiseDecimalString(payerOwedCents),
-            "users__1__user_id": friendUserId,
-            "users__1__paid_share": "0.00",
-            "users__1__owed_share": splitwiseDecimalString(friendOwedCents),
+            "group_id": groupId,
         ]
+        for (index, participant) in participants.enumerated() {
+            object["users__\(index)__user_id"] = participant.userId
+            object["users__\(index)__paid_share"] = splitwiseDecimalString(participant.paidCents)
+            object["users__\(index)__owed_share"] = splitwiseDecimalString(participant.owedCents)
+        }
         if let date {
             object["date"] = date
         }
         return object
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case costCents, description, currencyCode, groupId, participants, date
+        case payerUserId, payerOwedCents, friendUserId, friendOwedCents
+    }
+
+    /// Tolerant of the pre-multi-participant shape, which stored the payer and
+    /// the single friend as four flat fields and had no `groupId`. Those
+    /// payloads are still on disk in the offline queue and in transaction
+    /// history, and the synthesized decoder would throw `keyNotFound` on every
+    /// one of them — failing the whole file, not just the entry.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        costCents = try container.decode(Int.self, forKey: .costCents)
+        description = try container.decode(String.self, forKey: .description)
+        currencyCode = try container.decode(String.self, forKey: .currencyCode)
+        groupId = try container.decodeIfPresent(Int.self, forKey: .groupId) ?? 0
+        date = try container.decodeIfPresent(String.self, forKey: .date)
+
+        if let participants = try container.decodeIfPresent([Participant].self, forKey: .participants) {
+            self.participants = participants
+            return
+        }
+        let payerUserId = try container.decode(Int.self, forKey: .payerUserId)
+        let payerOwedCents = try container.decode(Int.self, forKey: .payerOwedCents)
+        let friendUserId = try container.decode(Int.self, forKey: .friendUserId)
+        let friendOwedCents = try container.decode(Int.self, forKey: .friendOwedCents)
+        participants = [
+            Participant(userId: payerUserId, paidCents: costCents, owedCents: payerOwedCents),
+            Participant(userId: friendUserId, paidCents: 0, owedCents: friendOwedCents),
+        ]
+    }
+
+    /// Writes only the current shape — the legacy keys are read, never written,
+    /// so nothing keeps producing payloads a future decoder has to special-case.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(costCents, forKey: .costCents)
+        try container.encode(description, forKey: .description)
+        try container.encode(currencyCode, forKey: .currencyCode)
+        try container.encode(groupId, forKey: .groupId)
+        try container.encode(participants, forKey: .participants)
+        try container.encodeIfPresent(date, forKey: .date)
     }
 }
 

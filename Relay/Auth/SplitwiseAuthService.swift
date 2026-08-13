@@ -136,6 +136,7 @@ final class SplitwiseAuthService {
         KeychainStore.delete(for: Self.refreshTokenKey)
         SplitwiseCurrentUserStore.delete()
         SplitwiseFriendCacheStore.delete()
+        SplitwiseGroupCacheStore.delete()
         SplitwiseExpenseCacheStore.invalidateAll()
         SplitwiseNotificationCacheStore.delete()
     }

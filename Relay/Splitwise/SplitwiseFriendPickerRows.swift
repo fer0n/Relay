@@ -40,3 +40,24 @@ func splitwiseFriendMenuButtons(_ friends: [SplitwiseFriend], onSelect: @escapin
         Button(friend.fullName) { onSelect(friend) }
     }
 }
+
+/// The same, plus the groups under a separator. Groups sit apart rather than
+/// mixed in because they bill a whole membership, which is a different kind of
+/// answer to "who do I split with" than one person — and a group with nobody in
+/// it has no one to bill, so it isn't offered.
+@ViewBuilder
+func splitwiseTargetMenuButtons(
+    friends: [SplitwiseFriend],
+    groups: [SplitwiseGroup],
+    onSelectFriend: @escaping (SplitwiseFriend) -> Void,
+    onSelectGroup: @escaping (SplitwiseGroup) -> Void
+) -> some View {
+    splitwiseFriendMenuButtons(friends, onSelect: onSelectFriend)
+    let selectableGroups = groups.filter { !$0.memberList.isEmpty }
+    if !selectableGroups.isEmpty {
+        Divider()
+        ForEach(selectableGroups, id: \.id) { group in
+            Button(group.name) { onSelectGroup(group) }
+        }
+    }
+}

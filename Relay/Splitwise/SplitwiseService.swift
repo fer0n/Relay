@@ -48,10 +48,21 @@ nonisolated enum SplitwiseService {
         return try decoder.decode(SplitwiseFriendsResponse.self, from: data).friends
     }
 
-    /// Newest first, with soft-deleted entries filtered out.
-    static func fetchExpenses(friendId: Int, token: String) async throws -> [SplitwiseExpense] {
+    /// The signed-in user's groups. Splitwise always includes a synthetic id-0
+    /// group ("Non-group expenses") that isn't a real target — an expense posted
+    /// with `group_id: 0` is precisely a *personal* one — so it's dropped here
+    /// rather than in every caller.
+    static func fetchGroups(token: String) async throws -> [SplitwiseGroup] {
+        let data = try await get("get_groups", token: token)
+        return try decoder.decode(SplitwiseGroupsResponse.self, from: data).groups
+            .filter { $0.id != 0 }
+    }
+
+    /// Everything shared with one friend, or everything posted to one group —
+    /// newest first, with soft-deleted entries filtered out.
+    static func fetchExpenses(_ scope: SplitwiseExpenseScope, token: String) async throws -> [SplitwiseExpense] {
         let data = try await get("get_expenses", queryItems: [
-            URLQueryItem(name: "friend_id", value: String(friendId)),
+            scope.queryItem,
             URLQueryItem(name: "limit", value: "50"),
         ], token: token)
         return try decoder.decode(SplitwiseExpensesResponse.self, from: data).expenses

@@ -37,44 +37,46 @@ struct SplitwiseOptionRow: View {
     }
 }
 
-/// Which Splitwise friend to split with — a plain label once a friend is
-/// already resolved (e.g. from a matched template), otherwise a loading
-/// spinner or a live picker.
-struct SplitwiseFriendPickerRow: View {
-    var resolvedFriendName: String?
+/// Which Splitwise friend — or group — to split with, for the screens that
+/// store exactly one target (a template, a staged file import). The
+/// draft/manual forms use SplitwiseParticipantPickerRow instead, which can name
+/// several people at once.
+struct SplitwiseTargetPickerRow: View {
     let isLoading: Bool
     let friends: [SplitwiseFriend]
-    @Binding var selectedFriendId: Int?
-    /// Label for the unset ("no friend selected") option — defaults to
-    /// "None", but e.g. TemplateEditView passes "Default (…)" when an
-    /// app-wide default Splitwise friend applies instead.
+    let groups: [SplitwiseGroup]
+    @Binding var target: WalletTransactionConfig.CachedSplitTarget?
+    /// Label for the unset ("nothing selected") option — defaults to "None",
+    /// but e.g. TemplateEditView passes "Default (…)" when an app-wide default
+    /// applies instead.
     var noneLabel: String = "None"
     var isIncomplete: Bool = false
 
     var body: some View {
-        DraftDetailRow(
-            icon: Const.Symbol.friends,
-            title: "Split With",
-            isIncomplete: isIncomplete,
-            isEditable: resolvedFriendName == nil
-        ) {
-            if let resolvedFriendName {
-                Text(resolvedFriendName)
-            } else if isLoading {
+        DraftDetailRow(icon: Const.Symbol.friends, title: "Split With", isIncomplete: isIncomplete) {
+            if isLoading, friends.isEmpty, groups.isEmpty {
                 ProgressView()
             } else {
                 // Not MenuPickerField here on purpose: a Picker's Section
                 // content doesn't reliably show as an inline "Outstanding
                 // Balance" header once the Picker itself is wrapped in a
                 // Menu — SwiftUI tends to fold it into a submenu instead.
-                // Plain Buttons in the Menu (splitwiseFriendMenuButtons,
+                // Plain Buttons in the Menu (splitwiseTargetMenuButtons,
                 // shared with DefaultSplitwiseFriendRow) render Section
                 // headers correctly.
                 Menu {
-                    Button(noneLabel) { selectedFriendId = nil }
-                    splitwiseFriendMenuButtons(friends) { selectedFriendId = $0.id }
+                    Button(noneLabel) { target = nil }
+                    splitwiseTargetMenuButtons(
+                        friends: friends,
+                        groups: groups,
+                        onSelectFriend: { target = WalletTransactionConfig.CachedSplitTarget(id: $0.id, firstName: $0.firstName, fullName: $0.fullName) },
+                        onSelectGroup: { target = WalletTransactionConfig.CachedSplitTarget(id: $0.id, firstName: $0.name, fullName: $0.name, isGroup: true) }
+                    )
                 } label: {
-                    MenuPickerLabel { Text(friends.first { $0.id == selectedFriendId }?.fullName ?? noneLabel) }
+                    // The stored name, not a lookup: a group's members — or a
+                    // friend dropped from a refreshed list — would otherwise
+                    // show the row as unset while it isn't.
+                    MenuPickerLabel { Text(target?.fullName ?? noneLabel) }
                 }
                 .tint(Color.foregroundColor)
             }

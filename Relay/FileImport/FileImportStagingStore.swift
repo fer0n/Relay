@@ -34,6 +34,10 @@ nonisolated struct FileImportStaging: Codable {
     var friendId: Int?
     var friendFirstName: String?
     var friendFullName: String?
+    /// Whether the three fields above name a group rather than a person — the
+    /// import intent's "Split With" takes either. Optional so staging written
+    /// before this field existed still decodes.
+    var friendIsGroup: Bool?
 
     init(
         destination: FileImportDestination,
@@ -45,7 +49,8 @@ nonisolated struct FileImportStaging: Codable {
         includeMemos: Bool = true,
         friendId: Int? = nil,
         friendFirstName: String? = nil,
-        friendFullName: String? = nil
+        friendFullName: String? = nil,
+        friendIsGroup: Bool? = nil
     ) {
         self.destination = destination
         self.rows = rows
@@ -57,6 +62,7 @@ nonisolated struct FileImportStaging: Codable {
         self.friendId = friendId
         self.friendFirstName = friendFirstName
         self.friendFullName = friendFullName
+        self.friendIsGroup = friendIsGroup
     }
 
     init(from decoder: Decoder) throws {
@@ -71,6 +77,7 @@ nonisolated struct FileImportStaging: Codable {
         friendId = try container.decodeIfPresent(Int.self, forKey: .friendId)
         friendFirstName = try container.decodeIfPresent(String.self, forKey: .friendFirstName)
         friendFullName = try container.decodeIfPresent(String.self, forKey: .friendFullName)
+        friendIsGroup = try container.decodeIfPresent(Bool.self, forKey: .friendIsGroup)
     }
 }
 

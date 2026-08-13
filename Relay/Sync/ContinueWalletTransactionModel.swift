@@ -30,7 +30,7 @@ final class ContinueWalletTransactionModel {
     /// Wins over both a template's cached friend and the app-wide default —
     /// e.g. "Add Transaction" from a specific friend's page. See the
     /// equivalent precedence in AddWalletTransactionToSplitwiseIntent.resolveFriend.
-    private let friendOverride: SplitwiseFriendEntity?
+    private let friendOverride: SplitwiseSplitTargetEntity?
 
     // MARK: Services / status
 
@@ -63,23 +63,71 @@ final class ContinueWalletTransactionModel {
 
     var splitwiseRuntimeChoice: SplitwiseSplitChoice? = .never
     var friends: [SplitwiseFriend] = []
-    var selectedFriendId: Int?
+    var groups: [SplitwiseGroup] = []
+    /// Who the split is with: any number of friends, or one group. Empty means
+    /// "whatever the app-wide default friend is" — see `resolvedSplitTarget`.
+    var participantSelection = SplitwiseSplitSelection.empty
+    var participantSearchText = ""
     var isLoadingFriends = false
     var ownShareText = ""
-    /// `.shares` only — relative weights for you and the friend, reset to an
-    /// even 1 each per form (like SplitwiseExpenseDetailView's shares mode),
-    /// since they describe this one transaction rather than a setting.
+    /// `.shares` only — relative weights, reset to an even 1 each per form
+    /// (like SplitwiseExpenseDetailView's shares mode), since they describe
+    /// this one transaction rather than a setting. Keyed by participant user
+    /// id; a missing entry is an unedited `1`.
     var ownWeightText = "1"
-    var friendWeightText = "1"
+    var participantWeightTexts: [Int: String] = [:]
 
-    /// A template's own friend beats the app-wide default and is shown
-    /// read-only rather than re-offered as a choice.
+    /// The single-friend view of `participantSelection`, kept so the surfaces
+    /// and tests that only ever deal in one friend don't have to know about the
+    /// multi-participant shape. Setting it replaces the whole selection.
+    var selectedFriendId: Int? {
+        get { participantSelection.participantIds.first }
+        set { participantSelection = newValue.map { .friend($0) } ?? .empty }
+    }
+
+    /// A template's own friend beats the app-wide default. It seeds the picker
+    /// rather than locking it, so more people can still be added to this one
+    /// transaction without editing the template.
     var templateHasFriend = false
-    var templateFriend: SplitwiseFriendEntity?
+    var templateFriend: SplitwiseSplitTargetEntity?
+
+    /// Seeds the picker from a target picked in Shortcuts, which can be a group
+    /// as well as a friend — a template and a draft's pending split context
+    /// both store whichever was chosen there. A group is expanded to its
+    /// membership, falling back to the on-disk cache when the live list isn't
+    /// loaded yet; `fillGroupMembersIfNeeded` catches the case where neither
+    /// had it.
+    private static func selection(for entity: SplitwiseSplitTargetEntity, groups: [SplitwiseGroup]) -> SplitwiseSplitSelection {
+        guard entity.kind == .group else { return .friend(entity.splitwiseId) }
+        let groupId = entity.splitwiseId
+        let group = groups.first { $0.id == groupId }
+            ?? SplitwiseGroupCacheStore.load()?.first { $0.id == groupId }
+        let memberIds = group?.others(excluding: SplitwiseCurrentUserStore.load()?.id).map(\.id) ?? []
+        return .group(groupId, memberIds: memberIds)
+    }
+
+    /// The live list if it's loaded, otherwise the on-disk cache — a form can
+    /// open, and submit, before `loadFriends()` has been anywhere near the
+    /// network.
+    private func cachedGroup(id: Int) -> SplitwiseGroup? {
+        groups.first { $0.id == id } ?? SplitwiseGroupCacheStore.load()?.first { $0.id == id }
+    }
+
+    /// Fills in a picked group's members once the group list has loaded, for a
+    /// selection seeded before it was there.
+    private func fillGroupMembersIfNeeded() {
+        guard let groupId = participantSelection.groupId,
+              participantSelection.participantIds.isEmpty,
+              let group = groups.first(where: { $0.id == groupId }) else { return }
+        participantSelection.setGroup(
+            groupId,
+            memberIds: group.others(excluding: SplitwiseCurrentUserStore.load()?.id).map(\.id)
+        )
+    }
 
     // MARK: Init
 
-    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseFriendEntity? = nil) {
+    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseSplitTargetEntity? = nil) {
         self.draft = draft
         self.isManual = isManual
         self.isPrefilled = prefill != nil
@@ -97,9 +145,9 @@ final class ContinueWalletTransactionModel {
             availableTemplates = Array(config.templates.keys)
             cachedTemplatePayeeNames = Self.payeeNamesByTemplate(config)
             if let friendOverride {
-                selectedFriendId = friendOverride.id
+                participantSelection = Self.selection(for: friendOverride, groups: [])
             } else if let defaultFriend {
-                selectedFriendId = defaultFriend.id
+                participantSelection = Self.selection(for: SplitwiseSplitTargetEntity(defaultFriend: defaultFriend), groups: [])
             }
             if let prefill {
                 applyPrefill(prefill, config: config)
@@ -121,7 +169,7 @@ final class ContinueWalletTransactionModel {
             availableTemplates = Array(config.templates.keys)
             cachedTemplatePayeeNames = Self.payeeNamesByTemplate(config)
 
-            var resolvedTemplateFriend: (id: Int, firstName: String, fullName: String)?
+            var resolvedTemplateFriend: WalletTransactionConfig.CachedSplitTarget?
             if let info = config.resolvedMerchantInfo(for: merchant) {
                 templateChoice = info.templateName
                 payeeText = info.payeeName
@@ -130,7 +178,7 @@ final class ContinueWalletTransactionModel {
                 // Never the global last-used choice, which would let the last
                 // manual entry's pick spill into this draft.
                 splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice.map(SplitwiseSplitChoice.init)
-                resolvedTemplateFriend = template?.splitwiseFriend
+                resolvedTemplateFriend = template?.splitwiseTarget
             } else {
                 payeeText = merchant
                 // No template to carry a split default, so canSubmit's nil
@@ -145,10 +193,11 @@ final class ContinueWalletTransactionModel {
 
             if let resolvedTemplateFriend {
                 templateHasFriend = true
-                templateFriend = SplitwiseFriendEntity(templateFriend: resolvedTemplateFriend)
-                selectedFriendId = resolvedTemplateFriend.id
+                let entity = SplitwiseSplitTargetEntity(cachedTarget: resolvedTemplateFriend)
+                templateFriend = entity
+                participantSelection = Self.selection(for: entity, groups: [])
             } else if let defaultFriend {
-                selectedFriendId = defaultFriend.id
+                participantSelection = Self.selection(for: SplitwiseSplitTargetEntity(defaultFriend: defaultFriend), groups: [])
             }
 
         case .splitwiseWallet(let merchant, _, _):
@@ -176,10 +225,11 @@ final class ContinueWalletTransactionModel {
                 // Never the global last-used choice, which would let the last
                 // manual entry's pick spill into this draft.
                 splitwiseRuntimeChoice = (template?.splitwiseOption ?? .never).splitRuntimeChoice.map(SplitwiseSplitChoice.init)
-                if let friend = template?.splitwiseFriend {
+                if let friend = template?.splitwiseTarget {
                     templateHasFriend = true
-                    templateFriend = SplitwiseFriendEntity(templateFriend: friend)
-                    selectedFriendId = friend.id
+                    let entity = SplitwiseSplitTargetEntity(cachedTarget: friend)
+                    templateFriend = entity
+                    participantSelection = Self.selection(for: entity, groups: [])
                 }
             } else {
                 // No template to carry a split default, so canSubmit's nil
@@ -221,8 +271,18 @@ final class ContinueWalletTransactionModel {
         }
         templateHasFriend = false
         templateFriend = nil
-        selectedFriendId = splitExpense.friendUserId
-        if splitExpense.payerOwedCents == splitExpense.costCents / 2 {
+        participantSelection = SplitwiseSplitSelection(
+            participantIds: splitExpense.others.map(\.userId),
+            groupId: splitExpense.groupId == 0 ? nil : splitExpense.groupId
+        )
+        // An even split reproduces as "Split Equally" so re-adding it follows a
+        // changed amount, rather than freezing yesterday's cents into a manual
+        // share.
+        let evenSplit = SplitwiseSplitAllocation.equal.owedCents(
+            totalCents: splitExpense.costCents,
+            participantCount: splitExpense.others.count
+        )
+        if splitExpense.payerOwedCents == evenSplit?.first {
             splitwiseRuntimeChoice = .always
         } else {
             splitwiseRuntimeChoice = .manual
@@ -274,40 +334,73 @@ final class ContinueWalletTransactionModel {
         amountIsEditable ? manualAmount : draft.amount
     }
 
-    /// The `.shares` split in whole cents, `[yours, theirs]`. Nil when the
-    /// amount or a weight is unparseable, or when both weights are zero —
-    /// there's no ratio to split by then.
-    private func sharesCents(amount: Double) -> [Int]? {
-        guard let mine = SplitwiseShareMath.cents(ownWeightText),
-              let theirs = SplitwiseShareMath.cents(friendWeightText),
-              mine + theirs > 0 else { return nil }
-        return SplitwiseShareMath.distribute(
+    /// Everyone the split is with, in the order their `.shares` rows appear.
+    var splitParticipants: [SplitwiseSplitParticipant] {
+        resolvedSplitTarget?.participants ?? []
+    }
+
+    /// A `.shares` weight, defaulting to an even 1 for anyone not edited yet.
+    func weightText(for participantId: Int) -> String {
+        participantWeightTexts[participantId] ?? "1"
+    }
+
+    func setWeightText(_ text: String, for participantId: Int) {
+        participantWeightTexts[participantId] = text
+    }
+
+    /// The `.shares` weights as `[yours, theirs…]`, in `splitParticipants`
+    /// order. Nil if any of them is unparseable.
+    private var shareWeights: [Double]? {
+        guard let mine = SplitwiseShareMath.cents(ownWeightText) else { return nil }
+        var weights = [Double(mine)]
+        for participant in splitParticipants {
+            guard let weight = SplitwiseShareMath.cents(weightText(for: participant.id)) else { return nil }
+            weights.append(Double(weight))
+        }
+        return weights
+    }
+
+    /// The chosen split as an allocation, or nil while its own inputs can't be
+    /// read — an unparseable own share, a bad weight.
+    private var currentAllocation: SplitwiseSplitAllocation? {
+        switch resolvedSplitwiseAction {
+        case .always, .never:
+            return .equal
+        case .manual:
+            guard let own = Double(ownShareText) else { return nil }
+            return .ownShare(cents: Int((own * Const.centsPerUnit).rounded()))
+        case .shares:
+            return shareWeights.map { .weights($0) }
+        }
+    }
+
+    /// What everyone ends up owing, in whole cents, as `[yours, theirs…]`. Nil
+    /// while the split can't be worked out.
+    private func splitOwedCents(amount: Double) -> [Int]? {
+        guard let currentAllocation, !splitParticipants.isEmpty else { return nil }
+        return currentAllocation.owedCents(
             totalCents: SplitwiseShareMath.cents(fromAmount: amount),
-            ratios: SplitwiseShareMath.ratios(of: [Double(mine), Double(theirs)])
+            participantCount: splitParticipants.count
         )
     }
 
     /// What a `.shares` split books as your own share, i.e. what the `.manual`
     /// field would have been typed as.
     func sharesOwnShare(amount: Double) -> Double? {
-        sharesCents(amount: amount).map { Double($0[0]) / Const.centsPerUnit }
+        splitOwedCents(amount: amount).map { Double($0[0]) / Const.centsPerUnit }
     }
 
-    /// Labels under the two `.shares` weight fields. Nil while the amount or a
+    /// Labels under the `.shares` weight fields. Nil while the amount or a
     /// weight can't be read.
     var ownShareAmountText: String? {
-        splitAmount.flatMap { sharesCents(amount: $0) }.map { SplitwiseShareMath.text(fromCents: $0[0]) }
+        splitAmount.flatMap { splitOwedCents(amount: $0) }.map { SplitwiseShareMath.text(fromCents: $0[0]) }
     }
 
-    var friendShareAmountText: String? {
-        splitAmount.flatMap { sharesCents(amount: $0) }.map { SplitwiseShareMath.text(fromCents: $0[1]) }
-    }
-
-    /// Names the friend's `.shares` row. Falls back to a generic label while no
-    /// friend is resolved yet — the row is still worth showing, since the
-    /// weight it takes doesn't depend on who ends up on the other side.
-    var splitFriendLabel: String {
-        resolvedSplitFriend?.firstName ?? String(localized: "Friend")
+    func shareAmountText(for participantId: Int) -> String? {
+        guard let index = splitParticipants.firstIndex(where: { $0.id == participantId }),
+              let amount = splitAmount,
+              let owed = splitOwedCents(amount: amount) else { return nil }
+        return SplitwiseShareMath.text(fromCents: owed[index + 1])
     }
 
     var canSubmit: Bool {
@@ -320,11 +413,11 @@ final class ContinueWalletTransactionModel {
             if templateChoice == nil { return false }
             if selectedCategoryId == nil { return false }
             if splitwiseAuth.isAuthenticated, splitwiseRuntimeChoice == nil { return false }
-            if resolvedSplitwiseAction != .never, selectedFriendId == nil && defaultFriend == nil { return false }
+            if resolvedSplitwiseAction != .never, resolvedSplitTarget == nil { return false }
             if !splitInputsValid { return false }
         case .splitwise:
             if splitwiseDescription.isEmpty { return false }
-            if selectedFriendId == nil && defaultFriend == nil { return false }
+            if resolvedSplitTarget == nil { return false }
             if splitwiseRuntimeChoice == nil { return false }
             if !splitInputsValid { return false }
         }
@@ -341,7 +434,7 @@ final class ContinueWalletTransactionModel {
             return Double(ownShareText) != nil
         case .shares:
             guard let amount = splitAmount else { return false }
-            return sharesOwnShare(amount: amount) != nil
+            return splitOwedCents(amount: amount) != nil
         }
     }
 
@@ -349,33 +442,74 @@ final class ContinueWalletTransactionModel {
         defaultFriend.map { "Default (\($0.firstName))" } ?? "None"
     }
 
+    /// Flags the row whenever the split can't be booked — nobody picked and no
+    /// default to stand in, but also a group whose members have all been
+    /// removed, which reads as filled in while billing no one.
     var friendRowIsIncomplete: Bool {
-        !templateHasFriend && selectedFriendId == nil && defaultFriend == nil
+        resolvedSplitTarget == nil
     }
 
-    var resolvedFriendName: String? {
-        templateHasFriend ? templateFriend?.fullName : nil
+    /// Who the split will actually be booked against. An empty selection is the
+    /// picker's "Default (…)" state — a real choice, not a missing one — so the
+    /// app-wide default resolves here rather than being rejected at submit.
+    var resolvedSplitTarget: SplitwiseSplitTarget? {
+        let group = participantSelection.groupId.flatMap { cachedGroup(id: $0) }
+        // A picked group that isn't in the cache would post the expense into a
+        // group we can't name or check the membership of, so it isn't offered
+        // as a target at all.
+        if participantSelection.groupId != nil, group == nil { return nil }
+
+        guard !participantSelection.participantIds.isEmpty else {
+            guard group == nil else { return nil }
+            return defaultTarget
+        }
+        let participants = participantSelection.participantIds.compactMap(resolveParticipant)
+        guard !participants.isEmpty else { return nil }
+        return SplitwiseSplitTarget(participants: participants, groupId: group?.id, groupName: group?.name)
     }
 
-    /// The friend a split will actually be booked against. A nil
-    /// `selectedFriendId` is the picker's "Default (…)" option — a real choice,
-    /// not a missing one — so the app-wide default resolves here rather than
-    /// being rejected at submit. Matches canSubmit's `defaultFriend` allowance.
-    var resolvedSplitFriend: SplitwiseFriendEntity? {
-        if let templateFriend { return templateFriend }
-        guard let selectedFriendId else {
-            return defaultFriend.map { SplitwiseFriendEntity(defaultFriend: $0) }
+    /// What an untouched picker books against: the app-wide default, which can
+    /// be a group — in which case it resolves to that group's membership, the
+    /// same as picking it would.
+    private var defaultTarget: SplitwiseSplitTarget? {
+        guard let defaultFriend else { return nil }
+        guard defaultFriend.isGroup else {
+            return SplitwiseSplitTarget(
+                participants: [SplitwiseSplitParticipant(id: defaultFriend.id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)]
+            )
         }
-        if let match = friends.first(where: { $0.id == selectedFriendId }) {
-            return SplitwiseFriendEntity(friend: match)
+        guard let cached = cachedGroup(id: defaultFriend.id) else { return nil }
+        let members = cached.others(excluding: SplitwiseCurrentUserStore.load()?.id)
+            .map(SplitwiseSplitParticipant.init(member:))
+        guard !members.isEmpty else { return nil }
+        return SplitwiseSplitTarget(participants: members, groupId: cached.id, groupName: cached.name)
+    }
+
+    /// The friend list can still be empty (offline, cache not warmed), but a
+    /// pick that came from the override, a template or the default already
+    /// carries names.
+    private func resolveParticipant(_ id: Int) -> SplitwiseSplitParticipant? {
+        if let match = friends.first(where: { $0.id == id }) {
+            return SplitwiseSplitParticipant(friend: match)
         }
-        // The friend list can still be empty (offline, cache not warmed), but a
-        // pick that came from the override or the default already carries names.
-        if let friendOverride, friendOverride.id == selectedFriendId { return friendOverride }
-        if let defaultFriend, defaultFriend.id == selectedFriendId {
-            return SplitwiseFriendEntity(defaultFriend: defaultFriend)
+        if let member = groups.lazy.flatMap(\.memberList).first(where: { $0.id == id }) {
+            return SplitwiseSplitParticipant(member: member)
+        }
+        if let friendOverride, friendOverride.splitwiseId == id { return SplitwiseSplitParticipant(entity: friendOverride) }
+        if let templateFriend, templateFriend.splitwiseId == id { return SplitwiseSplitParticipant(entity: templateFriend) }
+        if let defaultFriend, defaultFriend.id == id {
+            return SplitwiseSplitParticipant(id: id, firstName: defaultFriend.firstName, fullName: defaultFriend.fullName)
         }
         return nil
+    }
+
+    /// The single friend a split books against, when that's all it is — nil for
+    /// a group or a multi-person split. Kept for the config surfaces that store
+    /// exactly one friend.
+    var resolvedSplitFriend: SplitwiseSplitTargetEntity? {
+        resolvedSplitTarget?.soleFriend.map {
+            SplitwiseSplitTargetEntity(splitwiseId: $0.id, firstName: $0.firstName, fullName: $0.fullName)
+        }
     }
 
     var ynabPayeeName: String {
@@ -503,15 +637,17 @@ final class ContinueWalletTransactionModel {
             if let friendOverride {
                 templateHasFriend = false
                 templateFriend = nil
-                selectedFriendId = friendOverride.id
-            } else if let friend = template?.splitwiseFriend {
+                participantSelection = Self.selection(for: friendOverride, groups: groups)
+            } else if let friend = template?.splitwiseTarget {
                 templateHasFriend = true
-                templateFriend = SplitwiseFriendEntity(templateFriend: friend)
-                selectedFriendId = friend.id
+                let entity = SplitwiseSplitTargetEntity(cachedTarget: friend)
+                templateFriend = entity
+                participantSelection = Self.selection(for: entity, groups: groups)
             } else {
                 templateHasFriend = false
                 templateFriend = nil
-                selectedFriendId = SplitwiseDefaultFriendStore.load()?.id
+                participantSelection = SplitwiseDefaultFriendStore.load()
+                    .map { Self.selection(for: SplitwiseSplitTargetEntity(defaultFriend: $0), groups: groups) } ?? .empty
             }
         }
     }
@@ -665,18 +801,46 @@ final class ContinueWalletTransactionModel {
         }
     }
 
+    /// Friends and groups together — the participant picker offers both, so a
+    /// half-loaded list would silently hide one kind of target.
     private func loadFriends() async {
         guard let token = SplitwiseAuthService.currentAccessToken else { return }
         if let cached = SplitwiseFriendCacheStore.load() {
             friends = SplitwiseFriendUsageStore.sorted(cached)
         }
-        guard SplitwiseFriendCacheStore.isStale else { return }
-        isLoadingFriends = friends.isEmpty
+        if let cached = SplitwiseGroupCacheStore.load() {
+            groups = cached
+            fillGroupMembersIfNeeded()
+        }
+        // Groups list their whole membership, the signed-in user included, and
+        // `resolvedSplitTarget` needs their id to leave them out of the shares
+        // it previews. The write resolves it either way — this just keeps the
+        // numbers on screen from being the ones it corrects.
+        if SplitwiseCurrentUserStore.load() == nil,
+           let user = try? await SplitwiseService.fetchCurrentUser(token: token) {
+            try? SplitwiseCurrentUserStore.save(user)
+        }
+        let friendsAreStale = SplitwiseFriendCacheStore.isStale
+        let groupsAreStale = SplitwiseGroupCacheStore.isStale
+        guard friendsAreStale || groupsAreStale else { return }
+        isLoadingFriends = friends.isEmpty && groups.isEmpty
         defer { isLoadingFriends = false }
-        do {
-            friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
-        } catch {
-            logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
+        async let fetchedFriends: [SplitwiseFriend]? = friendsAreStale
+            ? try? await SplitwiseFriendCacheStore.fetch(token: token)
+            : nil
+        async let fetchedGroups: [SplitwiseGroup]? = groupsAreStale
+            ? try? await SplitwiseGroupCacheStore.fetch(token: token)
+            : nil
+        if let loaded = await fetchedFriends {
+            friends = SplitwiseFriendUsageStore.sorted(loaded)
+        } else if friendsAreStale {
+            logger.error("failed to load friends")
+        }
+        if let loaded = await fetchedGroups {
+            groups = loaded
+            fillGroupMembersIfNeeded()
+        } else if groupsAreStale {
+            logger.error("failed to load groups")
         }
     }
 
@@ -750,23 +914,23 @@ final class ContinueWalletTransactionModel {
 
         // `let`, not `var`: captured by the `async let` below, where a mutable
         // var trips Swift 6 strict concurrency checking.
-        let ownShare: Double?
-        switch resolveOwnShare(for: choice, amount: amount) {
-        case .valid(let parsed): ownShare = parsed
+        let allocation: SplitwiseSplitAllocation
+        switch resolveAllocation(for: choice, amount: amount) {
+        case .valid(let resolved): allocation = resolved
         case .invalid(let message):
             errorMessage = message
             return false
         }
 
-        let friend: SplitwiseFriendEntity?
+        let target: SplitwiseSplitTarget?
         if action != .never {
-            guard let resolved = resolvedSplitFriend else {
-                errorMessage = "Pick a Splitwise friend."
+            guard let resolved = resolvedSplitTarget else {
+                errorMessage = "Pick someone to split with."
                 return false
             }
-            friend = resolved
+            target = resolved
         } else {
-            friend = nil
+            target = nil
         }
 
         let milliunits = -Int((amount * Const.milliunitsPerUnit).rounded())
@@ -783,10 +947,10 @@ final class ContinueWalletTransactionModel {
         let formattedAmount = amount.asMoneyString
 
         // Folds the YNAB write and the split into one history entry.
-        let groupId = (action != .never && friend != nil) ? UUID() : nil
+        let groupId = (action != .never && target != nil) ? UUID() : nil
 
         async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(finalPayeeName)", groupId: groupId, merchant: isManual ? nil : merchant)
-        async let splitDialogFragment = createSplitIfNeeded(friend: friend, description: splitDescription, amount: amount, action: action, ownShare: ownShare, groupId: groupId, merchant: isManual ? nil : merchant)
+        async let splitDialogFragment = createSplitIfNeeded(target: target, description: splitDescription, amount: amount, action: action, allocation: allocation, groupId: groupId, merchant: isManual ? nil : merchant)
 
         do {
             let outcome = try await ynabOutcome
@@ -800,42 +964,41 @@ final class ContinueWalletTransactionModel {
         }
     }
 
-    private enum OwnShareResolution {
-        /// Nil means "no explicit share" — an equal split, or no split at all.
-        case valid(Double?)
+    private enum AllocationResolution {
+        case valid(SplitwiseSplitAllocation)
         case invalid(String)
     }
 
-    /// The own share the chosen mode implies: typed for `.manual`, derived from
-    /// the weights for `.shares`, absent otherwise.
-    private func resolveOwnShare(for choice: SplitwiseSplitChoice, amount: Double) -> OwnShareResolution {
+    /// How the chosen mode divides the cost: evenly, by the typed own share for
+    /// `.manual`, or by the weights for `.shares`.
+    private func resolveAllocation(for choice: SplitwiseSplitChoice, amount: Double) -> AllocationResolution {
         switch choice {
         case .always, .never:
-            return .valid(nil)
+            return .valid(.equal)
         case .manual:
             switch SplitwiseExpenseHelper.parseOwnShare(ownShareText, amount: amount) {
-            case .valid(let parsed): return .valid(parsed)
+            case .valid(let parsed): return .valid(.ownShare(cents: Int((parsed * Const.centsPerUnit).rounded())))
             case .invalid(let message): return .invalid(message)
             }
         case .shares:
-            guard let share = sharesOwnShare(amount: amount) else {
+            guard let weights = shareWeights, weights.reduce(0, +) > 0 else {
                 return .invalid(String(localized: "Give at least one of you a share."))
             }
-            return .valid(share)
+            return .valid(.weights(weights))
         }
     }
 
     private func createSplitIfNeeded(
-        friend: SplitwiseFriendEntity?,
+        target: SplitwiseSplitTarget?,
         description: String,
         amount: Double,
         action: SplitwiseSplitOption,
-        ownShare: Double?,
+        allocation: SplitwiseSplitAllocation,
         groupId: UUID?,
         merchant: String?
     ) async -> String? {
-        guard action != .never, let friend else { return nil }
-        return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, friend: friend, ownShare: ownShare, groupId: groupId, merchant: merchant).fragment
+        guard action != .never, let target else { return nil }
+        return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, target: target, allocation: allocation, groupId: groupId, merchant: merchant).fragment
     }
 
     private func submitSplitwise() async -> Bool {
@@ -877,26 +1040,33 @@ final class ContinueWalletTransactionModel {
             finalTemplateName = finalPayeeName
         }
 
-        let finalFriend: WalletTransactionConfig.CachedFriend
-        if templateHasFriend, let existing = config.templates[finalTemplateName]?.splitwiseFriend {
-            finalFriend = existing
-        } else {
-            guard let resolved = resolvedSplitFriend else {
-                errorMessage = "Pick a Splitwise friend."
-                return false
-            }
-            finalFriend = (resolved.id, resolved.firstName, resolved.fullName)
+        guard let target = resolvedSplitTarget else {
+            errorMessage = "Pick someone to split with."
+            return false
         }
 
         if !isManual {
             // The template's split option is left as-is — the runtime choice
-            // here is one-shot, not a setting.
-            configChanged = config.recordSplitwiseMerchantLink(
-                merchant: merchant,
-                payeeName: finalPayeeName,
-                templateName: finalTemplateName,
-                friend: finalFriend
-            )
+            // here is one-shot, not a setting. Same for who's on it: a template
+            // caches one friend, so a group or a multi-person split only links
+            // the merchant, leaving the template's own friend untouched.
+            let cachedTarget = target.soleFriend.map {
+                WalletTransactionConfig.CachedSplitTarget(id: $0.id, firstName: $0.firstName, fullName: $0.fullName)
+            } ?? config.templates[finalTemplateName]?.splitwiseTarget
+            if let cachedTarget {
+                configChanged = config.recordSplitwiseMerchantLink(
+                    merchant: merchant,
+                    payeeName: finalPayeeName,
+                    templateName: finalTemplateName,
+                    target: cachedTarget
+                )
+            } else {
+                configChanged = config.linkMerchantIfChanged(
+                    merchant: merchant,
+                    payeeName: finalPayeeName,
+                    templateName: finalTemplateName
+                )
+            }
         }
 
         if configChanged {
@@ -913,9 +1083,9 @@ final class ContinueWalletTransactionModel {
             return true
         }
 
-        let ownShare: Double?
-        switch resolveOwnShare(for: choice, amount: amount) {
-        case .valid(let parsed): ownShare = parsed
+        let allocation: SplitwiseSplitAllocation
+        switch resolveAllocation(for: choice, amount: amount) {
+        case .valid(let resolved): allocation = resolved
         case .invalid(let message):
             errorMessage = message
             return false
@@ -925,8 +1095,8 @@ final class ContinueWalletTransactionModel {
             _ = try await SplitwiseExpenseHelper.addExpense(
                 amount: amount,
                 description: finalDescription,
-                friend: SplitwiseFriendEntity(templateFriend: finalFriend),
-                ownShare: ownShare,
+                target: target,
+                allocation: allocation,
                 merchant: isManual ? nil : merchant
             )
             TransactionDraftGuard.complete(draft.id)
