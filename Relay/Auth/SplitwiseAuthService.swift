@@ -107,11 +107,17 @@ final class SplitwiseAuthService {
             Task { _ = try? await SplitwiseFriendCacheStore.fetch(token: token.accessToken) }
             // And SplitwiseCurrentUserStore, which would otherwise stay empty until
             // the first expense is added — leaving every signed/colored amount
-            // that depends on it falling back to the plain unsigned cost.
+            // that depends on it falling back to the plain unsigned cost. Also the
+            // first real API call after sign-in, so a `.forbidden` here is
+            // surfaced rather than swallowed like the rest of this task.
             Task {
-                if let user = try? await SplitwiseService.fetchCurrentUser(token: token.accessToken) {
+                do {
+                    let user = try await SplitwiseService.fetchCurrentUser(token: token.accessToken)
                     try? SplitwiseCurrentUserStore.save(user)
-                }
+                } catch SplitwiseAPIError.forbidden(let message) {
+                    signInError = message
+                    signInErrorDetail = String(describing: SplitwiseAPIError.forbidden(message))
+                } catch {}
             }
         } catch {
             logger.error("token exchange failed: \(String(describing: error), privacy: .public)")

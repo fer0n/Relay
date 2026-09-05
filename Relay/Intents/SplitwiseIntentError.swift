@@ -10,6 +10,7 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
     case rateLimited
     case requestFailed
     case validation(String)
+    case forbidden(String)
     case unsupportedFileType
     case invalidFile(reason: String)
 
@@ -22,6 +23,8 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
         case .requestFailed:
             return "Couldn't add the expense. Please try again."
         case .validation(let message):
+            return "\(message)"
+        case .forbidden(let message):
             return "\(message)"
         case .unsupportedFileType:
             return "Relay can only import .csv or .qif files."
@@ -43,6 +46,8 @@ nonisolated enum SplitwiseIntentError: Error, CustomLocalizedStringResourceConve
             return .rateLimited
         case SplitwiseAPIError.validation(let message):
             return .validation(message)
+        case SplitwiseAPIError.forbidden(let message):
+            return .forbidden(message)
         case StatementImportError.unsupportedFileType:
             return .unsupportedFileType
         case StatementImportError.invalidFile(let reason):

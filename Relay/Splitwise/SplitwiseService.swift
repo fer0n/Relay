@@ -16,6 +16,8 @@ enum SplitwiseAPIError: Error {
     case rateLimited(retryAfter: TimeInterval?)
     case server(status: Int)
     case validation(String)
+    /// A 403 with a structured `{"errors": {...}}` body, shown as-is.
+    case forbidden(String)
 }
 
 nonisolated enum SplitwiseService {
@@ -170,6 +172,13 @@ nonisolated enum SplitwiseService {
             return
         case 401:
             throw SplitwiseAPIError.unauthorized
+        case 403:
+            let messages = (try? JSONDecoder().decode(SplitwiseErrorResponse.self, from: data))?
+                .errors?.values.flatMap { $0 } ?? []
+            if let message = messages.first {
+                throw SplitwiseAPIError.forbidden(message)
+            }
+            throw SplitwiseAPIError.server(status: http.statusCode)
         case 429:
             let retryAfter = http.value(forHTTPHeaderField: Const.HTTP.retryAfterHeader).flatMap(TimeInterval.init)
             throw SplitwiseAPIError.rateLimited(retryAfter: retryAfter)

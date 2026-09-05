@@ -65,8 +65,8 @@ struct SplitwiseExpenseDetailView: View {
     /// custom split) so the fields open on real numbers.
     @State private var manualAmounts: [String]
     @State private var isSaving = false
-    @State private var saveError: String?
-    @State private var showDeleteError = false
+    @State private var saveError: SplitwiseDisplayError?
+    @State private var deleteError: SplitwiseDisplayError?
 
     private let participants: [Participant]
     private let originalTotalCents: Int?
@@ -341,18 +341,8 @@ struct SplitwiseExpenseDetailView: View {
         ) {
             Task { await save() }
         }
-        .alert("Couldn't Save", isPresented: .init(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            if let saveError {
-                Text(saveError)
-            }
-        }
-        .alert("Couldn't Delete", isPresented: $showDeleteError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Please check your connection and try again.")
-        }
+        .splitwiseErrorAlert("Couldn't Save", error: $saveError)
+        .splitwiseErrorAlert("Couldn't Delete", error: $deleteError)
     }
 
     // MARK: - Editing
@@ -399,11 +389,8 @@ struct SplitwiseExpenseDetailView: View {
         do {
             try await onSave(request)
             dismiss()
-        } catch SplitwiseAPIError.validation(let message) {
-            // Splitwise's own wording names what it didn't like.
-            saveError = message
         } catch {
-            saveError = String(localized: "Please check your connection and try again.")
+            saveError = .from(error, fallback: String(localized: "Please check your connection and try again."))
         }
     }
 
@@ -412,7 +399,7 @@ struct SplitwiseExpenseDetailView: View {
             try await onDelete()
             dismiss()
         } catch {
-            showDeleteError = true
+            deleteError = .from(error, fallback: "Please check your connection and try again.")
         }
     }
 }

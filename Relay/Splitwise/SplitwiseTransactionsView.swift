@@ -36,7 +36,7 @@ struct SplitwiseTransactionsView: View {
     @State private var expenses: [SplitwiseExpense] = []
     @State private var loadError: String?
     @State private var selectedExpense: SplitwiseExpense?
-    @State private var deleteError: String?
+    @State private var deleteError: SplitwiseDisplayError?
     /// Set once `load()` re-fetches, so the balance card doesn't stay frozen on
     /// the push-time snapshot.
     @State private var refreshedFriend: SplitwiseFriend?
@@ -164,13 +164,7 @@ struct SplitwiseTransactionsView: View {
             .navigationTransition(.zoom(sourceID: expense.id, in: detailNamespace))
             .presentationBackground(Color.sheetBackgroundColor)
         }
-        .alert("Couldn't Delete", isPresented: .init(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            if let deleteError {
-                Text(deleteError)
-            }
-        }
+        .splitwiseErrorAlert("Couldn't Delete", error: $deleteError)
     }
 
     private func row(for expense: SplitwiseExpense) -> some View {
@@ -220,6 +214,8 @@ struct SplitwiseTransactionsView: View {
                 withAnimation { expenses = fetched }
                 lastRefreshedAt = SplitwiseExpenseCacheStore.lastFetchedAt(scope)
                 loadError = nil
+            } catch SplitwiseAPIError.forbidden(let message) {
+                loadError = message
             } catch {
                 loadError = "Couldn't load transactions."
             }
@@ -287,7 +283,7 @@ struct SplitwiseTransactionsView: View {
         do {
             try await delete(expense)
         } catch {
-            deleteError = "Please check your connection and try again."
+            deleteError = .from(error, fallback: "Please check your connection and try again.")
         }
     }
 }

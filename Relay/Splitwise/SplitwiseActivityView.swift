@@ -14,7 +14,7 @@ struct SplitwiseActivityView: View {
     @State private var items = SplitwiseActivityItem.items(for: SplitwiseNotificationCacheStore.load() ?? [])
     @State private var lastRefreshedAt = SplitwiseNotificationCacheStore.lastFetchedAt
     @State private var loadError: String?
-    @State private var restoreError: String?
+    @State private var restoreError: SplitwiseDisplayError?
     /// Which expenses have a `undelete_expense` call in flight, so reopening
     /// the context menu mid-restore can't fire a second one.
     @State private var restoringExpenseIds: Set<Int> = []
@@ -73,13 +73,7 @@ struct SplitwiseActivityView: View {
         .navigationTitle("Activity")
         .refreshable { await load(force: true) }
         .task { await load(force: false) }
-        .alert("Couldn't Restore", isPresented: .init(get: { restoreError != nil }, set: { if !$0 { restoreError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            if let restoreError {
-                Text(restoreError)
-            }
-        }
+        .splitwiseErrorAlert("Couldn't Restore", error: $restoreError)
     }
 
     private func load(force: Bool) async {
@@ -93,6 +87,8 @@ struct SplitwiseActivityView: View {
             withAnimation { items = fetched }
             lastRefreshedAt = SplitwiseNotificationCacheStore.lastFetchedAt
             loadError = nil
+        } catch SplitwiseAPIError.forbidden(let message) {
+            loadError = message
         } catch {
             loadError = "Couldn't load activity."
         }
@@ -104,18 +100,15 @@ struct SplitwiseActivityView: View {
     private func restore(expenseId: Int) async {
         guard !restoringExpenseIds.contains(expenseId) else { return }
         guard let token = SplitwiseAuthService.currentAccessToken else {
-            restoreError = "Not connected to Splitwise."
+            restoreError = SplitwiseDisplayError(message: "Not connected to Splitwise.", isContactable: false)
             return
         }
         restoringExpenseIds.insert(expenseId)
         defer { restoringExpenseIds.remove(expenseId) }
         do {
             try await SplitwiseService.undeleteExpense(id: expenseId, token: token)
-        } catch SplitwiseAPIError.validation(let message) {
-            restoreError = message
-            return
         } catch {
-            restoreError = "Please check your connection and try again."
+            restoreError = .from(error, fallback: "Please check your connection and try again.")
             return
         }
         SplitwiseExpenseCacheStore.invalidateAll()

@@ -287,6 +287,10 @@ nonisolated struct SplitwiseCreateExpenseResponse: Codable {
     let errors: [String: [String]]?
 }
 
+nonisolated struct SplitwiseErrorResponse: Codable {
+    let errors: [String: [String]]?
+}
+
 /// The saved expense (returned as a one-element list) plus the same
 /// 200-with-`errors` failure channel `create_expense` uses. Both Optional so a
 /// response carrying only one of them still decodes.
