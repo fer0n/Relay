@@ -300,6 +300,7 @@ extension View {
             .themedText()
             .listRowSeparatorTint(Color.secondary.opacity(0.15))
             .navigationLinkIndicatorVisibility(.hidden)
+            .scrollEdgeEffectStyle(.soft, for: .all)
     }
 
     /// The common case: a List with no empty state to show through it.

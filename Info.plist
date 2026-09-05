@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -32,19 +30,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<key>UIApplicationShortcutItems</key>
-	<array>
-		<dict>
-			<key>UIApplicationShortcutItemType</key>
-			<string>com.octabits.relay.newTransaction</string>
-			<key>UIApplicationShortcutItemTitle</key>
-			<string>Add Transaction</string>
-			<key>UIApplicationShortcutItemIconSymbolName</key>
-			<string>plus.circle</string>
-		</dict>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -54,6 +39,17 @@
 			<array>
 				<string>relay</string>
 			</array>
+		</dict>
+	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>plus.circle</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Add Transaction</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.octabits.relay.newTransaction</string>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
