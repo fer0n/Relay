@@ -84,7 +84,7 @@ nonisolated struct LedgerBackup: Codable, Sendable {
             isOwnedByCurrentUser = ledger.isOwnedByCurrentUser
             simplifiesDebts = ledger.simplifiesDebts
             participants = ledger.participants.map(Participant.init)
-            let sorted = expenses.sorted { $0.date > $1.date }
+            let sorted = expenses.sorted(by: LedgerExpense.isOrderedBefore)
             self.expenses = sorted
             check = LedgerBackupCheck(
                 expenses: sorted,

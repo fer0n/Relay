@@ -168,7 +168,7 @@ nonisolated enum LedgerService {
             token = changes.changeToken
             moreComing = changes.moreComing
         }
-        return (expenses.values.sorted { $0.date > $1.date }, profiles)
+        return (expenses.values.sorted(by: LedgerExpense.isOrderedBefore), profiles)
     }
 
     /// Any participant may write any other's: whoever's name is missing is

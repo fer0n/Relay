@@ -171,6 +171,15 @@ nonisolated struct LedgerExpense: Identifiable, Equatable, Codable, Sendable {
         return share.paidCents - share.owedCents
     }
 
+    /// Newest first, with a total order so same-day rows keep their places
+    /// across refreshes — `sorted` isn't stable and dictionary order isn't
+    /// either.
+    static func isOrderedBefore(_ lhs: LedgerExpense, _ rhs: LedgerExpense) -> Bool {
+        if lhs.date != rhs.date { return lhs.date > rhs.date }
+        if lhs.createdAt != rhs.createdAt { return lhs.createdAt > rhs.createdAt }
+        return lhs.id < rhs.id
+    }
+
     /// Nothing server-side enforces this, so it runs before every write.
     var isBalanced: Bool {
         costCents >= 0

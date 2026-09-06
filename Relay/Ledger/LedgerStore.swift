@@ -116,7 +116,7 @@ final class LedgerStore {
         // A queued edit wins: it's newer, and it's what the screen shows.
         let queuedIDs = Set(queued.map(\.expenseID))
         return (fetched.filter { !queuedIDs.contains($0.id) } + queued.map(\.asExpense))
-            .sorted { $0.date > $1.date }
+            .sorted(by: LedgerExpense.isOrderedBefore)
     }
 
     private func persistSnapshot() {
@@ -274,7 +274,7 @@ final class LedgerStore {
         let previous = expenses[key] ?? []
         var updated = previous.filter { $0.id != expense.id }
         updated.append(expense)
-        withAnimation { setExpenses(updated.sorted { $0.date > $1.date }, inZone: key) }
+        withAnimation { setExpenses(updated.sorted(by: LedgerExpense.isOrderedBefore), inZone: key) }
         do {
             try await LedgerService.save(expense, in: ledger)
             // A queued copy of an expense that just landed is a stale write.
