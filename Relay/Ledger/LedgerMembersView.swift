@@ -18,14 +18,9 @@ struct LedgerMembersView: View {
 
     @State private var store = LedgerStore.shared
     @State private var editing: LedgerParticipant?
-    @State private var shareTarget: LedgerShareTarget?
-    @State private var isPreparingShare = false
+    @State private var sharePresenter = LedgerSharePresenter()
 
-    /// Re-read from the store: saving a profile changes this list underneath
-    /// the value the screen was pushed with.
-    private var current: Ledger {
-        store.ledgers.first { $0.zoneName == ledger.zoneName } ?? ledger
-    }
+    private var current: Ledger { store.current(ledger) }
 
     var body: some View {
         List {
@@ -50,7 +45,7 @@ struct LedgerMembersView: View {
                     } label: {
                         Label(current.isShared ? "Manage Sharing" : "Invite", systemImage: "person.badge.plus")
                     }
-                    .disabled(isPreparingShare)
+                    .disabled(sharePresenter.isPreparing)
                 } footer: {
                     Text("Removing someone is done in iCloud's own sharing sheet — it's what controls who can open the ledger.")
                         .footerText()
@@ -68,7 +63,7 @@ struct LedgerMembersView: View {
             }
             .presentationBackground(Color.sheetBackgroundColor)
         }
-        .sheet(item: $shareTarget) { target in
+        .sheet(item: $sharePresenter.target) { target in
             LedgerShareSheet(target: target) {
                 Task { await store.refresh(force: true) }
             }
@@ -102,13 +97,5 @@ struct LedgerMembersView: View {
         return nil
     }
 
-    private func presentShare() {
-        guard !isPreparingShare else { return }
-        isPreparingShare = true
-        Task {
-            defer { isPreparingShare = false }
-            guard let (share, container) = try? await LedgerService.share(current) else { return }
-            shareTarget = LedgerShareTarget(ledgerName: current.name, share: share, container: container)
-        }
-    }
+    private func presentShare() { sharePresenter.present(current) }
 }

@@ -194,7 +194,7 @@ final class ContinueWalletTransactionModel {
             selectedCategoryId = transaction.categoryId
             memoText = transaction.memo ?? ""
         case .ledgerExpense(let expense):
-            amountText = (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
+            amountText = expense.costCents.asMoneyString
             payeeText = expense.title
         }
 
@@ -850,7 +850,7 @@ final class ContinueWalletTransactionModel {
             return .valid(.equal)
         case .manual:
             switch SplitExpenseService.parseOwnShare(ownShareText, amount: amount) {
-            case .valid(let parsed): return .valid(.ownShare(cents: Int((parsed * Const.centsPerUnit).rounded())))
+            case .valid(let parsed): return .valid(.ownShare(cents: SplitShareMath.cents(fromAmount: parsed)))
             case .invalid(let message): return .invalid(message)
             }
         case .shares:

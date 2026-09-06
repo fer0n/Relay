@@ -100,7 +100,7 @@ struct LedgerBalanceCard: View {
     ) {
         let net = currentUserID.map { balances.net(for: $0) } ?? 0
         name = ledger.name
-        balanceText = (Double(net) / Const.centsPerUnit).formatted(.currency(code: ledger.currencyCode))
+        balanceText = net.asMoney(ledger.currencyCode)
         balanceColor = .ledgerBalance(net)
         avatarFallbackSymbol = ledger.isShared ? Const.Symbol.friends : Const.Symbol.ledger
         avatarImageData = ledger.others.count == 1 ? ledger.others.first?.imageData : nil
@@ -120,7 +120,7 @@ struct LedgerBalanceCard: View {
                     MemberBalance(
                         id: participant.id,
                         name: participant.firstName,
-                        amountText: (Double(cents) / Const.centsPerUnit).formatted(.currency(code: ledger.currencyCode)),
+                        amountText: cents.asMoney(ledger.currencyCode),
                         amountColor: .ledgerBalance(cents)
                     )
                 }

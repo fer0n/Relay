@@ -100,7 +100,7 @@ nonisolated extension PendingOperation.Payload {
         case .ynabTransaction(let transaction):
             abs(Double(transaction.amount) / Const.milliunitsPerUnit).asMoneyString
         case .ledgerExpense(let expense):
-            (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
+            expense.costCents.asMoneyString
         }
     }
 

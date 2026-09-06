@@ -12,6 +12,18 @@ extension Double {
     }
 }
 
+extension Int {
+    /// Cents, as a plain two-decimal number.
+    nonisolated var asMoneyString: String {
+        (Double(self) / Const.centsPerUnit).asMoneyString
+    }
+
+    /// Cents, in the given currency.
+    nonisolated func asMoney(_ currencyCode: String) -> String {
+        (Double(self) / Const.centsPerUnit).formatted(.currency(code: currencyCode))
+    }
+}
+
 extension Date {
     static let relativeFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()

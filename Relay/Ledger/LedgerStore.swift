@@ -77,6 +77,12 @@ final class LedgerStore {
 
     var isAvailable: Bool { accountStatus == .available }
 
+    /// The stored copy, for a screen pushed with a value that an accepted
+    /// invite or a saved profile has since changed underneath.
+    func current(_ ledger: Ledger) -> Ledger {
+        ledgers.first { $0.zoneName == ledger.zoneName } ?? ledger
+    }
+
     func expenses(in ledger: Ledger) -> [LedgerExpense] {
         expenses[ledger.zoneName] ?? []
     }
@@ -326,7 +332,7 @@ final class LedgerStore {
     /// The pending row's own wording, for a write whose caller doesn't record
     /// history — a settlement, an edit.
     private func queueSummary(for expense: LedgerExpense, in ledger: Ledger) -> String {
-        let amount = (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
+        let amount = expense.costCents.asMoneyString
         let title = expense.title.isEmpty ? String(localized: "Expense") : expense.title
         return "\(amount) for \(title) on \(ledger.name)"
     }

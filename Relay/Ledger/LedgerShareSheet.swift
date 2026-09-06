@@ -23,6 +23,25 @@ nonisolated struct LedgerShareTarget: Identifiable {
     var id: String { share.recordID.recordName + share.recordID.zoneID.zoneName }
 }
 
+/// Creating the share is a round trip, so the flag stops a double tap
+/// starting two.
+@MainActor
+@Observable
+final class LedgerSharePresenter {
+    var target: LedgerShareTarget?
+    private(set) var isPreparing = false
+
+    func present(_ ledger: Ledger) {
+        guard !isPreparing else { return }
+        isPreparing = true
+        Task {
+            defer { isPreparing = false }
+            guard let (share, container) = try? await LedgerService.share(ledger) else { return }
+            target = LedgerShareTarget(ledgerName: ledger.name, share: share, container: container)
+        }
+    }
+}
+
 struct LedgerShareSheet: UIViewControllerRepresentable {
     let target: LedgerShareTarget
     /// Fired after the sheet changes the share.

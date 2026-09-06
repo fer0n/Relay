@@ -90,13 +90,9 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
     var participantsShareSummary: String? {
         let parts = others.compactMap { share -> String? in
             guard let name = participantNames[share.participantID] else { return nil }
-            return "\(name): \(formattedShare(share.owedCents))"
+            return "\(name): \(share.owedCents.asMoney(currencyCode))"
         }
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
-    }
-
-    private func formattedShare(_ cents: Int) -> String {
-        (Double(cents) / Const.centsPerUnit).formatted(.currency(code: currencyCode))
     }
 
     /// Renames a frozen history entry to match an edited Payee mapping.

@@ -18,12 +18,12 @@ nonisolated enum SplitShareMath {
               let value = try? AmountParser.parse(trimmed),
               value.isFinite,
               value >= 0 else { return nil }
-        return Int((value * Const.centsPerUnit).rounded())
+        return cents(fromAmount: value)
     }
 
     /// The inverse of `cents(_:)`, for display.
     static func text(fromCents cents: Int) -> String {
-        (Double(cents) / Const.centsPerUnit).asMoneyString
+        cents.asMoneyString
     }
 
     /// Same rounding as `cents(_:)`, so an untouched expense round-trips.

@@ -24,10 +24,15 @@ struct SplitTargetMenu<Label: View>: View {
             ForEach(ledgers) { ledger in
                 Section(ledger.name) {
                     // The whole ledger first, then the people on it.
-                    Button(ledger.name) { onSelect(Self.target(for: ledger)) }
+                    Button(ledger.name) {
+                        onSelect(WalletTransactionConfig.CachedSplitTarget(ledger: ledger))
+                    }
                     ForEach(ledger.others) { participant in
                         Button(participant.displayName) {
-                            onSelect(Self.target(for: ledger, participant: participant))
+                            onSelect(WalletTransactionConfig.CachedSplitTarget(
+                                ledger: ledger,
+                                participant: participant
+                            ))
                         }
                     }
                 }
@@ -36,26 +41,5 @@ struct SplitTargetMenu<Label: View>: View {
             MenuPickerLabel(label: label)
         }
         .tint(Color.foregroundColor)
-    }
-
-    private static func target(for ledger: Ledger) -> WalletTransactionConfig.CachedSplitTarget {
-        WalletTransactionConfig.CachedSplitTarget(
-            zoneName: ledger.zoneName,
-            participantID: nil,
-            firstName: ledger.name,
-            fullName: ledger.name
-        )
-    }
-
-    private static func target(
-        for ledger: Ledger,
-        participant: LedgerParticipant
-    ) -> WalletTransactionConfig.CachedSplitTarget {
-        WalletTransactionConfig.CachedSplitTarget(
-            zoneName: ledger.zoneName,
-            participantID: participant.id,
-            firstName: participant.firstName,
-            fullName: participant.displayName
-        )
     }
 }

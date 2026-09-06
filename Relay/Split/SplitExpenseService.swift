@@ -52,7 +52,7 @@ enum SplitExpenseService {
             throw LedgerExpenseError.validation(String(localized: "Pick at least one person to split with."))
         }
 
-        let costCents = Int((amount * Const.centsPerUnit).rounded())
+        let costCents = SplitShareMath.cents(fromAmount: amount)
         guard let shares = LedgerBalanceMath.shares(
             costCents: costCents,
             payerID: payerID,
@@ -117,7 +117,7 @@ enum SplitExpenseService {
             amount: amount,
             description: description,
             target: try await SplitTargetResolver.resolve(friend),
-            allocation: ownShare.map { .ownShare(cents: Int(($0 * Const.centsPerUnit).rounded())) } ?? .equal,
+            allocation: ownShare.map { .ownShare(cents: SplitShareMath.cents(fromAmount: $0)) } ?? .equal,
             date: date,
             groupId: groupId,
             merchant: merchant
@@ -132,7 +132,7 @@ enum SplitExpenseService {
         let byID = Dictionary(uniqueKeysWithValues: shares.map { ($0.participantID, $0.owedCents) })
         return ([(String(localized: "You"), byID[payerID] ?? 0)]
             + others.map { ($0.firstName, byID[$0.id] ?? 0) })
-            .map { "\($0): \((Double($1) / Const.centsPerUnit).asMoneyString)" }
+            .map { "\($0): \($1.asMoneyString)" }
             .joined(separator: "; ")
     }
 

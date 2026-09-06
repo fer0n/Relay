@@ -41,6 +41,32 @@ nonisolated struct WalletTransactionConfig: Codable {
         var participantID: String?
         var firstName: String
         var fullName: String
+
+        init(zoneName: String, participantID: String?, firstName: String, fullName: String) {
+            self.zoneName = zoneName
+            self.participantID = participantID
+            self.firstName = firstName
+            self.fullName = fullName
+        }
+
+        /// Everyone on the ledger.
+        init(ledger: Ledger) {
+            self.init(
+                zoneName: ledger.zoneName,
+                participantID: nil,
+                firstName: ledger.name,
+                fullName: ledger.name
+            )
+        }
+
+        init(ledger: Ledger, participant: LedgerParticipant) {
+            self.init(
+                zoneName: ledger.zoneName,
+                participantID: participant.id,
+                firstName: participant.firstName,
+                fullName: participant.displayName
+            )
+        }
     }
 
     /// No defaulted fields, so the synthesized decoder is safe — a missing key is

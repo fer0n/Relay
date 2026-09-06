@@ -16,8 +16,7 @@ struct LedgerDetailView: View {
 
     @State private var store = LedgerStore.shared
     @State private var pendingQueue = PendingOperationQueue.shared
-    @State private var shareTarget: LedgerShareTarget?
-    @State private var isPreparingShare = false
+    @State private var sharePresenter = LedgerSharePresenter()
     @State private var selectedExpense: LedgerExpense?
     @State private var showRecordPayment = false
     @State private var renaming: Ledger?
@@ -27,11 +26,7 @@ struct LedgerDetailView: View {
     @State private var expensePendingDelete: LedgerExpense?
     @Namespace private var detailNamespace
 
-    /// Re-read from the store: accepting an invite changes the participant
-    /// list under the value this view was pushed with.
-    private var current: Ledger {
-        store.ledgers.first { $0.zoneName == ledger.zoneName } ?? ledger
-    }
+    private var current: Ledger { store.current(ledger) }
 
     private var expenses: [LedgerExpense] { store.expenses(in: current) }
 
@@ -111,7 +106,7 @@ struct LedgerDetailView: View {
         .toolbar { toolbarContent }
         .task { await store.refreshExpenses(in: current) }
         .refreshable { await store.refresh(force: true) }
-        .sheet(item: $shareTarget) { target in
+        .sheet(item: $sharePresenter.target) { target in
             LedgerShareSheet(target: target) {
                 Task { await store.refresh(force: true) }
             }
@@ -155,9 +150,9 @@ struct LedgerDetailView: View {
     /// Negative when the signed-in user owes.
     private func amountText(for expense: LedgerExpense) -> String {
         guard let currentUserID = current.currentUserID else {
-            return (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
+            return expense.costCents.asMoneyString
         }
-        return (Double(expense.netCents(for: currentUserID)) / Const.centsPerUnit).asMoneyString
+        return expense.netCents(for: currentUserID).asMoneyString
     }
 
     /// Matches `LedgerBalanceCard`'s headline colour.
@@ -221,7 +216,7 @@ struct LedgerDetailView: View {
             } label: {
                 Label("Invite", systemImage: "person.badge.plus")
             }
-            .disabled(!current.isOwnedByCurrentUser || isPreparingShare)
+            .disabled(!current.isOwnedByCurrentUser || sharePresenter.isPreparing)
         }
         .cardRowBackground()
     }
@@ -293,15 +288,5 @@ struct LedgerDetailView: View {
         )
     }
 
-    /// The share must exist server-side first, and creating one is a round
-    /// trip — hence the flag, so a double tap doesn't start two.
-    private func presentShare() {
-        guard !isPreparingShare else { return }
-        isPreparingShare = true
-        Task {
-            defer { isPreparingShare = false }
-            guard let (share, container) = try? await LedgerService.share(current) else { return }
-            shareTarget = LedgerShareTarget(ledgerName: current.name, share: share, container: container)
-        }
-    }
+    private func presentShare() { sharePresenter.present(current) }
 }

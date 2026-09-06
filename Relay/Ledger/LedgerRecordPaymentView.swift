@@ -218,7 +218,7 @@ struct LedgerRecordPaymentView: View {
     }
 
     private func money(_ cents: Int) -> String {
-        (Double(cents) / Const.centsPerUnit).formatted(.currency(code: ledger.currencyCode))
+        cents.asMoney(ledger.currencyCode)
     }
 
     private func record() {
