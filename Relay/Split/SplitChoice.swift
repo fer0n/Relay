@@ -2,12 +2,9 @@
 //  SplitChoice.swift
 //  Relay
 //
-//  What the in-app forms offer in their "Split" picker: `SplitOption` plus
-//  `.shares`, where the split is given as relative weights.
-//
-//  `.shares` stays out of `SplitOption`, an AppEnum: a Shortcuts run has
-//  nowhere to type weights. By submit time they're already an amount, so it
-//  goes through as `.manual`.
+//  `SplitOption` plus `.shares`, for the in-app forms. `.shares` stays out of
+//  `SplitOption`: a Shortcuts run has nowhere to type weights, and by submit
+//  time they're an amount anyway.
 //
 
 import Foundation

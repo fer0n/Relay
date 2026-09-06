@@ -2,9 +2,7 @@
 //  LedgerRenameAlert.swift
 //  Relay
 //
-//  Renaming a ledger, raised from two places — the row's context menu on
-//  LedgersView and the detail screen's toolbar — so the wording and the
-//  seeding of the field live here rather than being written out twice.
+//  Raised from LedgersView's context menu and the detail screen's toolbar.
 //
 
 import SwiftUI
@@ -22,8 +20,7 @@ private struct LedgerRenameAlert: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            // Seeded on the way in rather than at each call site, so the
-            // field opens on the name that's currently showing.
+            // Seeded here, not per call site.
             .onChange(of: ledger?.id) { _, _ in
                 if let ledger { name = ledger.name }
             }

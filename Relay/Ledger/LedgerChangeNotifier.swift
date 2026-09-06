@@ -2,14 +2,10 @@
 //  LedgerChangeNotifier.swift
 //  Relay
 //
-//  Tells the user when someone else adds an expense to a ledger they're on.
-//
-//  CloudKit only knows "the shared database changed", not "Alex added
-//  Dinner", so the subscription asks for a silent push and this posts the
-//  local notification once the app has fetched the change.
-//
-//  Needs Push Notifications and the remote-notification background mode;
-//  without them ledgers just stay refresh-on-open.
+//  CloudKit only knows "the shared database changed", so the subscription
+//  asks for a silent push and this posts the local notification once the
+//  change is fetched. Needs Push Notifications and the background mode;
+//  without them ledgers stay refresh-on-open.
 //
 
 import CloudKit
@@ -21,31 +17,28 @@ import os
 enum LedgerChangeNotifier {
     private static let logger = Logger(subsystem: Const.loggerSubsystem, category: "LedgerChangeNotifier")
 
-    // Stable ids: CloudKit rejects a duplicate, which is the wanted
-    // behaviour — subscribe once, then leave it alone.
+    // Stable ids: CloudKit rejects the duplicate, which is what's wanted.
     private static let sharedSubscriptionID = "ledger-shared-changes"
     private static let privateSubscriptionID = "ledger-private-changes"
 
     static let categoryIdentifier = "LEDGER_EXPENSE_ADDED"
 
-    /// Both databases: shared for ledgers others own, private for this
-    /// user's own ledgers that someone else writes into.
+    /// Shared for ledgers others own, private for this user's own that
+    /// someone else writes into.
     static func subscribeIfNeeded() async {
         guard (try? await LedgerService.accountStatus()) == .available else { return }
         let container = LedgerService.container
         await subscribe(id: privateSubscriptionID, in: container.privateCloudDatabase)
         await subscribe(id: sharedSubscriptionID, in: container.sharedCloudDatabase)
 
-        // First run on this device: what's already there is history, not
-        // news.
+        // First run here: what's already there is history, not news.
         if LedgerSeenExpenseStore.load().isEmpty {
             await LedgerStore.shared.refresh(force: false)
             markEverythingSeen()
         }
     }
 
-    /// Not at launch: a YNAB-only user has nothing to be notified of, and a
-    /// prompt with no context behind it gets denied permanently.
+    /// Not at launch: a prompt with no context behind it gets denied for good.
     static func requestAuthorizationIfNeeded() async {
         let center = UNUserNotificationCenter.current()
         guard await center.notificationSettings().authorizationStatus == .notDetermined else { return }
@@ -55,32 +48,28 @@ enum LedgerChangeNotifier {
     private static func subscribe(id: String, in database: CKDatabase) async {
         let subscription = CKDatabaseSubscription(subscriptionID: id)
         let info = CKSubscription.NotificationInfo()
-        // Silent: the payload wakes the app; the visible notification is
-        // posted once there's something specific to say.
+        // Silent: the payload wakes the app; the banner comes later.
         info.shouldSendContentAvailable = true
         subscription.notificationInfo = info
         do {
             _ = try await database.modifySubscriptions(saving: [subscription], deleting: [])
         } catch let error as CKError where error.code == .serverRejectedRequest {
-            // Already subscribed — expected on every launch after the first.
+            // Already subscribed — expected after the first launch.
         } catch {
             logger.error("Ledger subscription failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    /// Re-reads the ledgers and announces what other people added since last
-    /// time. Returns whether anything changed, for the background-fetch
-    /// result.
+    /// Announces what other people added since last time. Returns whether
+    /// anything changed, for the background-fetch result.
     static func handleRemoteNotification() async -> Bool {
         let store = LedgerStore.shared
         let before = LedgerSeenExpenseStore.load()
-        // Before the refresh: a deleted expense is already gone from
-        // CloudKit, so the local copy is all that can say what it was.
+        // A deleted expense is gone from CloudKit; only the local copy knows.
         let previous = expensesByID(in: store)
         await store.refresh(force: true)
 
-        // Nothing recorded yet: seed rather than announce. Computed after
-        // the refresh, since before it the store may hold nothing at all.
+        // Nothing recorded yet: seed rather than announce.
         guard !before.isEmpty else {
             LedgerSeenExpenseStore.save(currentExpenseIDs(in: store))
             return false
@@ -89,8 +78,7 @@ enum LedgerChangeNotifier {
         let containerUserID = store.currentUserID
         var announced = 0
         for ledger in store.ledgers {
-            // `createdBy` is container-level, so compare against that id —
-            // and the ledger's own, since the two don't always agree.
+            // `createdBy` is container-level; the ledger's own id can differ.
             let mine = Set([containerUserID, ledger.currentUserID].compactMap { $0 })
             for expense in store.expenses(in: ledger) where !before.contains(expense.id) {
                 // Only other people's writes.
@@ -105,12 +93,9 @@ enum LedgerChangeNotifier {
         return announced > 0
     }
 
-    /// Expenses that were here last time and aren't now — only ones already
-    /// announced, and only on ledgers that still exist, since leaving one
-    /// removes thirty expenses in a single event.
-    ///
-    /// Nobody is named: a deletion arrives as a bare record id, which also
-    /// means a deletion from another of your own devices lands here.
+    /// Expenses gone since last time — only already-announced ones, and only
+    /// on ledgers that still exist, since leaving one removes them all at once.
+    /// Nobody is named: a deletion arrives as a bare record id.
     private static func announceDeletions(
         previous: [String: (expense: LedgerExpense, zoneName: String)],
         seen: Set<String>,
@@ -133,8 +118,7 @@ enum LedgerChangeNotifier {
         LedgerSeenExpenseStore.save(currentExpenseIDs(in: LedgerStore.shared))
     }
 
-    /// What a deletion has to be looked up in: the feed reports only which
-    /// record went away.
+    /// What a deletion is looked up in: the feed reports only a record id.
     private static func expensesByID(in store: LedgerStore) -> [String: (expense: LedgerExpense, zoneName: String)] {
         var result: [String: (expense: LedgerExpense, zoneName: String)] = [:]
         for ledger in store.ledgers {
@@ -145,26 +129,21 @@ enum LedgerChangeNotifier {
         return result
     }
 
-    /// What gets written back as the seen set. Saving the *old* set instead
-    /// would never grow it, and every later push would re-announce.
+    /// Saving the *old* set instead would re-announce on every later push.
     private static func currentExpenseIDs(in store: LedgerStore) -> Set<String> {
         Set(store.ledgers.flatMap { store.expenses(in: $0).map(\.id) })
     }
 
-    /// What the expense was and what it cost, then who owes what — the two
-    /// things worth reading on a lock screen, in that order.
-    ///
-    /// The ledger's name is deliberately not the title: it doesn't change
-    /// between notifications, and the split itself says which ledger this is.
+    /// What it cost, then who owes what. The ledger's name isn't the title:
+    /// it's the same every time, and the split already says which ledger.
     private static func notify(expense: LedgerExpense, in ledger: Ledger, currentUserID: String) async {
         let who = expense.createdBy.flatMap { ledger.participant(id: $0)?.firstName }
             ?? LedgerParticipant.unknownName
         let amount = amountText(expense.costCents, currencyCode: expense.currencyCode)
 
         guard !expense.isSettlement else {
-            // A payment has no split to break down — one person hands another
-            // money — so it says that instead, and keeps the ledger's name,
-            // which there's now room for.
+            // A payment has no split to break down, so there's room for the
+            // ledger's name instead.
             let recipient = expense.debtors.first.flatMap { ledger.participant(id: $0.participantID) }
             await post(
                 title: recipient?.isCurrentUser == true
@@ -182,9 +161,8 @@ enum LedgerChangeNotifier {
         )
     }
 
-    /// Reuses the added-expense notification's identifier, so a still-sitting
-    /// "3 € at Edeka" is replaced by the news that it's gone rather than left
-    /// below it contradicting it.
+    /// Reuses the add's identifier, so a still-sitting banner is replaced
+    /// rather than contradicted.
     private static func notifyDeleted(expense: LedgerExpense, in ledger: Ledger) async {
         let amount = amountText(expense.costCents, currencyCode: expense.currencyCode)
         await post(
@@ -196,15 +174,13 @@ enum LedgerChangeNotifier {
         )
     }
 
-    /// Identified by the expense, so the same write arriving twice (a retried
-    /// push, a second device) replaces rather than repeats.
+    /// Keyed by expense, so the same write arriving twice replaces itself.
     private static func post(title: String, body: String, expenseID: String) async {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.categoryIdentifier = categoryIdentifier
-        // The haptic rides on the sound: with none, this arrives as a silent
-        // banner and doesn't vibrate in silent mode either.
+        // The haptic rides on the sound; without it there's no vibration.
         content.sound = .default
         let request = UNNotificationRequest(
             identifier: "ledger-expense-\(expenseID)",
@@ -214,9 +190,8 @@ enum LedgerChangeNotifier {
         try? await UNUserNotificationCenter.current().add(request)
     }
 
-    /// "You: 1,50 € • Michaela: 1,50 €", reader first then largest. Only
-    /// people who owe something: a payer at zero would push the shares that
-    /// matter off the end of the line.
+    /// "You: 1,50 € • Michaela: 1,50 €", reader first then largest. Debtors
+    /// only, or a payer at zero pushes the real shares off the line.
     static func splitSummary(
         of expense: LedgerExpense,
         in ledger: Ledger,
@@ -237,16 +212,14 @@ enum LedgerChangeNotifier {
             .joined(separator: " • ")
     }
 
-    /// Without the ",00" on a whole amount: two decimal places on every
-    /// figure is what makes the line too long to read at a glance.
+    /// Without the ",00" on a whole amount, which makes the line unreadable.
     private static func amountText(_ cents: Int, currencyCode: String) -> String {
         (Double(cents) / Const.centsPerUnit)
             .formatted(.currency(code: currencyCode).precision(.fractionLength(0...2)))
     }
 }
 
-/// On disk, because the point is to survive the app being killed between one
-/// silent push and the next.
+/// On disk: it has to survive being killed between two silent pushes.
 nonisolated enum LedgerSeenExpenseStore {
     private static let fileURL = ApplicationSupportFile.url("ledger-seen-expenses.json")
 

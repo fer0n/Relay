@@ -2,9 +2,8 @@
 //  DefaultSplitTargetStore.swift
 //  Relay
 //
-//  The app-wide "who do I usually split with", for when nothing more specific
-//  said. Stores a `CachedSplitTarget`, so the default, a template's remembered
-//  target and a draft's pending one are all the same value.
+//  The app-wide "who do I usually split with". A `CachedSplitTarget`, so the
+//  default, a template's target and a draft's pending one are one type.
 //
 
 import Foundation
@@ -13,11 +12,8 @@ import os
 nonisolated enum DefaultSplitTargetStore {
     private static let fileURL = ApplicationSupportFile.url("default-split-target.json")
 
-    /// `load()` sits on ContentView's body path — the pinned balance card is
-    /// resolved through it — so the file is decoded once and held rather than
-    /// re-read on every invalidation. Same reasoning, and same shape, as
-    /// `LedgerParticipantUsageStore`; every write below refreshes it, and
-    /// nothing else touches the file.
+    /// `load()` sits on ContentView's body path, so the file is decoded once
+    /// and held. Every write below refreshes it; nothing else touches the file.
     private static let cached = OSAllocatedUnfairLock(
         initialState: WalletTransactionConfig.CachedSplitTarget??.none
     )
@@ -43,9 +39,8 @@ nonisolated enum DefaultSplitTargetStore {
         cached.withLock { $0 = .some(nil) }
     }
 
-    /// A mirror rather than making `CachedSplitTarget` Codable: that type is
-    /// passed between pickers, and a serialised form would make every field a
-    /// storage decision.
+    /// A mirror, so `CachedSplitTarget` — passed between pickers — doesn't
+    /// make every field a storage decision.
     private struct StoredTarget: Codable {
         let zoneName: String
         let participantID: String?

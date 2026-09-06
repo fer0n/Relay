@@ -2,12 +2,9 @@
 //  LedgerExpenseDetailView.swift
 //  Relay
 //
-//  One expense on a ledger — the one detail screen that edits and saves back.
-//
-//  A ledger stores only the final per-person amounts, not how they were
-//  arrived at, so the split mode is inferred on open and every amount is
-//  re-derived from the total rather than typed per person. That's what keeps
-//  the numbers adding up, and CloudKit checks nothing.
+//  A ledger stores the final per-person amounts, not how they were arrived
+//  at, so the mode is inferred on open and amounts re-derived from the total
+//  rather than typed per person. Nothing server-side checks they add up.
 //
 
 import SwiftUI
@@ -23,8 +20,7 @@ struct LedgerExpenseDetailView: View {
         /// Two participants only, where "the other one" is unambiguous.
         case fullAmount
         case shares
-        /// Typed in directly, so they have to add up on their own. What a
-        /// reopened custom split comes back as.
+        /// Typed in directly, so they have to add up on their own.
         case manual
 
         var label: String {
@@ -71,9 +67,8 @@ struct LedgerExpenseDetailView: View {
         self.onSave = onSave
         self.onDelete = onDelete
 
-        // Everyone billable, since a save overwrites every share at once —
-        // plus anyone on the expense who no longer is, whose share would
-        // otherwise be redistributed the moment this screen opens.
+        // A save overwrites every share, so anyone still on the expense has
+        // to stay listed or their share is silently redistributed.
         let billable = [ledger.currentUser].compactMap { $0 } + ledger.others
         let billableIDs = Set(billable.map(\.id))
         let historical = expense.shares
@@ -100,8 +95,7 @@ struct LedgerExpenseDetailView: View {
         _manualAmounts = State(initialValue: owed.map { SplitShareMath.text(fromCents: $0) })
     }
 
-    /// Anything but an even division or a two-person "one owes everything"
-    /// comes back as `.manual`.
+    /// Anything else comes back as `.manual`.
     private static func inferMode(totalCents: Int, owedCents: [Int], payer: Int) -> SplitMode {
         guard totalCents > 0 else { return .equally }
         let count = owedCents.count
@@ -136,8 +130,7 @@ struct LedgerExpenseDetailView: View {
             let values = weights.map { Double(SplitShareMath.cents($0) ?? 0) }
             return SplitShareMath.distribute(totalCents: total, ratios: SplitShareMath.ratios(of: values))
         case .manual:
-            // The one mode whose amounts aren't guaranteed to add up;
-            // `validationMessage` enforces it instead.
+            // The one mode `validationMessage` has to enforce the total for.
             return manualAmounts.map { SplitShareMath.cents($0) ?? 0 }
         }
     }
@@ -160,8 +153,8 @@ struct LedgerExpenseDetailView: View {
         }
     }
 
-    /// An unparseable field counts as a change, so the bar shows disabled with
-    /// the reason below it rather than leaving a broken value looking fine.
+    /// An unparseable field counts as a change, so the bar shows disabled
+    /// with the reason rather than leaving a broken value looking fine.
     private var hasChanges: Bool {
         if trimmedDescription != expense.title { return true }
         guard let totalCents else { return true }
@@ -237,7 +230,6 @@ struct LedgerExpenseDetailView: View {
             Section {
                 DraftDetailRow(icon: Const.Symbol.titleField, title: "Description") {
                     TextField("Description", text: $descriptionText)
-                        // As the field it was typed into when added.
                         .textInputAutocapitalization(.words)
                         .multilineTextAlignment(.trailing)
                         .submitLabel(.done)
@@ -330,8 +322,8 @@ struct LedgerExpenseDetailView: View {
 
     // MARK: - Editing
 
-    /// Seeds whatever fields the new mode owns. A custom split that *arrived*
-    /// as `.manual` is seeded in `init` instead.
+    /// Seeds the new mode's fields; one that arrived `.manual` is seeded in
+    /// `init` instead.
     private func setMode(_ mode: SplitMode) {
         switch mode {
         case .shares:
@@ -357,8 +349,7 @@ struct LedgerExpenseDetailView: View {
         var updated = expense
         updated.title = trimmedDescription
         updated.costCents = totalCents
-        // Zeroes included: an edit overwrites the whole set, and dropping
-        // them would make a later reopen think they were never on it.
+        // Zeroes included: a later reopen would think they were never on it.
         updated.shares = participants.indices.map {
             LedgerExpenseShare(participantID: participants[$0].id, paidCents: paid[$0], owedCents: owed[$0])
         }

@@ -2,14 +2,12 @@
 //  LedgerProfileEditor.swift
 //  Relay
 //
-//  Name and picture for one person on a ledger, and the avatar circle they're
-//  drawn as everywhere else.
+//  Name and picture for one person, plus the avatar used everywhere else.
 //
 
 import PhotosUI
 import SwiftUI
 
-/// A participant's picture, or their initials.
 struct LedgerAvatar: View {
     let participant: LedgerParticipant
     var size: CGFloat = 36
@@ -47,8 +45,7 @@ struct LedgerProfileEditor: View {
     init(participant: LedgerParticipant, ledger: Ledger) {
         self.participant = participant
         self.ledger = ledger
-        // Seeded with what's shown today, CloudKit's name included, so
-        // saving a picture alone doesn't blank the name.
+        // CloudKit's name included, so saving a picture alone doesn't blank it.
         _name = State(initialValue: participant.name ?? "")
         _imageData = State(initialValue: participant.imageData)
     }
@@ -143,8 +140,8 @@ struct LedgerProfileEditor: View {
         }
     }
 
-    /// Downscaled rather than uploaded as picked: every participant's picture
-    /// is held in memory and written into the snapshot.
+    /// Downscaled: every participant's picture is held in memory and written
+    /// into the snapshot.
     nonisolated private static func profileImageData(from item: PhotosPickerItem) async -> Data? {
         guard let data = try? await item.loadTransferable(type: Data.self),
               let image = UIImage(data: data) else { return nil }

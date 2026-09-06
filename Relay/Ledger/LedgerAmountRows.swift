@@ -2,8 +2,7 @@
 //  LedgerAmountRows.swift
 //  Relay
 //
-//  The two amount fields on the expense editor. Each owns its own
-//  `@FocusState`, which is why they aren't inlined there.
+//  The expense editor's amount fields. Separate views for the `@FocusState`.
 //
 
 import SwiftUI
@@ -31,8 +30,7 @@ struct LedgerAmountFieldRow: View {
     }
 }
 
-/// A `.manual` row. Its keyboard carries a "Remaining" button filling in
-/// what's left of the total — the quick way to settle the last person.
+/// A `.manual` row, with a "Remaining" key filling in what's left.
 struct LedgerManualAmountRow: View {
     let name: String
     @Binding var amount: String

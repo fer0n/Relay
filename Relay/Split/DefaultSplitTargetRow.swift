@@ -2,9 +2,7 @@
 //  DefaultSplitTargetRow.swift
 //  Relay
 //
-//  The Settings row for the app-wide default split target.
-//
-//  Shown even with no ledgers yet: hiding it would leave no explanation of why
+//  Shown even with no ledgers: hiding it leaves no explanation of why
 //  splitting isn't offered anywhere.
 //
 
@@ -23,8 +21,7 @@ struct DefaultSplitTargetRow: View {
                     .foregroundStyle(.secondary)
             } else {
                 SplitTargetMenu(ledgers: ledgers, noneLabel: String(localized: "None"), onSelect: select) {
-                    // The stored name rather than a lookup, so a target whose
-                    // ledger hasn't loaded yet still reads as set.
+                    // The stored name, so an unloaded ledger still reads as set.
                     Text(target?.fullName ?? String(localized: "None"))
                 }
             }

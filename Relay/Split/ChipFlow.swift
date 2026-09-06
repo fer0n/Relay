@@ -10,9 +10,7 @@ import SwiftUI
 struct ChipFlow: Layout {
     var spacing: CGFloat = 6
 
-    /// Sizes are measured once per layout pass and shared between
-    /// `sizeThatFits` and `placeSubviews`, which otherwise ask every chip for
-    /// its size four times over.
+    /// Measured once per pass; otherwise every chip is sized four times over.
     func makeCache(subviews: Subviews) -> [CGSize] {
         subviews.map { $0.sizeThatFits(.unspecified) }
     }

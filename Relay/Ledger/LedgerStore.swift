@@ -2,10 +2,8 @@
 //  LedgerStore.swift
 //  Relay
 //
-//  The app's single view of its ledgers, and the one place that talks to
-//  `LedgerService`. Adds a shared observable snapshot, so the list and a
-//  detail screen can't drift apart, plus a copy on disk purely so the first
-//  frame after launch has something to draw.
+//  The one place that talks to `LedgerService`, plus a snapshot on disk so
+//  the first frame after launch has something to draw.
 //
 
 import CloudKit
@@ -14,18 +12,15 @@ import Observation
 import os
 import SwiftUI
 
-/// What became of a write. `.queued` is a success from the user's side: the
-/// expense is on the ledger on this device and `PendingOperationQueue` owns
-/// getting it to CloudKit.
+/// `.queued` is a success: the expense is on the ledger locally and
+/// `PendingOperationQueue` owns getting it to CloudKit.
 nonisolated enum LedgerWriteOutcome {
     case saved
     case queued
     case failed
 }
 
-/// What a write should leave in "Recent" — passed only by the callers whose
-/// writes record history when they succeed online, so a queued one records
-/// the same thing and nothing more when it eventually syncs.
+/// What a write should leave in "Recent" once it syncs.
 nonisolated struct LedgerWriteHistory {
     let summary: String
     var groupId: UUID?
@@ -44,13 +39,12 @@ final class LedgerStore {
     static let shared = LedgerStore()
 
     private(set) var ledgers: [Ledger] = []
-    /// Keyed by zone name, which survives an owner-name difference between
-    /// the private and shared database views of a zone.
+    /// Keyed by zone name, which survives the owner-name difference between
+    /// the private and shared views of a zone.
     private(set) var expenses: [String: [LedgerExpense]] = [:]
-    /// Derived from `expenses` and kept in step with it by `setExpenses`,
-    /// never assigned from outside: the balance card and the settle-up plan
-    /// are read from a view body, and deriving them there re-walked every
-    /// expense on every invalidation.
+    /// Derived by `setExpenses`, never assigned from outside: these are read
+    /// from a view body, so deriving them there re-walks every expense on
+    /// every invalidation.
     private(set) var balances: [String: LedgerBalances] = [:]
     private(set) var currentUserID: String?
     private(set) var accountStatus: CKAccountStatus = .couldNotDetermine
@@ -69,16 +63,14 @@ final class LedgerStore {
         setExpenses(snapshot.expenses)
         currentUserID = snapshot.currentUserID
         lastRefreshedAt = cache.lastFetchedAt
-        // Nothing is cached until a refresh confirmed the account, so the
-        // last thing known is that it was there. `.couldNotDetermine` would
-        // flash "iCloud Unavailable" on every launch.
+        // Nothing caches until a refresh confirmed the account, so it was
+        // there; `.couldNotDetermine` flashes "iCloud Unavailable" on launch.
         accountStatus = .available
     }
 
     var isAvailable: Bool { accountStatus == .available }
 
-    /// The stored copy, for a screen pushed with a value that an accepted
-    /// invite or a saved profile has since changed underneath.
+    /// The stored copy, for a screen pushed with a since-changed value.
     func current(_ ledger: Ledger) -> Ledger {
         ledgers.first { $0.zoneName == ledger.zoneName } ?? ledger
     }
@@ -91,15 +83,13 @@ final class LedgerStore {
         balances[ledger.zoneName] ?? .empty
     }
 
-    /// The only way `expenses` changes, so a balance can't go stale behind
-    /// it. Deriving costs one walk per changed zone, against the many a
-    /// view body would do.
+    /// The only way `expenses` changes, so a balance can't go stale behind it.
     private func setExpenses(_ updated: [String: [LedgerExpense]]) {
         expenses = updated
         balances = updated.mapValues(LedgerBalances.init(expenses:))
     }
 
-    /// Nil removes the zone, for a ledger that's just been deleted or left.
+    /// Nil removes the zone.
     private func setExpenses(_ updated: [LedgerExpense]?, inZone zoneName: String) {
         expenses[zoneName] = updated
         balances[zoneName] = updated.map(LedgerBalances.init(expenses:))
@@ -108,11 +98,9 @@ final class LedgerStore {
     /// One nobody else is on has nobody to bill.
     var sharedLedgers: [Ledger] { ledgers.filter(\.isShared) }
 
-    /// A server fetch can't see an expense that never reached the server, so
-    /// anything still in the pending queue is folded back in — otherwise an
-    /// offline add would disappear on the next refresh and reappear when it
-    /// synced. Only zones that came back are touched: a queued expense for a
-    /// ledger this device has lost access to stays gone.
+    /// Folds the pending queue back in, or an offline add would vanish on the
+    /// next refresh. Only zones that came back, so a queued expense for a lost
+    /// ledger stays gone.
     private func mergingQueued(_ fetched: [String: [LedgerExpense]]) -> [String: [LedgerExpense]] {
         var merged = fetched
         for zoneName in fetched.keys {
@@ -125,9 +113,7 @@ final class LedgerStore {
         let queued = PendingOperationQueue.shared.pendingLedgerExpenses
             .filter { $0.zoneName == zoneName }
         guard !queued.isEmpty else { return fetched }
-        // A queued *edit* to an expense that's already on the server wins:
-        // it's the newer of the two, and it's what the screen has been
-        // showing since the edit was made.
+        // A queued edit wins: it's newer, and it's what the screen shows.
         let queuedIDs = Set(queued.map(\.expenseID))
         return (fetched.filter { !queuedIDs.contains($0.id) } + queued.map(\.asExpense))
             .sorted { $0.date > $1.date }
@@ -137,12 +123,10 @@ final class LedgerStore {
         cache.save(LedgerSnapshot(ledgers: ledgers, expenses: expenses, currentUserID: currentUserID))
     }
 
-    /// `force` is false for an appear/foreground pass, true for
-    /// pull-to-refresh.
+    /// `force` is false for appear/foreground, true for pull-to-refresh.
     func refresh(force: Bool) async {
-        // `hasRefreshedThisLaunch` because the restored snapshot carries its
-        // own fetch timestamp: the cache fills the first frame, it doesn't
-        // stand in for a sync.
+        // The restored snapshot carries its own timestamp: it fills the first
+        // frame, it doesn't stand in for a sync.
         guard force || !hasRefreshedThisLaunch || CacheStore.isStale(lastRefreshedAt) else { return }
         guard !isRefreshing else { return }
         isRefreshing = true
@@ -152,9 +136,7 @@ final class LedgerStore {
         do {
             accountStatus = try await LedgerService.accountStatus()
             guard accountStatus == .available else {
-                // Not an error: signing out is a choice, and the views have
-                // an empty state for it. The cache goes too — a signed-out
-                // device shouldn't draw a ledger it lost access to.
+                // Not an error: signing out is a choice. The cache goes too.
                 ledgers = []
                 setExpenses([:])
                 cache.delete()
@@ -163,9 +145,8 @@ final class LedgerStore {
             }
             currentUserID = try await LedgerService.currentUserID()
             var fetched = try await LedgerService.fetchLedgers()
-            // One zone walk per ledger, in parallel; accumulated rather than
-            // assigned zone by zone, which would animate the list rebuilding
-            // itself one ledger at a time.
+            // Accumulated, not assigned per zone, which would animate the
+            // list rebuilding itself one ledger at a time.
             let userID = currentUserID
             let contents = try await withThrowingTaskGroup(
                 of: (String, [LedgerExpense], [String: LedgerProfile]).self
@@ -188,9 +169,8 @@ final class LedgerStore {
                 fetchedExpenses[fetched[index].zoneName] = expenses
                 fetched[index] = fetched[index].applyingProfiles(profiles)
             }
-            // Animated: an expense someone else added arrives here rather
-            // than through a local write. Assigned only after a successful
-            // pass, so a failed refresh doesn't empty a live screen.
+            // Assigned only after a successful pass, so a failed refresh
+            // doesn't empty a live screen.
             withAnimation {
                 ledgers = fetched
                 setExpenses(mergingQueued(fetchedExpenses))
@@ -235,8 +215,7 @@ final class LedgerStore {
         }
     }
 
-    /// Optimistic, like every other edit here: the new name is on screen
-    /// before the round trip, and put back if the write fails.
+    /// Optimistic: on screen before the round trip, put back if it fails.
     @discardableResult
     func rename(_ ledger: Ledger, to name: String) async -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -256,8 +235,7 @@ final class LedgerStore {
         }
     }
 
-    /// Optimistic like `rename`, and worth being so: the balances on screen
-    /// redraw under the toggle rather than after the round trip.
+    /// Optimistic: the balances redraw under the toggle, not after the trip.
     @discardableResult
     func setSimplifiesDebts(_ simplifies: Bool, in ledger: Ledger) async -> Bool {
         guard let index = ledgers.firstIndex(where: { $0.zoneName == ledger.zoneName }),
@@ -276,23 +254,16 @@ final class LedgerStore {
         }
     }
 
-    /// Puts one ledger back the way it was, found by zone rather than by the
-    /// index it had before the write: a refresh landing mid-flight can drop a
-    /// ledger someone deleted elsewhere, and the stale index then points past
-    /// the end of the list — or at somebody else's ledger.
+    /// By zone, not by the index it had: a refresh landing mid-flight can
+    /// leave that index pointing at somebody else's ledger.
     private func restore(_ ledger: Ledger) {
         guard let index = ledgers.firstIndex(where: { $0.zoneName == ledger.zoneName }) else { return }
         withAnimation { ledgers[index] = ledger }
     }
 
-    /// Optimistic: a CloudKit round-trip is slow enough that waiting for it
-    /// before showing the row is noticeable.
-    ///
-    /// Offline the optimistic row *stays* and the write goes to
-    /// `PendingOperationQueue` — CloudKit doesn't hold an unsent
-    /// `modifyRecords` anywhere, it fails the call outright, and rolling back
-    /// would mean an expense simply can't be added away from a network. Every
-    /// other failure still rolls back: a rejected write won't start working.
+    /// Optimistic. Offline the row *stays* and the write goes to
+    /// `PendingOperationQueue`: CloudKit fails `modifyRecords` outright rather
+    /// than holding it. Every other failure rolls back.
     @discardableResult
     func save(
         _ expense: LedgerExpense,
@@ -306,8 +277,7 @@ final class LedgerStore {
         withAnimation { setExpenses(updated.sorted { $0.date > $1.date }, inZone: key) }
         do {
             try await LedgerService.save(expense, in: ledger)
-            // An edit that reached CloudKit makes the queued copy of the same
-            // expense a stale write waiting to undo it.
+            // A queued copy of an expense that just landed is a stale write.
             PendingOperationQueue.shared.cancelLedgerExpense(id: expense.id)
             lastError = nil
             return .saved
@@ -329,17 +299,14 @@ final class LedgerStore {
         }
     }
 
-    /// The pending row's own wording, for a write whose caller doesn't record
-    /// history — a settlement, an edit.
+    /// For a write whose caller records no history — a settlement, an edit.
     private func queueSummary(for expense: LedgerExpense, in ledger: Ledger) -> String {
         let amount = expense.costCents.asMoneyString
         let title = expense.title.isEmpty ? String(localized: "Expense") : expense.title
         return "\(amount) for \(title) on \(ledger.name)"
     }
 
-    /// Takes a queued expense back off the ledger — the user deleted its
-    /// pending operation, so the write it was standing in for is never
-    /// happening.
+    /// The user deleted the pending operation, so the write never happens.
     func discardQueued(expenseID: String, zoneName: String) {
         guard let current = expenses[zoneName] else { return }
         withAnimation { setExpenses(current.filter { $0.id != expenseID }, inZone: zoneName) }
@@ -350,9 +317,7 @@ final class LedgerStore {
         let key = ledger.zoneName
         let previous = expenses[key] ?? []
         withAnimation { setExpenses(previous.filter { $0.id != expense.id }, inZone: key) }
-        // Nothing was ever written, so dropping the queued write *is* the
-        // deletion — and going to CloudKit for it would fail offline, which
-        // is exactly where a pending expense gets deleted.
+        // Nothing was written, so dropping the queued write *is* the deletion.
         if PendingOperationQueue.shared.isPending(expenseID: expense.id) {
             PendingOperationQueue.shared.cancelLedgerExpense(id: expense.id)
             persistSnapshot()
@@ -384,7 +349,6 @@ final class LedgerStore {
         }
     }
 
-    /// Optimistic: the person editing is looking straight at the row.
     func saveProfile(_ profile: LedgerProfile, in ledger: Ledger) async -> Bool {
         guard let index = ledgers.firstIndex(where: { $0.zoneName == ledger.zoneName }) else { return false }
         let previous = ledgers[index]

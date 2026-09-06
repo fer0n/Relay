@@ -2,14 +2,9 @@
 //  LedgerRecordPaymentView.swift
 //  Relay
 //
-//  Records a payment someone actually made: who paid whom, and how much.
-//  Its own sheet, so the expense history isn't pushed down by a form that's
-//  only occasionally used.
-//
-//  Replaces the old settle-up screen, which could only record the exact
-//  transfers the plan proposed — a part payment, or paying someone the plan
-//  routed around, had nowhere to go. The plan survives as suggestions that
-//  fill the form in.
+//  Who paid whom, and how much. The settle-up plan survives only as
+//  suggestions that fill the form in — a part payment, or paying someone the
+//  plan routed around, has to be recordable too.
 //
 
 import SwiftUI
@@ -22,8 +17,7 @@ struct LedgerRecordPaymentView: View {
     @State private var payerID: String
     @State private var recipientID: String
     @State private var amount: String
-    /// Once the amount has been typed into, changing a party stops
-    /// overwriting it.
+    /// Once typed into, changing a party stops overwriting it.
     @State private var hasEditedAmount = false
     @State private var isSaving = false
     @FocusState private var isAmountFocused: Bool
@@ -39,8 +33,7 @@ struct LedgerRecordPaymentView: View {
         self.onRecord = onRecord
 
         let people = Self.people(in: ledger)
-        // Seeded from the settle-up plan — most payments are one of its legs,
-        // and the one involving the person at the phone most of all.
+        // Most payments are a leg of the plan, usually the reader's own.
         let suggested = balances.settlements.first { settlement in
             settlement.from == ledger.currentUserID || settlement.to == ledger.currentUserID
         } ?? balances.settlements.first
@@ -81,8 +74,7 @@ struct LedgerRecordPaymentView: View {
 
     private var people: [LedgerParticipant] { Self.people(in: ledger) }
 
-    /// Excluding whoever's on the other side of the payment: a payment to
-    /// yourself isn't one.
+    /// A payment to yourself isn't one.
     private func participantRow(
         title: LocalizedStringKey,
         selection: Binding<String>,
@@ -128,8 +120,8 @@ struct LedgerRecordPaymentView: View {
         }
     }
 
-    /// The settle-up plan, as taps that fill the form in rather than writes:
-    /// what's actually been paid is the user's to confirm.
+    /// Taps that fill the form in, not writes: what was paid is the user's
+    /// to confirm.
     private var suggestionsSection: some View {
         Section {
             ForEach(suggestions, id: \.self) { suggestion in
@@ -157,11 +149,9 @@ struct LedgerRecordPaymentView: View {
         .cardRowBackground()
     }
 
-    /// Empty once the ledger is settled, which is also when the section
-    /// disappears.
     private var suggestions: [LedgerSettlement] { balances.settlements }
 
-    /// Nil while the form can't describe a payment — the Record button reads
+    /// Nil while the form can't describe a payment; the Record button reads
     /// this rather than repeating the rules.
     private var settlement: LedgerSettlement? {
         guard payerID != recipientID,
@@ -171,8 +161,7 @@ struct LedgerRecordPaymentView: View {
         return LedgerSettlement(from: payerID, to: recipientID, cents: cents)
     }
 
-    /// What the two people picked owe each other today, so a part payment can
-    /// be judged against it.
+    /// What the two owe each other today, to judge a part payment against.
     private var outstandingDescription: String {
         guard payerID != recipientID else { return "" }
         let owed = balances.cents(me: recipientID, other: payerID, simplified: ledger.simplifiesDebts)
@@ -182,9 +171,8 @@ struct LedgerRecordPaymentView: View {
         return owesDescription(debtor: debtor, creditor: creditor, cents: abs(owed))
     }
 
-    /// "You" takes a different verb form than a name in both English ("you
-    /// owe" vs. "Alex owes") and German, so each side gets its own template
-    /// rather than being substituted into one.
+    /// "You owe" vs "Alex owes" — each side needs its own template rather
+    /// than one substituted into.
     private func owesDescription(debtor: String, creditor: String, cents: Int) -> String {
         let amount = money(cents)
         if debtor == ledger.currentUserID {
@@ -196,7 +184,7 @@ struct LedgerRecordPaymentView: View {
         return String(localized: "\(name(of: debtor)) owes \(name(of: creditor)) \(amount).")
     }
 
-    /// Same conjugation problem as `owesDescription`, on a suggestion row.
+    /// Same conjugation problem as `owesDescription`.
     private func paysDescription(_ suggestion: LedgerSettlement) -> String {
         if suggestion.from == ledger.currentUserID {
             return String(localized: "You pay \(name(of: suggestion.to))")

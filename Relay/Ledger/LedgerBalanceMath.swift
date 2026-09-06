@@ -2,11 +2,8 @@
 //  LedgerBalanceMath.swift
 //  Relay
 //
-//  CloudKit stores records and nothing else, so a ledger derives its balances
-//  from the expense list: each person's net position, and a short list of
-//  "A pays B" transfers that clears everyone at once.
-//
-//  Free of CloudKit and of the views, so both are testable on their own.
+//  Balances derived from the expense list: each person's net position, and
+//  the "A pays B" transfers that clear everyone at once.
 //
 
 import Foundation
@@ -20,8 +17,7 @@ nonisolated struct LedgerSettlement: Equatable, Hashable, Sendable {
 }
 
 nonisolated enum LedgerBalanceMath {
-    /// Positive means the group owes them. Seeded with `participants` so
-    /// someone on no expense still shows up at zero.
+    /// Positive means the group owes them. `participants` seeds zeroes.
     static func netCents(
         expenses: [LedgerExpense],
         participants: [String] = []
@@ -35,16 +31,13 @@ nonisolated enum LedgerBalanceMath {
         return net
     }
 
-    /// What one person is owed (positive) or owes (negative) overall.
+    /// The reference implementation `LedgerBalances` is checked against.
     static func netCents(for participantID: String, expenses: [LedgerExpense]) -> Int {
         expenses.reduce(0) { $0 + $1.netCents(for: participantID) }
     }
 
-    /// What `other` owes `me`, negative the other way. Per expense rather
-    /// than from the net positions, which mix in what third parties owe.
-    ///
-    /// One pair at a time: a screen wanting every pair should build a
-    /// `LedgerBalances`, which gets them all from a single walk.
+    /// What `other` owes `me`, one pair at a time. Screens use
+    /// `LedgerBalances`, which gets every pair from a single walk.
     static func pairwiseCents(me: String, other: String, expenses: [LedgerExpense]) -> Int {
         expenses.reduce(0) { total, expense in
             guard let mine = expense.share(for: me), let theirs = expense.share(for: other) else { return total }
@@ -52,14 +45,9 @@ nonisolated enum LedgerBalanceMath {
         }
     }
 
-    /// What `b` owes `a` for one expense, negative the other way: each
-    /// debtor's owed amount split across the payers in proportion to what
-    /// each fronted — the only attribution that survives multiple payers,
-    /// and the obvious answer when there's one.
-    ///
-    /// Rounded per expense, so a run of them can't drift a cent at a time.
-    /// The single place that rule lives; every pairwise figure comes through
-    /// here.
+    /// What `b` owes `a` for one expense: each debtor's owed amount split
+    /// across the payers in proportion to what each fronted. Rounded per
+    /// expense so a run of them can't drift, and the only place that happens.
     static func pairCents(_ a: LedgerExpenseShare, _ b: LedgerExpenseShare, totalPaid: Int) -> Int {
         guard totalPaid > 0 else { return 0 }
 
@@ -72,12 +60,10 @@ nonisolated enum LedgerBalanceMath {
         return Int((owed(by: b, to: a) - owed(by: a, to: b)).rounded())
     }
 
-    /// Matches the largest debtor against the largest creditor, so where A
-    /// owes B and B owes C, A pays C directly. Greedy isn't provably minimal
-    /// (that's NP-hard) but never leaves a balance unsettled.
+    /// Largest debtor against largest creditor, so A owing B owing C becomes
+    /// A paying C. Greedy, not provably minimal, but never leaves a balance.
     static func settlements(netCents: [String: Int]) -> [LedgerSettlement] {
-        // Id as tiebreaker, or Dictionary's ordering would reshuffle the
-        // plan between launches.
+        // Id as tiebreaker, or the plan reshuffles between launches.
         func largestFirst(_ lhs: (id: String, cents: Int), _ rhs: (id: String, cents: Int)) -> Bool {
             lhs.cents == rhs.cents ? lhs.id < rhs.id : lhs.cents > rhs.cents
         }
@@ -108,8 +94,7 @@ nonisolated enum LedgerBalanceMath {
         return result
     }
 
-    /// `payerID` fronts the whole cost; `allocation` decides who owes what.
-    /// Nil when the allocation can't describe the split.
+    /// `payerID` fronts the whole cost. Nil when `allocation` can't describe it.
     static func shares(
         costCents: Int,
         payerID: String,
@@ -128,28 +113,20 @@ nonisolated enum LedgerBalanceMath {
 }
 
 /// Every figure a ledger's screens draw, from one walk of its expense list.
-///
-/// Derived once per change to that list rather than per view init: the
-/// balance card used to re-derive inside `init`, so every SwiftUI
-/// invalidation — a refresh landing, a "Last refreshed" tick — walked every
-/// expense once per member of the ledger, on every card on screen.
+/// Derived per change, not per view init — a card's `init` runs on every
+/// SwiftUI invalidation.
 nonisolated struct LedgerBalances: Equatable, Sendable {
-    /// Positive means the group owes them. Only people who appear on an
-    /// expense; `net(for:)` answers zero for anyone who doesn't.
+    /// Positive means the group owes them; `net(for:)` answers zero for
+    /// anyone off every expense.
     let netCents: [String: Int]
-    /// `[a][b]` is what b owes a, negative the other way. Pairwise, not net:
-    /// a net position mixes in what third parties owe them, which says
-    /// nothing about the pair.
+    /// `[a][b]` is what b owes a. Pairwise, not net: a net position mixes in
+    /// what third parties owe, which says nothing about the pair.
     private let pairwise: [String: [String: Int]]
-    /// The same shape as `pairwise`, but read off the settlement plan: a
-    /// debt that routes through someone else has been collapsed, so where A
-    /// owes B and B owes C, A simply owes C. What a ledger with
-    /// `simplifiesDebts` on shows.
+    /// `pairwise` read off the settlement plan instead, so a debt routed
+    /// through someone else collapses. What `simplifiesDebts` shows.
     private let simplifiedPairwise: [String: [String: Int]]
-    /// Precomputed with the rest — the settle-up plan is read from a body.
     let settlements: [LedgerSettlement]
 
-    /// What a zone with nothing fetched for it yet draws.
     static let empty = LedgerBalances(expenses: [])
 
     init(expenses: [LedgerExpense]) {
@@ -161,12 +138,10 @@ nonisolated struct LedgerBalances: Equatable, Sendable {
             for index in shares.indices {
                 let share = shares[index]
                 net[share.participantID, default: 0] += share.paidCents - share.owedCents
-                // Each unordered pair once: the two directions net against
-                // each other inside `pairCents`, so visiting a pair twice
-                // would double it.
+                // Each unordered pair once: `pairCents` nets both directions,
+                // so visiting a pair twice would double it.
                 for other in shares[shares.index(after: index)...] {
-                    // Only a pair with a payer in it can owe anything, which
-                    // keeps the usual one-payer expense linear in its shares.
+                    // Only a pair with a payer in it can owe anything.
                     guard share.paidCents > 0 || other.paidCents > 0 else { continue }
                     let cents = LedgerBalanceMath.pairCents(share, other, totalPaid: totalPaid)
                     guard cents != 0 else { continue }
@@ -188,13 +163,10 @@ nonisolated struct LedgerBalances: Equatable, Sendable {
         simplifiedPairwise = simplified
     }
 
-    /// What they're owed (positive) or owe (negative) across the ledger.
     func net(for participantID: String) -> Int { netCents[participantID] ?? 0 }
 
-    /// What `other` owes `me`, negative the other way. `simplified` reads
-    /// the figure off the settlement plan instead — the two agree on
-    /// everyone's net position and can disagree on any single pair, which is
-    /// the whole point of the setting.
+    /// What `other` owes `me`. The two forms agree on every net position and
+    /// can disagree on any single pair — that's the point of the setting.
     func cents(me: String, other: String, simplified: Bool = false) -> Int {
         (simplified ? simplifiedPairwise : pairwise)[me]?[other] ?? 0
     }

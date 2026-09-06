@@ -2,11 +2,8 @@
 //  LedgersView.swift
 //  Relay
 //
-//  The ledgers, as a stack of full-width balance cards.
-//
-//  One card per row, not the 2-up grid this started as: two cards side by side
-//  meant a LazyVGrid inside one row, and List expects one tap target per row —
-//  the NavigationLinks misfired into each other.
+//  A stack of full-width balance cards. One per row, not a 2-up grid: List
+//  expects one tap target per row, and the NavigationLinks misfired.
 //
 
 import CloudKit
@@ -83,8 +80,8 @@ struct LedgersView: View {
         .navigationTitle("Ledgers")
         .task {
             await store.refresh(force: false)
-            // Only once someone else can write to a ledger — the first
-            // moment a notification would have anything to say.
+            // Only once someone else can write, which is the first moment a
+            // notification would have anything to say.
             if !store.sharedLedgers.isEmpty {
                 await LedgerChangeNotifier.requestAuthorizationIfNeeded()
             }

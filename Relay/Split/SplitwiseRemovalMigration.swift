@@ -3,15 +3,10 @@
 //  Relay
 //
 //  One-time cleanup for the release that removed Splitwise, run before
-//  anything reads the stores it touches. Two jobs:
-//
-//  * **Deleting what's now unreachable** — the OAuth tokens and every cache of
-//    data pulled from the API, per Splitwise's own deletion terms.
-//  * **Clearing what would now fail to decode** — the queue, history and
-//    claims files can hold a `splitwise` case, and Swift's enum decoder fails
-//    the whole file on an unknown one. They'd reset themselves anyway.
-//
-//  Templates survive; only their split target is dropped.
+//  anything reads the stores it touches: deletes the tokens and API caches
+//  per Splitwise's deletion terms, and clears the queue/history/claims files,
+//  which hold a `splitwise` case Swift's enum decoder would choke the whole
+//  file on. Templates survive; only their split target is dropped.
 //
 
 import Foundation
@@ -67,8 +62,8 @@ nonisolated enum SplitwiseRemovalMigration {
         logger.log("Splitwise removal migration completed")
     }
 
-    /// Load and re-save is enough: the target's fields are gone from the
-    /// type, so a decoded template no longer has one.
+    /// Load and re-save: the fields are gone from the type, so a decoded
+    /// template no longer has one.
     private static func clearTemplateSplitTargets() {
         let config = WalletTransactionConfigStore.load()
         guard !config.templates.isEmpty else { return }

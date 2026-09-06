@@ -2,10 +2,8 @@
 //  LedgerDetailView.swift
 //  Relay
 //
-//  The expenses on one ledger, under the same balance card ContentView pins.
-//  Nothing arrives pre-computed, so the balances come from
-//  `LedgerBalanceMath`. No "Add" in the toolbar: the floating "+" is
-//  already on this screen, pre-scoped to this ledger.
+//  The expenses on one ledger, under the balance card ContentView pins. No
+//  "Add" in the toolbar: the floating "+" is already scoped to this ledger.
 //
 
 import CloudKit
@@ -20,9 +18,8 @@ struct LedgerDetailView: View {
     @State private var selectedExpense: LedgerExpense?
     @State private var showRecordPayment = false
     @State private var renaming: Ledger?
-    // Not anchored to the swipe button: on iOS 26 a dialog anchored to a
-    // control inside `.swipeActions` animates wrong, that control being torn
-    // down as the swipe closes.
+    // Not anchored to the swipe button: iOS 26 animates that wrong, the
+    // control being torn down as the swipe closes.
     @State private var expensePendingDelete: LedgerExpense?
     @Namespace private var detailNamespace
 
@@ -83,8 +80,8 @@ struct LedgerDetailView: View {
             }
         }
         .themedList(background: .backgroundColor)
-        // One dialog for the list, not one per row: attaching it inside the
-        // ForEach built a modifier and a binding for every expense on screen.
+        // One dialog for the list: inside the ForEach it built a modifier and
+        // a binding per expense on screen.
         .confirmationDialog(
             "Delete this expense?",
             isPresented: Binding(
@@ -162,13 +159,12 @@ struct LedgerDetailView: View {
         return Color.accentColor
     }
 
-    /// Who fronted it. A settlement says who paid whom instead, since a payer
-    /// and a cost would read as a purchase.
+    /// Who fronted it; a settlement says who paid whom, which a payer and a
+    /// cost would read as a purchase.
     private func detailText(for expense: LedgerExpense) -> String? {
         let payerParticipants = expense.payers.compactMap { current.participant(id: $0.participantID) }
-        // "You" conjugates differently than a name in German ("Du hast" vs.
-        // "Alex hat"), so it needs its own template rather than substituting
-        // into "%@ paid".
+        // "You" conjugates differently than a name in German, so it needs its
+        // own template rather than substituting into "%@ paid".
         let isCurrentUserOnlyPayer = payerParticipants.count == 1 && payerParticipants[0].isCurrentUser
         let payerName = payerParticipants.isEmpty
             ? LedgerParticipant.unknownName
@@ -185,8 +181,7 @@ struct LedgerDetailView: View {
             : String(localized: "\(payerName) paid \(recipient.displayName)")
     }
 
-    /// Otherwise invisible: they can't be split with, so nothing else here
-    /// would mention them.
+    /// Otherwise invisible: they can't be split with.
     private var pendingInvitesSection: some View {
         Section {
             ForEach(current.pendingInvites) { participant in
@@ -259,23 +254,20 @@ struct LedgerDetailView: View {
                     Label("Rename", systemImage: "pencil")
                 }
             } label: {
-                // Not `ellipsis.circle`: the iOS 26 toolbar draws its own
-                // glass background, so that circle would sit inside another.
+                // Not `ellipsis.circle`: the toolbar draws its own glass.
                 Image(systemName: "ellipsis")
             }
         }
     }
 
-    /// `.queued` is not an error: the edit is on screen and the queue owns
-    /// the retry, so the sheet closes the same way a synced one does.
+    /// `.queued` is not an error: the queue owns the retry.
     private func save(_ expense: LedgerExpense) async throws {
         if await store.save(expense, in: current) == .failed {
             throw LedgerExpenseError.writeFailed(store.lastError)
         }
     }
 
-    /// Handing someone money is an expense they owe in full, so this is an
-    /// ordinary record and the balance falls out of the same arithmetic.
+    /// An expense they owe in full, so the balance falls out unchanged.
     private func record(_ settlement: LedgerSettlement) async {
         await store.save(
             LedgerExpense.settlement(

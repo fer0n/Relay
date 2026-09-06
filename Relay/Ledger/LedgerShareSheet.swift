@@ -2,19 +2,15 @@
 //  LedgerShareSheet.swift
 //  Relay
 //
-//  Apple's share sheet is the ledger's entire invite flow.
-//  `UICloudSharingController` is UIKit-only, hence this wrapper.
-//
-//  Presented from a `.sheet` rather than pushed: it manages its own dismissal,
-//  and as a navigation destination it fights the stack over who pops.
+//  Apple's share sheet is the whole invite flow. Presented from a `.sheet`,
+//  not pushed: it manages its own dismissal and fights the stack over popping.
 //
 
 import CloudKit
 import SwiftUI
 import UIKit
 
-/// Share and container as one value, so `.sheet(item:)` can't be triggered
-/// with only half of what the controller needs.
+/// One value, so `.sheet(item:)` can't fire with half of what's needed.
 nonisolated struct LedgerShareTarget: Identifiable {
     let ledgerName: String
     let share: CKShare
@@ -23,8 +19,7 @@ nonisolated struct LedgerShareTarget: Identifiable {
     var id: String { share.recordID.recordName + share.recordID.zoneID.zoneName }
 }
 
-/// Creating the share is a round trip, so the flag stops a double tap
-/// starting two.
+/// The flag stops a double tap starting two round trips.
 @MainActor
 @Observable
 final class LedgerSharePresenter {
@@ -51,8 +46,7 @@ struct LedgerShareSheet: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UICloudSharingController {
         let controller = UICloudSharingController(share: target.share, container: target.container)
-        // No read-only option: a ledger everyone can see but only one person can
-        // add to isn't a shared expense list, it's a report.
+        // No read-only: a list only one person can add to is a report.
         controller.availablePermissions = [.allowReadWrite, .allowPrivate]
         controller.delegate = context.coordinator
         return controller
@@ -73,18 +67,17 @@ struct LedgerShareSheet: UIViewControllerRepresentable {
             target.ledgerName
         }
 
-        /// Without this the sheet shows a document icon, which reads as
-        /// sending a file rather than inviting someone to a list.
+        /// Otherwise the sheet shows a document icon, which reads as sending
+        /// a file rather than inviting someone.
         func itemThumbnailData(for controller: UICloudSharingController) -> Data? {
             Self.thumbnail
         }
 
-        /// Nil rather than a plausible UTI: a ledger is not a document.
+        /// A ledger is not a document.
         func itemType(for controller: UICloudSharingController) -> String? {
             nil
         }
 
-        /// The invite is the first thing the other person sees of Relay.
         private static let thumbnail: Data? = {
             let size = CGSize(width: 180, height: 180)
             let renderer = UIGraphicsImageRenderer(size: size)

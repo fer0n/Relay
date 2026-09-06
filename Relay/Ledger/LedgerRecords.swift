@@ -2,12 +2,8 @@
 //  LedgerRecords.swift
 //  Relay
 //
-//  The CKRecord ↔ model boundary, apart from `LedgerService` so the wire
-//  format is round-trip testable without the network.
-//
-//  Field names are frozen once a build ships — CloudKit can't rename a
-//  deployed field, and older builds keep writing the old shape — so every
-//  read here falls back rather than failing the record.
+//  Field names are frozen once a build ships: CloudKit can't rename a
+//  deployed field, so every read here falls back rather than failing.
 //
 
 import CloudKit
@@ -20,16 +16,13 @@ nonisolated enum LedgerRecords {
         static let profile = "LedgerProfile"
     }
 
-    /// A constant name so the singleton is a plain fetch: cheaper than a
-    /// query, and immediately consistent where a query isn't.
     static let metaRecordName = "meta"
 
     enum MetaField {
         static let name = "name"
         static let currencyCode = "currencyCode"
         static let createdAt = "createdAt"
-        /// Stored as an Int — CloudKit has no boolean field type. Absent on
-        /// every ledger made before the setting existed, which reads as on.
+        /// Int: CloudKit has no boolean. Absent reads as on.
         static let simplifyDebts = "simplifyDebts"
     }
 
@@ -38,17 +31,15 @@ nonisolated enum LedgerRecords {
         static let costCents = "costCents"
         static let currencyCode = "currencyCode"
         static let date = "date"
-        /// JSON, not three parallel lists: keeping those in step is exactly
-        /// the skew that would silently corrupt a balance.
+        /// JSON, not parallel lists: skew between them corrupts a balance.
         static let shares = "shares"
-        /// Stored as an Int — CloudKit has no boolean field type.
+        /// Int: CloudKit has no boolean.
         static let isSettlement = "isSettlement"
     }
 
-    /// What CloudKit puts in place of the reader's *own* record name,
-    /// everywhere it names a user. It means "me", so it means a different
-    /// person on every device — never store it. Everything read out of
-    /// CloudKit goes through `resolving(_:as:)` first.
+    /// CloudKit's stand-in for the reader's own record name. It means "me",
+    /// so it means a different person on every device — never store it.
+    /// Everything read out of CloudKit goes through `resolving(_:as:)`.
     static let currentUserPlaceholder = CKCurrentUserDefaultName
 
     static func resolving(_ recordName: String?, as currentUserID: String) -> String? {
@@ -57,13 +48,12 @@ nonisolated enum LedgerRecords {
 
     enum ProfileField {
         static let displayName = "displayName"
-        /// A `CKAsset`: CloudKit caps a record's own fields at 1 MB.
+        /// A `CKAsset`: record fields are capped at 1 MB.
         static let image = "image"
         static let updatedAt = "updatedAt"
     }
 
-    /// Prefixed so `allRecordZones()` can be filtered without fetching each
-    /// zone's contents.
+    /// So `allRecordZones()` filters without fetching zone contents.
     static let zoneNamePrefix = "Ledger-"
 
     static func newZoneID() -> CKRecordZone.ID {
@@ -89,8 +79,7 @@ nonisolated enum LedgerRecords {
         return record
     }
 
-    /// Falls back rather than returning nil: the zone holds expenses either
-    /// way, and losing it over one absent string is worse.
+    /// Falls back rather than returning nil: the zone holds expenses either way.
     static func ledger(
         from record: CKRecord,
         isOwnedByCurrentUser: Bool,
@@ -128,13 +117,8 @@ nonisolated enum LedgerRecords {
         return record
     }
 
-    /// Stages the JPEG where `CKAsset` can read it. Nil rather than throwing:
-    /// a picture that can't be written is worth losing silently next to the
-    /// name it accompanies.
-    ///
-    /// The caller owns the file — CloudKit only reads it during the save — so
-    /// `deleteStagedAssets(of:)` clears it afterwards rather than leaving a
-    /// copy of every picture ever picked in tmp.
+    /// Stages the JPEG for `CKAsset`; `deleteStagedAssets(of:)` clears it
+    /// after the save.
     private static func imageAsset(from data: Data) -> CKAsset? {
         let url = stagingDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
         try? FileManager.default.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
@@ -168,8 +152,7 @@ nonisolated enum LedgerRecords {
 
     static let profileRecordPrefix = "profile-"
 
-    /// Nil for a record name that isn't a profile's, so a deletion of some
-    /// other record can't be mistaken for one.
+    /// Nil for a record name that isn't a profile's.
     static func participantID(ofProfile recordName: String) -> String? {
         guard recordName.hasPrefix(profileRecordPrefix) else { return nil }
         return String(recordName.dropFirst(profileRecordPrefix.count))
@@ -181,8 +164,8 @@ nonisolated enum LedgerRecords {
         CKRecord.ID(recordName: expense.id, zoneID: zoneID)
     }
 
-    /// Editing must mutate the record CloudKit handed back: a fresh one
-    /// carries no change tag and the save is rejected as a conflict.
+    /// Must mutate the record CloudKit handed back: a fresh one carries no
+    /// change tag and the save is rejected as a conflict.
     static func apply(_ expense: LedgerExpense, to existing: CKRecord?, in zoneID: CKRecordZone.ID) throws -> CKRecord {
         let record = existing ?? CKRecord(
             recordType: RecordType.expense,
@@ -197,14 +180,13 @@ nonisolated enum LedgerRecords {
         return record
     }
 
-    /// A share blob that won't decode yields an expense with no shares rather
-    /// than dropping the row, which would quietly change everyone's balance.
+    /// A share blob that won't decode yields no shares rather than dropping
+    /// the row, which would quietly change everyone's balance.
     static func expense(from record: CKRecord, currentUserID: String) -> LedgerExpense? {
         guard record.recordType == RecordType.expense else { return nil }
         let stored = (record[ExpenseField.shares] as? Data)
             .flatMap { try? JSONDecoder().decode([LedgerExpenseShare].self, from: $0) } ?? []
-        // Whoever wrote the record is who its "me" placeholder meant; nil
-        // means the reader wrote it.
+        // Whoever wrote the record is who its "me" meant; nil means the reader.
         let author = resolving(record.creatorUserRecordID?.recordName, as: currentUserID) ?? currentUserID
         let shares = resolvingPlaceholders(in: stored, writtenBy: author)
         return LedgerExpense(
@@ -220,8 +202,8 @@ nonisolated enum LedgerRecords {
         )
     }
 
-    /// Repairs shares from a build that stored the "me" placeholder. Read-only
-    /// on purpose, so a device on the old build keeps reading what it wrote.
+    /// Repairs shares from a build that stored the placeholder. Read-only, so
+    /// a device on the old build keeps reading what it wrote.
     private static func resolvingPlaceholders(
         in shares: [LedgerExpenseShare],
         writtenBy author: String

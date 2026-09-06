@@ -2,10 +2,8 @@
 //  SplitTargetEntity.swift
 //  Relay
 //
-//  AppEntity/EntityQuery so Shortcuts can present a live picker of the
-//  ledgers the user is on and the people on them. A whole ledger and one
-//  person share this type — told apart by `participantID` — so the "Split
-//  With" parameter offers either without growing a second field.
+//  A live Shortcuts picker of the ledgers and the people on them. One type
+//  for both, told apart by `participantID`, so "Split With" stays one field.
 //
 
 import AppIntents
@@ -17,7 +15,7 @@ nonisolated struct SplitTargetEntity: AppEntity {
     let participantID: String?
     let firstName: String
     /// `displayRepresentation` only, so people sharing a first name stay
-    /// distinguishable in a picker. Prompts and dialogs use `firstName`.
+    /// distinguishable. Prompts and dialogs use `firstName`.
     let fullName: String
 
     init(zoneName: String, participantID: String? = nil, firstName: String, fullName: String) {
@@ -31,8 +29,8 @@ nonisolated struct SplitTargetEntity: AppEntity {
         self.init(zoneName: ledger.zoneName, firstName: ledger.name, fullName: ledger.name)
     }
 
-    /// Qualified with the ledger's name, so a picker listing two doesn't show
-    /// the same person twice with no way to tell them apart.
+    /// Qualified with the ledger's name, or a picker listing two shows the
+    /// same person twice.
     init(ledger: Ledger, participant: LedgerParticipant) {
         self.init(
             zoneName: ledger.zoneName,
@@ -42,9 +40,8 @@ nonisolated struct SplitTargetEntity: AppEntity {
         )
     }
 
-    /// Shortcuts stores this, so it identifies a target on its own. "|" can't
-    /// collide: Relay generates the zone names and CloudKit record names are
-    /// alphanumeric with underscores.
+    /// Shortcuts stores this. "|" can't collide: Relay mints the zone names
+    /// and CloudKit record names are alphanumeric with underscores.
     var id: String {
         guard let participantID else { return zoneName }
         return "\(zoneName)|\(participantID)"
@@ -89,11 +86,8 @@ nonisolated struct SplitTargetQuery: EntityQuery {
         await allTargets()
     }
 
-    /// Each ledger, then the people on it.
-    ///
-    /// Never throws: Shortcuts resolves this just to render an action's
-    /// configuration sheet, even for someone who doesn't split at all. A
-    /// missing iCloud account surfaces from `perform()` instead.
+    /// Never throws: Shortcuts resolves this just to render a configuration
+    /// sheet. A missing iCloud account surfaces from `perform()` instead.
     @MainActor
     private func allTargets() async -> [SplitTargetEntity] {
         let store = LedgerStore.shared

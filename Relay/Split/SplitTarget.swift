@@ -2,8 +2,8 @@
 //  SplitTarget.swift
 //  Relay
 //
-//  Who an expense is split with: some or all of the people on one ledger.
-//  A participant means nothing without the ledger they're on, hence the pair.
+//  Some or all of the people on one ledger. A participant means nothing
+//  without the ledger they're on, hence the pair.
 //
 
 import Foundation
@@ -29,8 +29,8 @@ nonisolated struct SplitTarget: Equatable, Sendable {
     /// Everyone but the signed-in user. Never empty for a usable target.
     let participants: [SplitParticipant]
     let zoneName: String
-    /// Set only when the split is with *everyone* on the ledger — billing a
-    /// subset is a split with those people, not with the ledger.
+    /// Set only for a whole-ledger split: billing a subset is a split with
+    /// those people, not with the ledger.
     let ledgerName: String?
 
     init(participants: [SplitParticipant], zoneName: String, ledgerName: String? = nil) {
@@ -54,8 +54,7 @@ nonisolated struct SplitTarget: Equatable, Sendable {
 
     var isEmpty: Bool { participants.isEmpty }
 
-    /// Nil for a whole-ledger or multi-person split. For the surfaces that
-    /// store exactly one target, like a template's.
+    /// Nil for a whole-ledger or multi-person split.
     var soleParticipant: SplitParticipant? {
         guard ledgerName == nil, participants.count == 1 else { return nil }
         return participants.first

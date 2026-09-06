@@ -12,9 +12,8 @@ enum SplitAvailability {
     @MainActor
     static var availableLedgers: [Ledger] { LedgerStore.shared.sharedLedgers }
 
-    /// The last known answer, for background paths that can't reach the
-    /// MainActor store. Stale by construction: its only consequence is whether
-    /// the user is offered a choice.
+    /// For background paths that can't reach the MainActor store. Stale by
+    /// construction; it only decides whether a choice is offered.
     nonisolated static var hasKnownSharedLedger: Bool {
         UserDefaults.standard.bool(forKey: hasKnownSharedLedgerKey)
     }

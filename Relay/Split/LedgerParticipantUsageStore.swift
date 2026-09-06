@@ -15,8 +15,7 @@ nonisolated struct LedgerParticipantUsage: Codable {
 
 nonisolated enum LedgerParticipantUsageStore {
     private static let fileURL = ApplicationSupportFile.url("ledger-participant-usage.json")
-    /// `sorted` is read from a SwiftUI body, so the file is decoded once and
-    /// held rather than re-read on every layout pass.
+    /// `sorted` is read from a body, so the file is decoded once and held.
     private static let cached = OSAllocatedUnfairLock(initialState: LedgerParticipantUsage?.none)
 
     static func load() -> LedgerParticipantUsage {
@@ -38,8 +37,8 @@ nonisolated enum LedgerParticipantUsageStore {
         }
     }
 
-    /// Keeps the later date per participant, so restoring an older backup
-    /// can't demote someone still being split with.
+    /// Keeps the later date, so an older backup can't demote someone still
+    /// being split with.
     static func merge(_ incoming: LedgerParticipantUsage) {
         save { usage in
             for (id, date) in incoming.lastUsedByParticipantID {

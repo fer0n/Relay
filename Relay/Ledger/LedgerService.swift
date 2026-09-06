@@ -2,13 +2,9 @@
 //  LedgerService.swift
 //  Relay
 //
-//  CloudKit client for iCloud ledgers. Two choices shape everything below:
-//
-//  * **One zone per ledger**, so a zone-wide `CKShare` covers every expense at
-//    once and any participant can add their own. A record *hierarchy* would
-//    let only the root's owner restructure it.
-//  * **Changes, not queries.** `recordZoneChanges` needs no queryable indexes,
-//    is immediately consistent, and hands back a token.
+//  CloudKit client. One zone per ledger, shared zone-wide so any participant
+//  can add expenses; read via `recordZoneChanges`, which needs no queryable
+//  indexes and is immediately consistent.
 //
 
 import CloudKit
@@ -25,7 +21,7 @@ enum LedgerError: Error {
 }
 
 nonisolated enum LedgerService {
-    /// Must match the container in `Relay.entitlements`.
+    /// Must match `Relay.entitlements`.
     static let containerIdentifier = "iCloud.\(Const.bundleID)"
 
     private static let logger = Logger(subsystem: Const.loggerSubsystem, category: "Ledger")
@@ -38,8 +34,7 @@ nonisolated enum LedgerService {
         try await container.accountStatus()
     }
 
-    /// What expense shares are keyed by — the same value a
-    /// `CKShare.Participant` reports for this user, on every device.
+    /// What expense shares are keyed by, on every device.
     static func currentUserID() async throws -> String {
         let status = try await accountStatus()
         guard status == .available else { throw LedgerError.iCloudUnavailable(status) }
@@ -62,8 +57,7 @@ nonisolated enum LedgerService {
         currentUserID: String
     ) async throws -> [Ledger] {
         let zones = try await database.allRecordZones().filter { LedgerRecords.isLedgerZone($0.zoneID) }
-        // Per zone, in parallel: each is two independent round trips, and done
-        // in sequence a handful of ledgers is a visible wait on every refresh.
+        // Two round trips each; in sequence that's a visible wait per refresh.
         return await withTaskGroup(of: Ledger?.self) { group in
             for zone in zones {
                 group.addTask {
@@ -76,8 +70,7 @@ nonisolated enum LedgerService {
         }
     }
 
-    /// Nil for a zone whose meta record hasn't synced yet — the rest of the
-    /// list is still worth showing, and the next refresh picks it up.
+    /// Nil for a zone whose meta record hasn't synced yet.
     private static func ledger(
         in zoneID: CKRecordZone.ID,
         database: CKDatabase,
@@ -97,8 +90,8 @@ nonisolated enum LedgerService {
         )
     }
 
-    /// Starts unshared: inviting is a separate step, so a half-finished setup
-    /// leaves a private list rather than a live invite.
+    /// Starts unshared: a half-finished setup leaves a private list, not a
+    /// live invite.
     static func createLedger(name: String, currencyCode: String) async throws -> Ledger {
         let currentUserID = try await currentUserID()
         let zoneID = LedgerRecords.newZoneID()
@@ -113,9 +106,8 @@ nonisolated enum LedgerService {
         )
     }
 
-    /// Any participant with write access may rename: the meta record is an
-    /// ordinary record in the shared zone. The share's own title is the
-    /// owner's to change, so that half is best-effort.
+    /// Any participant may rename the meta record; the share's own title is
+    /// the owner's to change, so that half is best-effort.
     static func rename(_ ledger: Ledger, to name: String) async throws {
         let database = self.database(for: ledger)
         let recordID = LedgerRecords.metaRecordID(in: ledger.zoneID)
@@ -128,8 +120,7 @@ nonisolated enum LedgerService {
         _ = try? await database.modifyRecords(saving: [share], deleting: [], savePolicy: .changedKeys)
     }
 
-    /// Like `rename`, an ordinary write to the meta record: the setting
-    /// belongs to the ledger, so everyone on it sees the same balances.
+    /// On the meta record, so everyone on the ledger sees the same balances.
     static func setSimplifiesDebts(_ simplifies: Bool, in ledger: Ledger) async throws {
         let database = self.database(for: ledger)
         let recordID = LedgerRecords.metaRecordID(in: ledger.zoneID)
@@ -138,7 +129,7 @@ nonisolated enum LedgerService {
         _ = try await database.modifyRecords(saving: [record], deleting: [], savePolicy: .changedKeys)
     }
 
-    /// Deletes the zone, and with it every expense and the share itself.
+    /// Takes every expense and the share with it.
     static func deleteLedger(_ ledger: Ledger) async throws {
         guard ledger.isOwnedByCurrentUser else { throw LedgerError.notOwner }
         _ = try await container.privateCloudDatabase.modifyRecordZones(saving: [], deleting: [ledger.zoneID])
@@ -146,8 +137,7 @@ nonisolated enum LedgerService {
 
     // MARK: - Expenses
 
-    /// Expenses and profiles together, because one `recordZoneChanges` walk
-    /// returns both and splitting this would pay for that walk twice.
+    /// Together: one `recordZoneChanges` walk returns both.
     static func fetchContents(
         in ledger: Ledger,
         currentUserID: String? = nil
@@ -181,8 +171,8 @@ nonisolated enum LedgerService {
         return (expenses.values.sorted { $0.date > $1.date }, profiles)
     }
 
-    /// Any participant may write any other's: the person whose name is
-    /// missing is precisely the one who can't supply it.
+    /// Any participant may write any other's: whoever's name is missing is
+    /// precisely who can't supply it.
     static func saveProfile(_ profile: LedgerProfile, in ledger: Ledger) async throws {
         let database = self.database(for: ledger)
         let recordID = LedgerRecords.profileRecordID(for: profile.participantID, in: ledger.zoneID)
@@ -192,8 +182,7 @@ nonisolated enum LedgerService {
         _ = try await database.modifyRecords(saving: [record], deleting: [], savePolicy: .changedKeys)
     }
 
-    /// Adds or overwrites. Refuses an unbalanced expense: CloudKit would
-    /// store one happily, and everyone's balance would be wrong.
+    /// Refuses an unbalanced expense; CloudKit would store one happily.
     static func save(_ expense: LedgerExpense, in ledger: Ledger) async throws {
         guard expense.isBalanced else { throw LedgerError.unbalanced }
         let database = self.database(for: ledger)
@@ -210,8 +199,7 @@ nonisolated enum LedgerService {
 
     // MARK: - Sharing
 
-    /// The existing zone-wide share or a fresh one, for
-    /// `UICloudSharingController`. Idempotent from the caller's side.
+    /// The existing zone-wide share or a fresh one. Idempotent.
     static func share(_ ledger: Ledger) async throws -> (CKShare, CKContainer) {
         guard ledger.isOwnedByCurrentUser else { throw LedgerError.notOwner }
         let database = container.privateCloudDatabase
@@ -220,8 +208,7 @@ nonisolated enum LedgerService {
         }
         let share = CKShare(recordZoneID: ledger.zoneID)
         share[CKShare.SystemFieldKey.title] = ledger.name as CKRecordValue
-        // Invite-only: a link share would let anyone join a list of who
-        // owes whom.
+        // Invite-only: a link share lets anyone join a list of who owes whom.
         share.publicPermission = .none
         let results = try await database.modifyRecords(saving: [share], deleting: [])
         guard let saved = try results.saveResults.values.first?.get() as? CKShare else {
@@ -230,8 +217,8 @@ nonisolated enum LedgerService {
         return (saved, container)
     }
 
-    /// Deleting the zone from the *shared* database is CloudKit's "remove me
-    /// from this share"; the owner's copy is untouched.
+    /// Deleting from the *shared* database is CloudKit's "remove me"; the
+    /// owner's copy is untouched.
     static func leave(_ ledger: Ledger) async throws {
         guard !ledger.isOwnedByCurrentUser else { throw LedgerError.notOwner }
         _ = try await container.sharedCloudDatabase.modifyRecordZones(saving: [], deleting: [ledger.zoneID])
@@ -245,8 +232,8 @@ nonisolated enum LedgerService {
         return share
     }
 
-    /// An unshared ledger has no share, but still one participant — the user,
-    /// so an expense they add has somebody to attribute the payment to.
+    /// An unshared ledger still has one participant, so an expense they add
+    /// has somebody to attribute the payment to.
     private static func participants(
         of share: CKShare?,
         currentUserID: String,
@@ -268,17 +255,15 @@ nonisolated enum LedgerService {
             as: currentUserID
         )
         return share.participants.compactMap { participant in
-            // `currentUserParticipant` can't identify anyone: CloudKit
-            // describes the reader to themselves as the placeholder.
+            // `currentUserParticipant` can't identify anyone: the reader is
+            // described to themselves as the placeholder.
             guard let id = LedgerRecords.resolving(
                 participant.userIdentity.userRecordID?.recordName,
                 as: currentUserID
             ) else { return nil }
-            // A removed participant stays in the list with this status, and
-            // would otherwise linger with no way to get rid of them.
+            // Removed participants stay in the list with this status.
             guard participant.acceptanceStatus != .removed else { return nil }
-            // The link-share placeholder is a participant with no identity
-            // behind it — not a person to bill.
+            // The link-share placeholder has no identity behind it.
             guard participant.role != .publicUser else { return nil }
             return LedgerParticipant(
                 id: id,
@@ -290,8 +275,7 @@ nonisolated enum LedgerService {
         }
     }
 
-    /// Before `nameComponents` resolves, the email or phone they were invited
-    /// with is the only handle there is — still better than a placeholder.
+    /// Before `nameComponents` resolves, the invite handle is all there is.
     private static func name(of participant: CKShare.Participant) -> String {
         let identity = participant.userIdentity
         if let components = identity.nameComponents {

@@ -2,12 +2,8 @@
 //  LedgerMembersView.swift
 //  Relay
 //
-//  Everyone on one ledger, and where who they are can be changed.
-//
-//  Every row is editable, not just your own: CloudKit reveals to each
-//  participant only the names it's willing to (see `LedgerProfile`), so the
-//  person showing as "Someone" is exactly the one who can't type their own
-//  name in. Anyone filling in any name fixes it for everybody at once.
+//  Every row is editable, not just your own: the person showing as "Someone"
+//  is exactly the one who can't type their own name in. See `LedgerProfile`.
 //
 
 import PhotosUI
@@ -89,7 +85,6 @@ struct LedgerMembersView: View {
         }
     }
 
-    /// Whether they can see the ledger, and whether somebody chose the name.
     private func subtitle(for participant: LedgerParticipant) -> String? {
         if !participant.hasAccepted { return String(localized: "Hasn't accepted the invite yet") }
         if participant.isOwner && !participant.isCurrentUser { return String(localized: "Owner") }

@@ -2,12 +2,8 @@
 //  LedgerExpenseRequest.swift
 //  Relay
 //
-//  The record of a ledger write, for the transaction history and the pending
-//  queue.
-//
-//  Unlike `LedgerExpense`, it carries the *names* of the ledger and the people
-//  on it: history outlives what it describes, and a "Recent" row reading
-//  "Alex: 12.00 €" months later shouldn't need the ledger to still exist.
+//  A ledger write for the history and the pending queue. Carries the *names*
+//  of the ledger and its people: history outlives what it describes.
 //
 
 import Foundation
@@ -15,7 +11,6 @@ import Foundation
 nonisolated struct LedgerExpenseRequest: Codable, Equatable {
     let zoneName: String
     let ledgerName: String
-    /// So history can still point back at the record itself.
     let expenseID: String
     let title: String
     let costCents: Int
@@ -24,11 +19,8 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
     /// A missing entry leaves that person unnamed rather than misnamed.
     let participantNames: [String: String]
     let date: Date
-    /// Optional purely so a payload queued before this field existed still
-    /// decodes; a missing value is the same `false` an expense defaults to.
-    /// Without it a settlement queued offline would sync back as an ordinary
-    /// expense and the ledger row would read "You paid" instead of naming
-    /// who was paid.
+    /// Optional so a payload queued before this field existed still decodes;
+    /// nil is the `false` an expense defaults to.
     var isSettlement: Bool?
 
     init(
@@ -74,19 +66,17 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
         )
     }
 
-    /// By amount rather than position, so any version's payload reads
-    /// correctly.
+    /// By amount, not position, so any version's payload reads correctly.
     var payer: LedgerExpenseShare? {
         shares.first { $0.paidCents > 0 } ?? shares.first
     }
 
-    /// Everyone the payer split with.
     var others: [LedgerExpenseShare] {
         let payerID = payer?.participantID
         return shares.filter { $0.participantID != payerID }
     }
 
-    /// "Alex: 12.00 €" — what the history and queue rows show.
+    /// "Alex: 12.00 €", for the history and queue rows.
     var participantsShareSummary: String? {
         let parts = others.compactMap { share -> String? in
             guard let name = participantNames[share.participantID] else { return nil }
@@ -111,7 +101,6 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
         )
     }
 
-    /// For a retry from the pending queue.
     var asExpense: LedgerExpense {
         LedgerExpense(
             id: expenseID,

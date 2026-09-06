@@ -2,9 +2,8 @@
 //  SplitRows.swift
 //  Relay
 //
-//  Rows shared by ContinueWalletTransactionView's "Split" sections. The two
-//  draft kinds differ in row order and gating, so each still assembles its own
-//  section; only the rows are shared.
+//  Rows shared by ContinueWalletTransactionView's "Split" sections; the two
+//  draft kinds assemble their own sections around them.
 //
 
 import SwiftUI
@@ -32,8 +31,8 @@ struct SplitOptionRow: View {
     }
 }
 
-/// For the screens that store exactly one target. The draft forms use
-/// `LedgerParticipantPickerRow`, which can name several people.
+/// For screens storing exactly one target; the draft forms use
+/// `LedgerParticipantPickerRow`, which names several.
 struct SplitTargetPickerRow: View {
     let isLoading: Bool
     var ledgers: [Ledger] = []
@@ -48,9 +47,7 @@ struct SplitTargetPickerRow: View {
                 ProgressView()
             } else {
                 SplitTargetMenu(ledgers: ledgers, noneLabel: noneLabel) { target = $0 } label: {
-                    // The stored name, not a lookup: a ledger that hasn't
-                    // loaded yet would otherwise show the row as unset while
-                    // it isn't.
+                    // The stored name, or an unloaded ledger reads as unset.
                     Text(target?.fullName ?? noneLabel)
                 }
             }
@@ -85,8 +82,7 @@ struct SplitPickerRow: View {
     }
 }
 
-/// One participant's weight in a `.shares` split, with the amount it works
-/// out to underneath. Its own view for the per-field `@FocusState`.
+/// A weight in a `.shares` split. Its own view for the `@FocusState`.
 struct ShareWeightRow: View {
     let name: String
     let amountText: String?

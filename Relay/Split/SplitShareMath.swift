@@ -2,16 +2,14 @@
 //  SplitShareMath.swift
 //  Relay
 //
-//  Whole-cent share arithmetic: shares must add up to the cost exactly, and
-//  nothing server-side enforces that, so this and `LedgerExpense.isBalanced`
-//  are all there is between a rounding slip and a balance that never settles.
+//  Whole-cent share arithmetic. Nothing server-side enforces that shares add
+//  up, so this and `LedgerExpense.isBalanced` are all there is.
 //
 
 import Foundation
 
 nonisolated enum SplitShareMath {
-    /// Either decimal separator. Nil for unparseable or negative — a share
-    /// can be zero, never below it.
+    /// Either decimal separator. Nil for unparseable or negative.
     static func cents(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty,
@@ -21,7 +19,6 @@ nonisolated enum SplitShareMath {
         return cents(fromAmount: value)
     }
 
-    /// The inverse of `cents(_:)`, for display.
     static func text(fromCents cents: Int) -> String {
         cents.asMoneyString
     }
@@ -39,15 +36,13 @@ nonisolated enum SplitShareMath {
         return values.map { $0 / total }
     }
 
-    /// An equal fraction each.
     static func evenRatios(count: Int) -> [Double] {
         guard count > 0 else { return [] }
         return Array(repeating: 1 / Double(count), count: count)
     }
 
-    /// Whole cents in the given ratios, always totalling `totalCents`. The
-    /// rounding remainder lands on the largest part, so a lopsided split
-    /// doesn't have its smallest share nudged.
+    /// Always totals `totalCents`; the remainder lands on the largest part,
+    /// so a lopsided split doesn't have its smallest share nudged.
     static func distribute(totalCents: Int, ratios: [Double]) -> [Int] {
         guard !ratios.isEmpty else { return [] }
         var parts = ratios.map { Int((Double(totalCents) * $0).rounded()) }

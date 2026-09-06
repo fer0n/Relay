@@ -2,8 +2,6 @@
 //  SplitAllocation.swift
 //  Relay
 //
-//  How a cost divides across the payer and everyone they split with.
-//
 
 import Foundation
 
@@ -16,8 +14,8 @@ nonisolated enum SplitAllocation: Equatable {
     /// Relative weights — the payer's first, then one per participant in order.
     case weights([Double])
 
-    /// `[payer, participants…]`, totalling `totalCents` exactly. Nil when
-    /// the inputs can't describe a split.
+    /// `[payer, participants…]`, totalling `totalCents` exactly. Nil when the
+    /// inputs can't describe a split.
     func owedCents(totalCents: Int, participantCount: Int) -> [Int]? {
         guard participantCount > 0, totalCents >= 0 else { return nil }
         switch self {

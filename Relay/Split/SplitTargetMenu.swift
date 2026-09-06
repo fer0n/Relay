@@ -2,11 +2,8 @@
 //  SplitTargetMenu.swift
 //  Relay
 //
-//  The menu behind every "pick one ledger, or one person on it" row.
-//
-//  Plain Buttons, not a Picker: a Picker's Section content doesn't reliably
-//  render as an inline header inside a Menu, and the per-ledger grouping is
-//  the whole point of this list.
+//  "Pick one ledger, or one person on it". Plain Buttons, not a Picker: a
+//  Picker's Section doesn't reliably render as an inline header in a Menu.
 //
 
 import SwiftUI

@@ -2,15 +2,14 @@
 //  SplitExpenseService.swift
 //  Relay
 //
-//  The entry point for creating a split. Every caller — the transaction form,
-//  the Shortcuts intents, the statement-file import — comes through here.
+//  The entry point for creating a split: the transaction form, the Shortcuts
+//  intents and the statement-file import all come through here.
 //
 
 import Foundation
 
-/// `.queued` is the offline path: the expense is on the ledger locally and
-/// `PendingOperationQueue` retries the CloudKit write. The callers' dialogs
-/// distinguish the two so nothing reads as synced while it isn't.
+/// `.queued` is the offline path. Callers distinguish the two so nothing
+/// reads as synced while it isn't.
 enum SplitExpenseOutcome {
     case created(shareSummary: String)
     case queued
@@ -23,8 +22,8 @@ nonisolated enum OwnShareParse {
 
 @MainActor
 enum SplitExpenseService {
-    /// An expense the signed-in user fronts the whole cost of, split across
-    /// `target`. `groupId` groups history entries, not ledgers.
+    /// The signed-in user fronts the whole cost. `groupId` groups history
+    /// entries, not ledgers.
     static func addExpense(
         amount: Double,
         description: String,
@@ -40,8 +39,8 @@ enum SplitExpenseService {
         guard let ledger = target.ledger else {
             throw LedgerExpenseError.validation(String(localized: "That ledger isn't available on this device any more."))
         }
-        // The ledger's own id first — what every existing share is keyed
-        // by. The container's is the same string, for before it loads.
+        // The ledger's id first — what existing shares are keyed by. The
+        // container's is the same string, for before it loads.
         guard let payerID = ledger.currentUser?.id ?? LedgerStore.shared.currentUserID else {
             throw LedgerExpenseError.notAvailable
         }
@@ -77,9 +76,7 @@ enum SplitExpenseService {
         ) {
         case .failed:
             throw LedgerExpenseError.writeFailed(LedgerStore.shared.lastError)
-        // The usage ranking and the history entry are recorded by the queue
-        // when the write lands, the same way the YNAB half of an offline run
-        // defers both.
+        // The queue records usage and history when the write lands.
         case .queued:
             return .queued
         case .saved:
@@ -97,8 +94,7 @@ enum SplitExpenseService {
         return .created(shareSummary: shareSummary(shares: shares, payerID: payerID, others: others))
     }
 
-    /// The picked-entity shape, for the Shortcuts intents, the wallet
-    /// automation and the file import. A nil `ownShare` splits equally.
+    /// The picked-entity shape. A nil `ownShare` splits equally.
     static func addExpense(
         amount: Double,
         description: String,
@@ -108,8 +104,7 @@ enum SplitExpenseService {
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async throws -> SplitExpenseOutcome {
-        // Before the target resolves, so a bad share fails without a round
-        // trip — and before the YNAB half exists, at the sites that do both.
+        // Before the target resolves, and before the YNAB half exists.
         if let ownShare {
             try validateOwnShare(ownShare, amount: amount)
         }
@@ -136,8 +131,8 @@ enum SplitExpenseService {
             .joined(separator: "; ")
     }
 
-    /// So callers can check before creating the YNAB transaction, which would
-    /// otherwise exist with no matching split.
+    /// Checked before the YNAB transaction, which would otherwise exist with
+    /// no matching split.
     nonisolated static func validateOwnShare(_ ownShare: Double, amount: Double) throws {
         guard ownShare.isFinite, (0...amount).contains(ownShare) else {
             throw LedgerExpenseError.validation(String(localized: "Your share must be between 0 and the total amount."))

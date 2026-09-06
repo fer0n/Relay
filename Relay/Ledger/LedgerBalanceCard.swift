@@ -2,10 +2,8 @@
 //  LedgerBalanceCard.swift
 //  Relay
 //
-//  Pinned-list-style card (after Reminders' pinned smart lists), at the top of
-//  ContentView and again per row on LedgersView. The headline figure is what
-//  the signed-in user is up or down across the whole ledger; the lines below
-//  are who inside it they're up or down with.
+//  Pinned at the top of ContentView and again per row on LedgersView. The
+//  headline is the net across the ledger; the lines below are per person.
 //
 
 import CloudKit
@@ -18,14 +16,10 @@ extension Color {
     }
 }
 
-/// Decoded participant avatars, kept alive across view updates.
-///
-/// The JPEG lives in the ledger snapshot, so the only thing standing between
-/// it and the screen is `UIImage(data:)` — and that ran inside `body`, which
-/// meant a full decode per card per invalidation, on the main thread. Keyed
-/// by the data itself so a changed picture can't be served from under the old
-/// one, and bounded by `NSCache` so a ledger full of pictures can't pin them
-/// all in memory.
+/// Decoded avatars, so `UIImage(data:)` doesn't run in `body` on every
+/// invalidation. Keyed by the data itself, so a changed picture can't be
+/// served from under the old one; bounded, so a ledger of pictures can't pin
+/// them all in memory.
 enum AvatarImageCache {
     private static let cache: NSCache<NSData, UIImage> = {
         let cache = NSCache<NSData, UIImage>()
@@ -43,8 +37,7 @@ enum AvatarImageCache {
     }
 }
 
-/// Centres the single card in the full row width, so a second pinned card
-/// could join it later without touching ContentView.
+/// Centres the card in the full row width, leaving room for a second one.
 struct LedgerBalanceGrid: View {
     let ledger: Ledger
     let balances: LedgerBalances
@@ -67,8 +60,7 @@ struct LedgerBalanceGrid: View {
     }
 }
 
-/// `maxWidth` defaults to what `LedgerBalanceGrid` centres on ContentView;
-/// `LedgersView` passes `.infinity` to fill the row.
+/// `LedgersView` passes `.infinity` for `maxWidth` to fill the row.
 struct LedgerBalanceCard: View {
     struct MemberBalance: Identifiable {
         let id: String
@@ -81,16 +73,14 @@ struct LedgerBalanceCard: View {
     let balanceText: String
     let balanceColor: Color
     let avatarFallbackSymbol: String
-    /// The other person's picture, when there's exactly one of them: on a
-    /// two-person ledger a face names the ledger faster than any symbol.
+    /// Only with exactly one other person: a face names the ledger faster.
     let avatarImageData: Data?
     let memberBalances: [MemberBalance]
     var lastRefreshedAt: Date?
     var maxWidth: CGFloat? = 210
 
-    /// Everything here is a lookup into `balances`, which `LedgerStore`
-    /// derived when the expenses last changed — an init runs on every
-    /// SwiftUI invalidation, so it can't afford to walk the expense list.
+    /// Lookups only: an init runs on every SwiftUI invalidation, so it can't
+    /// afford to walk the expense list.
     init(
         ledger: Ledger,
         balances: LedgerBalances,
@@ -105,10 +95,8 @@ struct LedgerBalanceCard: View {
         avatarFallbackSymbol = ledger.isShared ? Const.Symbol.friends : Const.Symbol.ledger
         avatarImageData = ledger.others.count == 1 ? ledger.others.first?.imageData : nil
 
-        // Pairwise, not net: a net position mixes in what third parties owe
-        // them, which says nothing about the reader. Which pairwise figure —
-        // what the two of them ran up, or what the settle-up plan has them
-        // paying — is the ledger's `simplifiesDebts` to say.
+        // Pairwise, not net: a net position mixes in what third parties owe.
+        // Which pairwise figure is `simplifiesDebts` to say.
         memberBalances = currentUserID.map { me in
             ledger.others
                 .map { participant in

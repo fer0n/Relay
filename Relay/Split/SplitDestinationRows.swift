@@ -2,9 +2,8 @@
 //  SplitDestinationRows.swift
 //  Relay
 //
-//  Which ledger a split books in, and who on it. The participant picker taps
-//  rather than types: a ledger's cast is a handful of people, so filtering
-//  would be more steps for less.
+//  Which ledger a split books in, and who on it. Tap, not type: a ledger's
+//  cast is a handful of people.
 //
 
 import SwiftUI
@@ -13,8 +12,8 @@ import SwiftUI
 struct SplitDestinationRow: View {
     let selectedLedgerName: String?
     let ledgers: [Ledger]
-    /// A callback, not a binding: switching ledger has to replace who's
-    /// picked too, or the previous ledger's participants get billed.
+    /// A callback, not a binding: switching ledger replaces who's picked, or
+    /// the previous ledger's participants get billed.
     let onSelectLedger: (Ledger) -> Void
 
     var body: some View {
@@ -47,8 +46,7 @@ struct LedgerParticipantPickerRow: View {
     var body: some View {
         DraftDetailRow(icon: Const.Symbol.friends, title: "Split With", isIncomplete: isIncomplete) {
             if participants.isEmpty {
-                // Not an error: a ledger nobody's been invited to is a good
-                // private list, it just can't be split in.
+                // Not an error: a private list just can't be split in.
                 Text("Nobody on this ledger yet")
                     .foregroundStyle(.secondary)
             } else {

@@ -2,8 +2,8 @@
 //  SplitTargetResolver.swift
 //  Relay
 //
-//  Turns a picked `SplitTargetEntity` into the people it bills. A whole
-//  ledger only carries its name, so membership has to be looked up first.
+//  A picked `SplitTargetEntity` into the people it bills; a whole ledger
+//  carries only its name, so membership is looked up first.
 //
 
 import Foundation
