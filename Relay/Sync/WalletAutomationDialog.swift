@@ -11,9 +11,9 @@
 import AppIntents
 import Foundation
 
-nonisolated extension SplitwiseSplitOption {
+nonisolated extension SplitOption {
     /// Plain-text label for Relay's own SwiftUI screens — mirrors
-    /// SplitwiseTemplateOption.label in TemplatesView.swift.
+    /// SplitTemplateOption.label in TemplatesView.swift.
     var label: String {
         String(localized: Self.caseDisplayRepresentations[self]?.title ?? "")
     }
@@ -23,10 +23,10 @@ nonisolated enum WalletAutomationDialog {
     /// Only used by the Continue views, whose bound state already holds the "ask
     /// each time" answer. The intents resolve `.ask` via a requestValue side
     /// effect instead and don't route through here.
-    static func resolvedSplitwiseAction(
-        for templateOption: SplitwiseTemplateOption,
-        runtimeChoice: SplitwiseSplitOption?
-    ) -> SplitwiseSplitOption {
+    static func resolvedSplitAction(
+        for templateOption: SplitTemplateOption,
+        runtimeChoice: SplitOption?
+    ) -> SplitOption {
         switch templateOption {
         case .never: .never
         case .always: .always
@@ -44,34 +44,41 @@ nonisolated enum WalletAutomationDialog {
     static func splitDialogFragment(
         amount: Double,
         description: String,
-        friend: SplitwiseSplitTargetEntity,
+        friend: SplitTargetEntity,
         ownShare: Double?,
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async -> (fragment: String, isQueued: Bool) {
-        await splitDialogFragment(
-            amount: amount,
-            description: description,
-            target: SplitwiseSplitTarget(friend: friend),
-            allocation: ownShare.map { .ownShare(cents: Int(($0 * Const.centsPerUnit).rounded())) } ?? .equal,
-            groupId: groupId,
-            merchant: merchant
-        )
+        // Goes through the entity-taking entry point rather than building a
+        // target here: a picked entity can be a group or a ledger, whose
+        // membership has to be looked up. Constructing a one-person target
+        // from the entity directly would bill the *container's* id as if it
+        // were a person.
+        await run {
+            try await SplitExpenseService.addExpense(
+                amount: amount,
+                description: description,
+                friend: friend,
+                ownShare: ownShare,
+                groupId: groupId,
+                merchant: merchant
+            )
+        }
     }
 
     /// The multi-participant form, used by the in-app forms — their picker can
-    /// name several friends or a group, which the Shortcuts-facing single-friend
-    /// parameters above can't express.
+    /// name several people or a whole container, which the Shortcuts-facing
+    /// single-target parameters above can't express.
     static func splitDialogFragment(
         amount: Double,
         description: String,
-        target: SplitwiseSplitTarget,
-        allocation: SplitwiseSplitAllocation,
+        target: SplitTarget,
+        allocation: SplitAllocation,
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async -> (fragment: String, isQueued: Bool) {
-        do {
-            let outcome = try await SplitwiseExpenseHelper.addExpense(
+        await run {
+            try await SplitExpenseService.addExpense(
                 amount: amount,
                 description: description,
                 target: target,
@@ -79,16 +86,27 @@ nonisolated enum WalletAutomationDialog {
                 groupId: groupId,
                 merchant: merchant
             )
+        }
+    }
+
+    /// Turns either entry point's outcome into the dialog's trailing fragment.
+    private static func run(
+        _ create: () async throws -> SplitExpenseOutcome
+    ) async -> (fragment: String, isQueued: Bool) {
+        do {
+            let outcome = try await create()
             switch outcome {
             case .created(let shareSummary):
                 return (" – \(shareSummary)", false)
             case .queued:
                 return (" – \(String(localized: "split queued for sync"))", true)
             }
+        } catch let error as LedgerExpenseError {
+            // Its own message — "sign in to iCloud" is the useful thing to say
+            // when that's what went wrong.
+            return (" – \(error.localizedDescription)", false)
         } catch {
-            let message = (error as? SplitwiseIntentError)?.localizedStringResource
-                ?? "Couldn't add the Splitwise expense."
-            return (" – \(String(localized: message))", false)
+            return (" – \(String(localized: "Couldn't add the split."))", false)
         }
     }
 
@@ -215,18 +233,18 @@ nonisolated enum WalletAutomationDialog {
     /// would. Asking both would be two questions about one purchase, so the draft
     /// goes straight to the split-choice reminder. Everything else gets the
     /// ordinary Add/Discard reminder, having no second question to stand in.
-    static func handleAwaitingSplitwiseConfirmation(
+    static func handleAwaitingSplitConfirmation(
         _ claimId: UUID,
         merchant: String,
         amount: Double,
         source: String
     ) -> String {
-        let payload = TransactionDraft.Payload.splitwiseWallet(merchant: merchant, amount: amount)
+        let payload = TransactionDraft.Payload.ledgerWallet(merchant: merchant, amount: amount)
         let config = WalletTransactionConfigStore.load()
         let info = config.resolvedMerchantInfo(for: merchant)
         let template = info.flatMap { config.templates[$0.templateName] }
 
-        guard template?.splitwiseOption == .ask, SplitwiseAuthService.currentAccessToken != nil else {
+        guard template?.splitOption == .ask, SplitAvailability.hasKnownSharedLedger else {
             return handleAwaitingConfirmation(claimId, payload: payload, source: source)
         }
 
@@ -248,11 +266,11 @@ nonisolated enum WalletAutomationDialog {
     }
 
     /// Nil means the question genuinely can't be answered without asking.
-    static func friendWithoutAsking(template: WalletTransactionConfig.Template?) -> SplitwiseSplitTargetEntity? {
-        if let cached = template?.splitwiseTarget {
-            return SplitwiseSplitTargetEntity(cachedTarget: cached)
+    static func friendWithoutAsking(template: WalletTransactionConfig.Template?) -> SplitTargetEntity? {
+        if let cached = template?.splitTarget {
+            return SplitTargetEntity(cachedTarget: cached)
         }
-        return SplitwiseDefaultFriendStore.load().map { SplitwiseSplitTargetEntity(defaultFriend: $0) }
+        return DefaultSplitTargetStore.load().map { SplitTargetEntity(cachedTarget: $0) }
     }
 
     /// Also records category usage on success.
@@ -275,8 +293,8 @@ nonisolated enum WalletAutomationDialog {
 
     /// Distinct from the standalone AddSplitwiseExpenseIntent, which deliberately
     /// omits the amount from its own wording.
-    static func splitwiseWalletDialog(
-        outcome: SplitwiseExpenseOutcome,
+    static func ledgerWalletDialog(
+        outcome: SplitExpenseOutcome,
         formattedAmount: String,
         description: String
     ) -> String {
@@ -288,7 +306,7 @@ nonisolated enum WalletAutomationDialog {
         }
     }
 
-    static func splitwiseSkippedDialog(description: String) -> String {
+    static func splitSkippedDialog(description: String) -> String {
         String(localized: "Skipping \(description) — merchant is set to not split.")
     }
 }

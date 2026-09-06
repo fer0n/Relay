@@ -12,38 +12,31 @@ import SwiftUI
 /// animating in/out on `path` changes instead of being torn down and
 /// re-mounted per screen.
 ///
-/// Visible on the root list, the Splitwise balances grid, and any friend's or
-/// group's transactions page; hidden everywhere else (Templates, Settings, …).
-/// On one of those pages it opens pre-scoped to that friend or group;
-/// everywhere else it opens blank.
+/// Visible on the root list, the Ledgers list, and any single ledger's page;
+/// hidden everywhere else (Templates, Settings, …). On a ledger's page it
+/// opens pre-scoped to that ledger; everywhere else it opens blank.
 private struct FloatingAddButtonModifier: ViewModifier {
     let path: [ContentRoute]
     let namespace: Namespace.ID
     let onTapDefault: () -> Void
-    let onTapTarget: (SplitwiseSplitTargetEntity) -> Void
+    let onTapTarget: (SplitTargetEntity) -> Void
 
     private var isVisible: Bool {
         switch path.last {
-        case nil, .splitwiseBalances, .splitwiseFriendTransactions, .splitwiseGroupTransactions:
+        case nil, .ledgers, .ledger:
             return true
         default:
             return false
         }
     }
 
-    /// Nil unless the top of the stack is a specific friend's or group's page —
-    /// including if the cache lookup for that route's id somehow comes up empty.
-    private var scopedTarget: SplitwiseSplitTargetEntity? {
-        switch path.last {
-        case .splitwiseFriendTransactions(let friendId):
-            return SplitwiseFriendCacheStore.load()?.first { $0.id == friendId }
-                .map { SplitwiseSplitTargetEntity(friend: $0) }
-        case .splitwiseGroupTransactions(let groupId):
-            return SplitwiseGroupCacheStore.load()?.first { $0.id == groupId }
-                .map { SplitwiseSplitTargetEntity(group: $0) }
-        default:
-            return nil
-        }
+    /// Nil unless the top of the stack is a specific ledger's page — including
+    /// if that zone name no longer resolves to a loaded ledger.
+    @MainActor
+    private var scopedTarget: SplitTargetEntity? {
+        guard case .ledger(let zoneName) = path.last else { return nil }
+        return LedgerStore.shared.ledgers.first { $0.zoneName == zoneName }
+            .map { SplitTargetEntity(ledger: $0) }
     }
 
     func body(content: Content) -> some View {
@@ -85,7 +78,7 @@ extension View {
         path: [ContentRoute],
         namespace: Namespace.ID,
         onTapDefault: @escaping () -> Void,
-        onTapTarget: @escaping (SplitwiseSplitTargetEntity) -> Void
+        onTapTarget: @escaping (SplitTargetEntity) -> Void
     ) -> some View {
         modifier(FloatingAddButtonModifier(path: path, namespace: namespace, onTapDefault: onTapDefault, onTapTarget: onTapTarget))
     }

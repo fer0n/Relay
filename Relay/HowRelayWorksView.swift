@@ -17,20 +17,20 @@ struct HowRelayWorksView: View {
     var body: some View {
         List {
             Section {
-                Text("Relay connects to YNAB and Splitwise using their official APIs to add transactions and expenses on your behalf, and to import bank statement files into YNAB.")
+                Text("Relay connects to YNAB using its official API to add transactions on your behalf, and imports bank statement files. Shared expenses live in your own iCloud — no other service is involved.")
             }
             .cardRowBackground()
 
             InfoSection(
                 icon: "lock.fill",
                 title: "Secure Login",
-                text: "When you connect an account, Relay opens YNAB's or Splitwise's own sign-in page in a secure browser window. Your username and password go directly to them — Relay never sees or stores your credentials."
+                text: "When you connect YNAB, Relay opens its own sign-in page in a secure browser window. Your username and password go directly to YNAB — Relay never sees or stores your credentials. Shared ledgers need no sign-in at all; they use the iCloud account already on your device."
             )
 
             InfoSection(
                 icon: "key.fill",
                 title: "Access Tokens",
-                text: "Once you sign in, YNAB or Splitwise gives Relay a secure access token, stored safely on your device. For YNAB, Relay renews this token automatically in the background, so you won't need to sign in again every couple of hours."
+                text: "Once you sign in, YNAB gives Relay a secure access token, stored safely on your device. Relay renews it automatically in the background, so you won't need to sign in again every couple of hours."
             )
 
             InfoSection(
@@ -42,7 +42,7 @@ struct HowRelayWorksView: View {
             InfoSection(
                 icon: "checkmark.shield.fill",
                 title: "Your Data",
-                text: "Relay creates the transactions and expenses you ask for in YNAB and Splitwise. Any bank or CSV statement files you import are read only on your device. Relay keeps no database of its own and never shares your financial data with anyone else."
+                text: "Relay creates the transactions you ask for in YNAB, and keeps shared expenses in your own iCloud. Any bank or CSV statement files you import are read only on your device. Relay keeps no database of its own and never shares your financial data with anyone else."
             )
         }
         .themedList(background: .backgroundColor)

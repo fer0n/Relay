@@ -22,7 +22,12 @@ extension ContentView {
                 if newPhase == .active {
                     Task { await pendingQueue.flush() }
                     reloadMainListState()
-                    Task { await refreshDefaultSplitwiseFriend(force: false) }
+                    // Backed up after the refresh, not alongside it, so the
+                    // day's file holds what CloudKit just returned.
+                    Task {
+                        await LedgerStore.shared.refresh(force: false)
+                        await AutomaticBackup.runIfNeeded()
+                    }
                     Task { await WalletCompletionNotification.clearDelivered() }
                 }
             }
@@ -47,17 +52,17 @@ extension ContentView {
                 guard let newValue else { return }
                 path = []
                 let entries = TransactionHistoryStore.load()
-                history = entries
+                withAnimation { history = entries }
                 selectedHistoryEntry = entries.first { $0.id == newValue }
                 draftRouter.pendingHistoryEntryID = nil
             }
             // ImportSplitwiseFileIntent brought Relay forward itself to land here.
             // A sheet rather than a push onto `path`, so this, the "File Import"
             // row, and the share-sheet flow all share one "Done" button.
-            .onChange(of: draftRouter.pendingSplitwiseImport) { _, pending in
+            .onChange(of: draftRouter.pendingSplitImport) { _, pending in
                 guard pending else { return }
                 importSheetContent = .review
-                draftRouter.pendingSplitwiseImport = false
+                draftRouter.pendingSplitImport = false
             }
             // A statement file from the `.onOpenURL` below. A sheet for the same
             // reason as above: "Done" closes the whole flow in one step.

@@ -8,6 +8,47 @@
 
 import SwiftUI
 
+/// The width a keyboard toolbar's content should lay itself out at, published by
+/// `keyboardBarWidthSource()`. Nil until the source view has been measured.
+private struct KeyboardBarWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    var keyboardBarWidth: CGFloat? {
+        get { self[KeyboardBarWidthKey.self] }
+        set { self[KeyboardBarWidthKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Publishes this view's width, less the keyboard toolbar's own margins, for
+    /// keyboard toolbars below it — apply it to a view that spans the screen.
+    ///
+    /// A keyboard toolbar sizes itself to its content rather than to the
+    /// keyboard, so `maxWidth: .infinity` inside one is proposed nothing and
+    /// collapses to the width of the content, leaving a bar floating in the
+    /// middle of the keyboard. The width has to come from somewhere wider, and a
+    /// row inside a card only knows the card's width.
+    func keyboardBarWidthSource() -> some View {
+        modifier(KeyboardBarWidthSource())
+    }
+}
+
+private struct KeyboardBarWidthSource: ViewModifier {
+    /// Inset of the keyboard toolbar's own container from the screen edges, one
+    /// side. Measured off a screenshot — UIKit doesn't publish it.
+    private static let containerInset: CGFloat = 16
+
+    @State private var width: CGFloat?
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            .environment(\.keyboardBarWidth, width.map { $0 - 2 * Self.containerInset })
+    }
+}
+
 /// The template chooser — "Create New" (handed back via `onCreateNew`) plus
 /// one button per saved template, selecting into `choice`.
 struct TemplatePickerRow: View {
@@ -71,7 +112,7 @@ struct AccountPickerRow: View {
 }
 
 /// The payee (YNAB) / description (Splitwise) field, with a custom keyboard
-/// toolbar in place of the system predictive bar. Owns the focus state, since the
+/// toolbar of suggestions above the keyboard. Owns the focus state, since the
 /// toolbar only makes sense scoped to this field.
 struct PayeeFieldRow: View {
     let title: LocalizedStringKey
@@ -91,6 +132,8 @@ let showsLinkToTemplate: Bool
     var allowsEmpty: Bool = false
 
     @FocusState private var isFocused: Bool
+    /// See `keyboardBarWidthSource()`.
+    @Environment(\.keyboardBarWidth) private var keyboardBarWidth
 
     var body: some View {
         DraftDetailRow(
@@ -102,6 +145,12 @@ let showsLinkToTemplate: Bool
                 .multilineTextAlignment(.trailing)
                 .submitLabel(.done)
                 .autocorrectionDisabled()
+                // Both fields this row backs hold a name — a payee, or what
+                // the expense was for — so every word is capitalised, not just
+                // the first. Stated rather than left to the default because
+                // autocorrection is off here, and "edeka" has nothing to
+                // correct it to.
+                .textInputAutocapitalization(.words)
                 .keyboardType(.alphabet)
                 .focused($isFocused)
                 .toolbar {
@@ -115,11 +164,11 @@ let showsLinkToTemplate: Bool
         .cardRowBackground()
     }
 
-    /// Replaces the system predictive bar, matching its 3-candidate layout: always
-    /// exactly 3 equally-spaced slots filled left to right, with a slot past the
-    /// last match left blank rather than shrinking the others, so the dividers
-    /// land in the same place however many matches there are. "Add to <template>"
-    /// claims the leftmost slot ahead of any real suggestions.
+    /// Mirrors the system predictive bar's 3-candidate layout: always exactly 3
+    /// equally-spaced slots filled left to right, with a slot past the last match
+    /// left blank rather than shrinking the others, so the dividers land in the
+    /// same place however many matches there are. "Add to <template>" claims the
+    /// leftmost slot ahead of any real suggestions.
     private static let suggestionSlotCount = 3
 
     @ViewBuilder
@@ -161,7 +210,7 @@ let showsLinkToTemplate: Bool
                 }
             }
             .foregroundStyle(Color.foregroundColor)
-            .padding(.horizontal, 12)
+            .frame(width: keyboardBarWidth)
         }
     }
 }

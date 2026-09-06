@@ -1,20 +1,14 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "Add a Splitwise expense in ${applicationName}": {
+    "Add a shared expense in ${applicationName}": {
       "extractionState": "extracted_with_value",
       "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Splitwise-Ausgabe in ${applicationName} hinzufügen"
-          }
-        },
         "en": {
           "stringSet": {
             "state": "new",
             "values": [
-              "Add a Splitwise expense in ${applicationName}",
+              "Add a shared expense in ${applicationName}",
               "Split an expense in ${applicationName}"
             ]
           }
@@ -62,21 +56,15 @@
         }
       }
     },
-    "Import a file to Splitwise in ${applicationName}": {
+    "Import a file to split in ${applicationName}": {
       "extractionState": "extracted_with_value",
       "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Datei zu Splitwise in ${applicationName} importieren"
-          }
-        },
         "en": {
           "stringSet": {
             "state": "new",
             "values": [
-              "Import a file to Splitwise in ${applicationName}",
-              "Import a statement to Splitwise in ${applicationName}"
+              "Import a file to split in ${applicationName}",
+              "Import a statement to split in ${applicationName}"
             ]
           }
         }

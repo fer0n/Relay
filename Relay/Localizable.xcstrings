@@ -15,7 +15,11 @@
       },
       "shouldTranslate" : false
     },
+    "\"Split With\" is optional — if it's left as Default, the app-wide default (set in Settings) is used when a matching transaction needs to split." : {
+
+    },
     "\"Split With\" is optional — if it's left as Default, the app-wide default Splitwise friend (set in Settings) is used when a matching transaction needs to split." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -26,6 +30,7 @@
       }
     },
     "\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -34,6 +39,9 @@
           }
         }
       }
+    },
+    "\"Split With\" is optional — if it's left as None, you'll be asked to pick someone the first time a matching transaction needs to split." : {
+
     },
     "%@" : {
       "shouldTranslate" : false
@@ -49,7 +57,11 @@
       },
       "shouldTranslate" : false
     },
+    "%@ – no default split target set, pick one in Relay or set \"Split With\" for this automation." : {
+
+    },
     "%@ – no default Splitwise friend set, pick one in Relay or set \"Split With\" for this automation." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -60,6 +72,7 @@
       }
     },
     "%@ – no Splitwise friend set, sent a reminder to finish the split in Relay." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -68,6 +81,9 @@
           }
         }
       }
+    },
+    "%@ – nobody set to split with, sent a reminder to finish the split in Relay." : {
+
     },
     "%@ at %@" : {
       "localizations" : {
@@ -163,12 +179,88 @@
         }
       }
     },
+    "%@ owes %@ %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ schuldet %2$@ %3$@."
+          }
+        }
+      }
+    },
+    "%@ owes you %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ schuldet dir %2$@."
+          }
+        }
+      }
+    },
     "%@ paid" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ hat bezahlt"
+          }
+        }
+      }
+    },
+    "%@ paid %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ paid %2$@"
+          }
+        }
+      }
+    },
+    "%@ paid you %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ paid you %2$@"
+          }
+        }
+      }
+    },
+    "%@ pays %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ zahlt an %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ pays %2$@"
+          }
+        }
+      }
+    },
+    "%@ pays you" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ zahlt an dich"
+          }
+        }
+      }
+    },
+    "%@ recorded a %@ payment" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ recorded a %2$@ payment"
           }
         }
       }
@@ -328,9 +420,6 @@
         }
       }
     },
-    "+%lld more" : {
-
-    },
     "0" : {
       "localizations" : {
         "de" : {
@@ -361,6 +450,9 @@
         }
       }
     },
+    "A ledger is a shared expense list that lives in your iCloud. Create one, then invite whoever you're splitting with." : {
+
+    },
     "Access Tokens" : {
       "localizations" : {
         "de" : {
@@ -382,6 +474,7 @@
       }
     },
     "Activity" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -431,7 +524,11 @@
         }
       }
     },
+    "Add ${amount} expense for ${expenseDescription} split with ${target}" : {
+
+    },
     "Add ${amount} Splitwise expense for ${merchant}" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -472,6 +569,7 @@
       }
     },
     "Add friends in Splitwise and they'll appear here." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -480,6 +578,9 @@
           }
         }
       }
+    },
+    "Add Photo" : {
+
     },
     "Add Remaining Parameters" : {
       "localizations" : {
@@ -501,10 +602,11 @@
         }
       }
     },
-    "Add someone" : {
+    "Add Shared Expense" : {
 
     },
     "Add Splitwise Expense" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -535,6 +637,7 @@
       }
     },
     "Add Wallet Transaction to Splitwise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -565,6 +668,7 @@
       }
     },
     "Adds a Splitwise expense from a Wallet transaction, remembering friend/split choices for next time." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -585,6 +689,7 @@
       }
     },
     "Adds an expense split with a friend on Splitwise." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -593,6 +698,9 @@
           }
         }
       }
+    },
+    "Adds an expense to a shared iCloud ledger." : {
+
     },
     "Adds an expense transaction to your YNAB plan." : {
       "localizations" : {
@@ -694,7 +802,17 @@
         }
       }
     },
+    "Back Up Now" : {
+
+    },
+    "Backed up. %lld backup(s) stored." : {
+
+    },
+    "Backups" : {
+
+    },
     "Balances" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -713,6 +831,9 @@
           }
         }
       }
+    },
+    "Cancel" : {
+
     },
     "Card" : {
       "localizations" : {
@@ -744,6 +865,9 @@
         }
       }
     },
+    "Change Photo" : {
+
+    },
     "Choose" : {
       "localizations" : {
         "de" : {
@@ -755,6 +879,7 @@
       }
     },
     "Choose who to split expenses with by default" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -765,6 +890,7 @@
       }
     },
     "Clear" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -825,6 +951,7 @@
       }
     },
     "Connect YNAB and/or Splitwise to get started" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -833,6 +960,9 @@
           }
         }
       }
+    },
+    "Connect YNAB to get started. Splitting runs on iCloud — no account needed." : {
+
     },
     "Connect your %@ account in Relay first." : {
       "localizations" : {
@@ -854,9 +984,6 @@
         }
       }
     },
-    "Contact Developer" : {
-
-    },
     "Continue" : {
       "localizations" : {
         "de" : {
@@ -868,6 +995,7 @@
       }
     },
     "Couldn't add the expense. Please try again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -877,7 +1005,11 @@
         }
       }
     },
+    "Couldn't add the split." : {
+
+    },
     "Couldn't add the Splitwise expense." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -898,6 +1030,7 @@
       }
     },
     "Couldn't Connect to Splitwise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -918,6 +1051,7 @@
       }
     },
     "Couldn't Delete" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -937,7 +1071,11 @@
         }
       }
     },
+    "Couldn't read the latest backup." : {
+
+    },
     "Couldn't Restore" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -956,6 +1094,12 @@
           }
         }
       }
+    },
+    "Couldn't save to the ledger." : {
+
+    },
+    "Create" : {
+
     },
     "Create a New Shortcut" : {
       "localizations" : {
@@ -1027,6 +1171,9 @@
         }
       }
     },
+    "Default Split" : {
+
+    },
     "Delete" : {
       "localizations" : {
         "de" : {
@@ -1083,6 +1230,19 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Transaktion löschen?"
+          }
+        }
+      }
+    },
+    "Deleted: %@" : {
+
+    },
+    "Deleted: %@ at %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Deleted: %1$@ at %2$@"
           }
         }
       }
@@ -1277,6 +1437,9 @@
         }
       }
     },
+    "Enter a valid share amount." : {
+
+    },
     "Enter a valid share for everyone." : {
       "localizations" : {
         "de" : {
@@ -1307,6 +1470,9 @@
         }
       }
     },
+    "Everyone on the ledger sees this name." : {
+
+    },
     "Everything's Ready" : {
       "localizations" : {
         "de" : {
@@ -1316,6 +1482,9 @@
           }
         }
       }
+    },
+    "Expense" : {
+
     },
     "Expense Added" : {
       "localizations" : {
@@ -1337,7 +1506,11 @@
         }
       }
     },
+    "Export your templates, auto-match rules, merchants, cards, import settings, and preferences as a JSON backup, or restore one. A read-only copy of your ledgers rides along; importing never writes it back. Account logins aren't included — you'll reconnect YNAB after restoring." : {
+
+    },
     "Export your templates, auto-match rules, merchants, cards, import settings, and preferences as a JSON backup, or restore one. Account logins aren't included — you'll reconnect YNAB and Splitwise after restoring." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1367,8 +1540,15 @@
         }
       }
     },
-    "Friend" : {
-
+    "From" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von"
+          }
+        }
+      }
     },
     "Full amount" : {
       "localizations" : {
@@ -1393,10 +1573,10 @@
         }
       }
     },
-    "Group" : {
+    "Hasn't accepted the invite yet" : {
 
     },
-    "Group · %lld" : {
+    "Household, Trip to Lisbon — whatever you're splitting." : {
 
     },
     "How Relay Works" : {
@@ -1408,6 +1588,18 @@
           }
         }
       }
+    },
+    "iCloud Backups" : {
+
+    },
+    "iCloud Drive isn't available. Turn it on in Settings to store backups." : {
+
+    },
+    "iCloud is restricted on this device, so ledgers aren't available." : {
+
+    },
+    "iCloud Unavailable" : {
+
     },
     "If this run is interrupted before finishing, send a notification to continue it later." : {
       "localizations" : {
@@ -1449,7 +1641,11 @@
         }
       }
     },
+    "Import ${file} to split" : {
+
+    },
     "Import ${file} to Splitwise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1479,7 +1675,11 @@
         }
       }
     },
+    "Import File to Split" : {
+
+    },
     "Import File to Splitwise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1590,6 +1790,7 @@
       }
     },
     "Invalid share amount." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1598,6 +1799,15 @@
           }
         }
       }
+    },
+    "Invite" : {
+
+    },
+    "Invited" : {
+
+    },
+    "Last Backup" : {
+
     },
     "Last Error" : {
       "localizations" : {
@@ -1609,6 +1819,9 @@
         }
       }
     },
+    "Leave" : {
+
+    },
     "Leave blank to split the cost equally" : {
       "localizations" : {
         "de" : {
@@ -1619,6 +1832,15 @@
         }
       }
     },
+    "Ledger" : {
+
+    },
+    "Ledger or Person" : {
+
+    },
+    "Ledgers" : {
+
+    },
     "Linked Merchants" : {
       "localizations" : {
         "de" : {
@@ -1628,6 +1850,9 @@
           }
         }
       }
+    },
+    "Manage Sharing" : {
+
     },
     "Manual" : {
       "localizations" : {
@@ -1658,6 +1883,9 @@
           }
         }
       }
+    },
+    "Members" : {
+
     },
     "Memo" : {
       "localizations" : {
@@ -1719,7 +1947,11 @@
         }
       }
     },
+    "Names and pictures are stored on the ledger itself, so everyone on it sees the same ones. Anyone can fill in a name that's missing — iCloud only tells you the names of people you already share contacts with." : {
+
+    },
     "Never add to Splitwise automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1738,6 +1970,9 @@
           }
         }
       }
+    },
+    "New Ledger" : {
+
     },
     "Next" : {
       "localizations" : {
@@ -1816,6 +2051,7 @@
       }
     },
     "No Friends Found" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1824,6 +2060,9 @@
           }
         }
       }
+    },
+    "No name set" : {
+
     },
     "No new transactions created" : {
       "localizations" : {
@@ -1834,6 +2073,9 @@
           }
         }
       }
+    },
+    "No shared ledgers" : {
+
     },
     "No transactions found to import from %@." : {
       "localizations" : {
@@ -1855,6 +2097,9 @@
         }
       }
     },
+    "Nobody on this ledger yet" : {
+
+    },
     "None" : {
       "localizations" : {
         "de" : {
@@ -1871,6 +2116,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht verbunden"
+          }
+        }
+      }
+    },
+    "Nothing outstanding between them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwischen ihnen ist nichts offen."
           }
         }
       }
@@ -1905,7 +2160,11 @@
         }
       }
     },
+    "Once you sign in, YNAB gives Relay a secure access token, stored safely on your device. Relay renews it automatically in the background, so you won't need to sign in again every couple of hours." : {
+
+    },
     "Once you sign in, YNAB or Splitwise gives Relay a secure access token, stored safely on your device. For YNAB, Relay renews this token automatically in the background, so you won't need to sign in again every couple of hours." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1916,6 +2175,7 @@
       }
     },
     "Only used when Split is Manual" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1925,7 +2185,11 @@
         }
       }
     },
+    "Only you can see this ledger. Invite someone to start splitting." : {
+
+    },
     "Open Relay and connect your Splitwise account first." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1955,6 +2219,9 @@
         }
       }
     },
+    "Owner" : {
+
+    },
     "Paid by" : {
       "localizations" : {
         "de" : {
@@ -1982,6 +2249,7 @@
       }
     },
     "Parses a bank statement file (CSV or QIF) so you can pick which transactions to split equally with a Splitwise friend in Relay." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1990,6 +2258,9 @@
           }
         }
       }
+    },
+    "Parses a bank statement file (CSV or QIF) so you can pick which transactions to split on a shared iCloud ledger in Relay." : {
+
     },
     "Part of the sign-in process briefly passes through a small relay service run by Relay's developer. It's only ever involved for a moment while you're signing in, and never sees your plan, transactions, or expenses." : {
       "localizations" : {
@@ -2072,6 +2343,7 @@
       }
     },
     "Please check your connection and try again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2111,6 +2383,26 @@
         }
       }
     },
+    "Record" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfassen"
+          }
+        }
+      }
+    },
+    "Record Payment" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zahlung erfassen"
+          }
+        }
+      }
+    },
     "Relay can only import .csv or .qif files." : {
       "localizations" : {
         "de" : {
@@ -2122,6 +2414,7 @@
       }
     },
     "Relay connects to YNAB and Splitwise using their official APIs to add transactions and expenses on your behalf, and to import bank statement files into YNAB." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2131,7 +2424,14 @@
         }
       }
     },
+    "Relay connects to YNAB using its official API to add transactions on your behalf, and imports bank statement files. Shared expenses live in your own iCloud — no other service is involved." : {
+
+    },
+    "Relay couldn't reach iCloud. Pull to try again." : {
+
+    },
     "Relay creates the transactions and expenses you ask for in YNAB and Splitwise. Any bank or CSV statement files you import are read only on your device. Relay keeps no database of its own and never shares your financial data with anyone else." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2140,6 +2440,12 @@
           }
         }
       }
+    },
+    "Relay creates the transactions you ask for in YNAB, and keeps shared expenses in your own iCloud. Any bank or CSV statement files you import are read only on your device. Relay keeps no database of its own and never shares your financial data with anyone else." : {
+
+    },
+    "Relay keeps a daily backup in its own iCloud Drive folder, including a copy of your ledgers and their expenses that can be checked against the live data. Older backups are thinned out over time; only the ones you make yourself are kept forever." : {
+
     },
     "Remaining" : {
       "localizations" : {
@@ -2171,10 +2477,16 @@
         }
       }
     },
-    "Remove" : {
+    "Remove Photo" : {
 
     },
-    "Remove %@" : {
+    "Removing someone is done in iCloud's own sharing sheet — it's what controls who can open the ledger." : {
+
+    },
+    "Rename" : {
+
+    },
+    "Rename Ledger" : {
 
     },
     "Repeat for Merchant (and Card, YNAB action only). Confirm it looks right, then tap the checkmark to save." : {
@@ -2208,6 +2520,7 @@
       }
     },
     "Restore" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2258,6 +2571,7 @@
       }
     },
     "Search actions for \"Add Wallet Transaction to YNAB\" (YNAB, optionally split with Splitwise) or \"Add Wallet Transaction to Splitwise\" (Splitwise only). Tap \"Amount\", scroll right, then select \"Shortcut Input\"." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2266,6 +2580,9 @@
           }
         }
       }
+    },
+    "Search actions for \"Add Wallet Transaction to YNAB\", which can also split to a ledger. Tap \"Amount\", scroll right, then select \"Shortcut Input\"." : {
+
     },
     "Secure Login" : {
       "localizations" : {
@@ -2417,12 +2734,28 @@
         }
       }
     },
+    "Sign in to iCloud in Settings to use ledgers. Nothing leaves your iCloud account." : {
+
+    },
+    "Sign in to iCloud to add to a ledger." : {
+
+    },
     "Sign-In Relay" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anmelde-Relay"
+          }
+        }
+      }
+    },
+    "Simplify Debts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schulden vereinfachen"
           }
         }
       }
@@ -2448,6 +2781,7 @@
       }
     },
     "Some transactions are still waiting to sync with YNAB/Splitwise." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2456,6 +2790,9 @@
           }
         }
       }
+    },
+    "Some transactions are still waiting to sync." : {
+
     },
     "Someone" : {
 
@@ -2479,9 +2816,6 @@
           }
         }
       }
-    },
-    "Split %@ expenses with which friend or group?" : {
-
     },
     "Split %@ expenses with which friend?" : {
       "extractionState" : "stale",
@@ -2547,6 +2881,12 @@
         }
       }
     },
+    "Split on which ledger?" : {
+
+    },
+    "Split Only" : {
+
+    },
     "Split Option" : {
       "localizations" : {
         "de" : {
@@ -2567,7 +2907,11 @@
         }
       }
     },
+    "Split Template Option" : {
+
+    },
     "Split this %@ transaction with Splitwise?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2576,6 +2920,9 @@
           }
         }
       }
+    },
+    "Split this %@ transaction?" : {
+
     },
     "Split this expense?" : {
       "localizations" : {
@@ -2588,6 +2935,7 @@
       }
     },
     "Split this transaction with Splitwise?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2596,6 +2944,9 @@
           }
         }
       }
+    },
+    "Split this transaction?" : {
+
     },
     "Split Transaction?" : {
       "localizations" : {
@@ -2608,6 +2959,7 @@
       }
     },
     "Split with" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2628,6 +2980,7 @@
       }
     },
     "Split with (default)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2648,6 +3001,7 @@
       }
     },
     "Split with Splitwise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2657,7 +3011,7 @@
         }
       }
     },
-    "Split with which Splitwise friend or group?" : {
+    "Split with which ledger or person?" : {
 
     },
     "Split with which Splitwise friend?" : {
@@ -2672,6 +3026,7 @@
       }
     },
     "Splitwise" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2692,10 +3047,8 @@
         }
       }
     },
-    "Splitwise Friend or Group" : {
-
-    },
     "Splitwise is rate-limiting requests right now. Try again in a few minutes." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2706,6 +3059,7 @@
       }
     },
     "Splitwise Split Option" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2716,6 +3070,7 @@
       }
     },
     "Splitwise Template Option" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2751,6 +3106,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erfolg Benachrichtigung"
+          }
+        }
+      }
+    },
+    "Suggested" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorschläge"
           }
         }
       }
@@ -2825,6 +3190,9 @@
         }
       }
     },
+    "The fewest payments that settle everyone — a debt that routes through someone else is collapsed into one transfer." : {
+
+    },
     "The oldest unfinished transaction drafts are discarded once this limit is reached." : {
       "localizations" : {
         "de" : {
@@ -2845,6 +3213,12 @@
         }
       }
     },
+    "They'll be able to split once they accept. To withdraw an invite, use Manage Sharing." : {
+
+    },
+    "This is how you'll appear to everyone else on this ledger." : {
+
+    },
     "This transaction was already completed or dismissed." : {
       "localizations" : {
         "de" : {
@@ -2856,6 +3230,7 @@
       }
     },
     "This will delete the expense on Splitwise for everyone involved." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2865,12 +3240,32 @@
         }
       }
     },
+    "This will delete the expense on the ledger for everyone on it." : {
+
+    },
+    "This will only delete locally, YNAB and the ledger are unaffected." : {
+
+    },
+    "This will only delete locally, YNAB and your ledgers are unaffected." : {
+
+    },
     "This will only delete locally, YNAB/Splitwise are unaffected." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird nur lokal gelöscht, YNAB/Splitwise bleiben unverändert."
+          }
+        }
+      }
+    },
+    "To" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An"
           }
         }
       }
@@ -2935,6 +3330,9 @@
         }
       }
     },
+    "Verify Backup" : {
+
+    },
     "Wallet transactions from these exact merchant names go straight to this template. Edit the payee name, swipe to unlink one, or use the arrow to move one to a different template." : {
       "localizations" : {
         "de" : {
@@ -2986,6 +3384,7 @@
       }
     },
     "When you connect an account, Relay opens YNAB's or Splitwise's own sign-in page in a secure browser window. Your username and password go directly to them — Relay never sees or stores your credentials." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2994,6 +3393,9 @@
           }
         }
       }
+    },
+    "When you connect YNAB, Relay opens its own sign-in page in a secure browser window. Your username and password go directly to YNAB — Relay never sees or stores your credentials. Shared ledgers need no sign-in at all; they use the iCloud account already on your device." : {
+
     },
     "Which column is the amount?" : {
       "localizations" : {
@@ -3121,6 +3523,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Du"
+          }
+        }
+      }
+    },
+    "You owe %@ %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du schuldest %1$@ %2$@."
+          }
+        }
+      }
+    },
+    "You paid" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast bezahlt"
+          }
+        }
+      }
+    },
+    "You paid %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast an %@ bezahlt"
+          }
+        }
+      }
+    },
+    "You pay %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du zahlst an %@"
           }
         }
       }

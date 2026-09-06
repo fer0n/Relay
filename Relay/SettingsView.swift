@@ -8,7 +8,6 @@ import UserNotifications
 
 struct SettingsView: View {
     @State private var ynabAuth = YNABAuthService()
-    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var notificationsEnabled = NotificationsPreferenceStore.isEnabled
     @State private var draftLimit = DraftLimitPreferenceStore.limit
     @State private var migration = LegacyMigrationCallbackHandler()
@@ -32,16 +31,7 @@ struct SettingsView: View {
                     disconnect: ynabAuth.signOut
                 )
 
-                AccountConnectionRow(
-                    title: "Splitwise",
-                    isConnected: splitwiseAuth.isAuthenticated,
-                    connect: splitwiseAuth.signIn,
-                    disconnect: splitwiseAuth.signOut
-                )
-
-                if splitwiseAuth.isAuthenticated {
-                    DefaultSplitwiseFriendRow()
-                }
+                DefaultSplitTargetRow()
             }
             .cardRowBackground()
 
@@ -74,6 +64,8 @@ struct SettingsView: View {
                     .footerText()
             }
             .cardRowBackground()
+
+            ICloudBackupSection()
 
             BackupImportExportSection()
 
@@ -139,24 +131,6 @@ struct SettingsView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(ynabAuth.signInError ?? "")
-        }
-        .alert(
-            "Couldn't Connect to Splitwise",
-            isPresented: Binding(
-                get: { splitwiseAuth.signInError != nil },
-                set: { if !$0 { splitwiseAuth.clearSignInError() } }
-            )
-        ) {
-            Button("Report Error") {
-                openURL(SignInErrorMail.reportURL(
-                    service: "Splitwise",
-                    message: splitwiseAuth.signInError ?? "",
-                    detail: splitwiseAuth.signInErrorDetail
-                ))
-            }
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(splitwiseAuth.signInError ?? "")
         }
     }
 

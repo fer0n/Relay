@@ -2,7 +2,7 @@
 //  PendingOperation.swift
 //  Relay
 //
-//  A YNAB transaction or Splitwise expense that couldn't be sent because the
+//  A YNAB transaction or ledger expense that couldn't be sent because the
 //  device was offline, waiting in PendingOperationQueue to be retried.
 //
 
@@ -27,30 +27,53 @@ nonisolated struct PendingOperation: Codable, Identifiable {
     /// TransactionHistoryStore.record once this syncs — see
     /// TransactionHistoryEntry.merchant. Nil for standalone writes.
     var merchant: String? = nil
+    /// Whether syncing this should add a "Recent" entry. False for a write
+    /// that wouldn't have recorded one online either — a settlement, or an
+    /// edit to an expense whose creation is already in history. Optional so
+    /// operations queued before this field existed still decode, and nil
+    /// reads as true: back then every queued write was one that records.
+    var recordsHistory: Bool? = nil
 
+    /// See `recordsHistory`.
+    var shouldRecordHistory: Bool { recordsHistory ?? true }
+
+    /// Swift's synthesized enum Codable is strict about the case name, so a
+    /// case can be *added* freely (older payloads still decode) but never
+    /// renamed or removed — a file containing an unknown case fails as a
+    /// whole, not one entry.
     enum Payload: Codable {
         case ynabTransaction(YNABTransactionRequest)
-        case splitwiseExpense(SplitwiseExpenseRequest)
+        case ledgerExpense(LedgerExpenseRequest)
     }
 
     var service: TransactionService {
         switch payload {
         case .ynabTransaction: .ynab
-        case .splitwiseExpense: .splitwise
+        case .ledgerExpense: .ledger
         }
     }
 }
 
 nonisolated extension PendingOperation.Payload {
-    /// Payee (YNAB) or description (Splitwise) — TransactionSummaryRow's title.
-    var title: String {
+    /// The ledger record this write targets, so the queue can recognise a
+    /// second write to the same expense. Nil for a YNAB transaction, which
+    /// has no id until YNAB mints one.
+    var ledgerExpenseID: String? {
         switch self {
-        case .ynabTransaction(let transaction): transaction.payeeName
-        case .splitwiseExpense(let expense): expense.description
+        case .ynabTransaction: nil
+        case .ledgerExpense(let expense): expense.expenseID
         }
     }
 
-    /// A copy with the payee (YNAB) or description (Splitwise) replaced —
+    /// Payee (YNAB) or description (a split) — TransactionSummaryRow's title.
+    var title: String {
+        switch self {
+        case .ynabTransaction(let transaction): transaction.payeeName
+        case .ledgerExpense(let expense): expense.title
+        }
+    }
+
+    /// A copy with the payee (YNAB) or description (a split) replaced —
     /// used to rename a frozen TransactionHistoryEntry to match an edited
     /// Payee mapping.
     func withTitle(_ title: String) -> PendingOperation.Payload {
@@ -67,15 +90,8 @@ nonisolated extension PendingOperation.Payload {
                 approved: transaction.approved,
                 importId: transaction.importId
             ))
-        case .splitwiseExpense(let expense):
-            .splitwiseExpense(SplitwiseExpenseRequest(
-                costCents: expense.costCents,
-                description: title,
-                currencyCode: expense.currencyCode,
-                groupId: expense.groupId,
-                participants: expense.participants,
-                date: expense.date
-            ))
+        case .ledgerExpense(let expense):
+            .ledgerExpense(expense.withTitle(title))
         }
     }
 
@@ -83,21 +99,20 @@ nonisolated extension PendingOperation.Payload {
         switch self {
         case .ynabTransaction(let transaction):
             abs(Double(transaction.amount) / Const.milliunitsPerUnit).asMoneyString
-        case .splitwiseExpense(let expense):
+        case .ledgerExpense(let expense):
             (Double(expense.costCents) / Const.centsPerUnit).asMoneyString
         }
     }
 
-    /// Category name (YNAB), or who it's split with and their share of the
-    /// cost, e.g. "Alex: 12.00 €" (Splitwise) — resolved from the locally
-    /// cached category/friend/group lists. Nil if nothing's cached yet or no
-    /// category was set.
+    /// Category name (YNAB), resolved from the locally cached category list,
+    /// or who a split is with and their share of the cost, e.g. "Alex: 12.00 €".
+    /// Nil if nothing's cached yet or no category was set.
     var detail: String? {
         switch self {
         case .ynabTransaction(let transaction):
             guard let categoryId = transaction.categoryId else { return nil }
             return YNABCategoryCacheStore.load()?.first { $0.id == categoryId }?.name
-        case .splitwiseExpense(let expense):
+        case .ledgerExpense(let expense):
             return expense.participantsShareSummary
         }
     }

@@ -6,7 +6,7 @@
 //  set) auto-parses on appear; reopening an already-staged import starts with
 //  `source` nil and loads the staged rows from disk.
 //
-//  YNAB and Splitwise are two destinations of ONE flow. Parsing produces a
+//  YNAB and a ledger split are two destinations of ONE flow. Parsing produces a
 //  single destination-independent list of rows that both sides show and select
 //  from identically — the "Import To" picker only changes the top settings, the
 //  button's label, and what submit does. Flipping it never re-parses, so the
@@ -41,7 +41,6 @@ struct SharedFileImportView: View {
     @State private var handledIDs: Set<String> = []
 
     @State private var ynabAuth = YNABAuthService()
-    @State private var splitwiseAuth = SplitwiseAuthService()
 
     @State private var ynabNotAuthenticated = false
     @State private var accounts: [YNABAccount] = []
@@ -49,10 +48,8 @@ struct SharedFileImportView: View {
     @State private var selectedAccountId: String?
     @State private var includeMemos = true
 
-    @State private var splitwiseNotAuthenticated = false
-    @State private var friends: [SplitwiseFriend] = []
+    @State private var ledgerStore = LedgerStore.shared
     @State private var isLoadingFriends = false
-    @State private var groups: [SplitwiseGroup] = []
     /// Who every imported row gets split with — a friend or a group, whether
     /// picked here, staged by a shortcut, or the app-wide default.
     @State private var splitTarget: WalletTransactionConfig.CachedSplitTarget?
@@ -67,7 +64,7 @@ struct SharedFileImportView: View {
     /// state that never produces staging.
     @State private var noRowsMessage: String?
     @State private var totalCreated = 0
-    /// Splitwise: queued-offline count. YNAB: duplicate-import count.
+    /// Split: queued-offline count. YNAB: duplicate-import count.
     @State private var totalSecondary = 0
     @State private var totalFailed = 0
     #if !os(macOS)
@@ -94,15 +91,10 @@ struct SharedFileImportView: View {
     init(source: SharedStatementFile?, onDone: @escaping () -> Void) {
         self.source = source
         self.onDone = onDone
-        // An app-wide default friend pre-fills the picker; overwritten by the
-        // originally-staged friend once reopening loads one, below.
-        if let storedDefault = SplitwiseDefaultFriendStore.load() {
-            _splitTarget = State(initialValue: WalletTransactionConfig.CachedSplitTarget(
-                id: storedDefault.id,
-                firstName: storedDefault.firstName,
-                fullName: storedDefault.fullName,
-                isGroup: storedDefault.isGroup
-            ))
+        // An app-wide default pre-fills the picker; overwritten by the
+        // originally-staged target once reopening loads one, below.
+        if let storedDefault = DefaultSplitTargetStore.load() {
+            _splitTarget = State(initialValue: storedDefault)
         }
 
         if source == nil {
@@ -114,21 +106,21 @@ struct SharedFileImportView: View {
                 _destination = State(initialValue: staged.destination)
                 _selectedAccountId = State(initialValue: staged.accountId)
                 _includeMemos = State(initialValue: staged.includeMemos)
-                if let friendId = staged.friendId {
+                if let zoneName = staged.ledgerZoneName {
                     _splitTarget = State(initialValue: WalletTransactionConfig.CachedSplitTarget(
-                        id: friendId,
-                        firstName: staged.friendFirstName ?? "",
-                        fullName: staged.friendFullName ?? "",
-                        isGroup: staged.friendIsGroup == true
+                        zoneName: zoneName,
+                        participantID: staged.ledgerParticipantID,
+                        firstName: staged.targetFirstName ?? "",
+                        fullName: staged.targetFullName ?? ""
                     ))
                 }
             } else {
-                _destination = State(initialValue: Self.loadLastDestination() ?? .splitwise)
+                _destination = State(initialValue: Self.loadLastDestination() ?? .split)
             }
         } else {
             // Fresh from the Share Sheet — the last-picked destination is the best
             // guess until `.task` learns both connection states.
-            _destination = State(initialValue: Self.loadLastDestination() ?? (SplitwiseAuthService.currentAccessToken != nil ? .splitwise : .ynab))
+            _destination = State(initialValue: Self.loadLastDestination() ?? (SplitAvailability.canSplit ? .split : .ynab))
         }
     }
 
@@ -138,21 +130,25 @@ struct SharedFileImportView: View {
     /// there's no real choice to make.
     private var showDestinationPicker: Bool {
         guard connectivityChecked else { return true }
-        return !splitwiseNotAuthenticated && !ynabNotAuthenticated
+        return SplitAvailability.canSplit && !ynabNotAuthenticated
     }
 
+    /// Only YNAB can be "not connected" now — splitting needs no sign-in, and
+    /// having no ledger is an empty state rather than a connection problem.
     private var activeNotAuthenticated: Bool {
-        destination == .splitwise ? splitwiseNotAuthenticated : ynabNotAuthenticated
+        destination == .ynab && ynabNotAuthenticated
     }
+
+    private var availableLedgers: [Ledger] { ledgerStore.sharedLedgers }
 
     /// Whether the active destination has enough picked to submit. Parsing needs
     /// neither an account nor a friend.
     private var isActiveTargetResolved: Bool {
-        destination == .splitwise ? splitTargetEntity != nil : selectedAccountId != nil
+        destination == .split ? splitTargetEntity != nil : selectedAccountId != nil
     }
 
-    private var splitTargetEntity: SplitwiseSplitTargetEntity? {
-        splitTarget.map { SplitwiseSplitTargetEntity(cachedTarget: $0) }
+    private var splitTargetEntity: SplitTargetEntity? {
+        splitTarget.map { SplitTargetEntity(cachedTarget: $0) }
     }
 
     private var rowIDs: [String] { staging?.rows.map(\.id) ?? [] }
@@ -165,10 +161,10 @@ struct SharedFileImportView: View {
     private var submitSummaryText: String? {
         var parts: [String] = []
         if totalCreated > 0 {
-            parts.append("\(totalCreated) \(destination == .splitwise ? "split" : "imported")")
+            parts.append("\(totalCreated) \(destination == .split ? "split" : "imported")")
         }
         if totalSecondary > 0 {
-            parts.append("\(totalSecondary) \(destination == .splitwise ? "queued offline" : "duplicates")")
+            parts.append("\(totalSecondary) \(destination == .split ? "queued offline" : "duplicates")")
         }
         if totalFailed > 0 { parts.append("\(totalFailed) failed") }
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
@@ -198,16 +194,17 @@ struct SharedFileImportView: View {
                 if staging != nil { hasStaged = true }
                 handledIDs = FileImportHistoryStore.handledIDs(destination: destination)
                 async let ynabTokenTask = YNABAuthService.validAccessToken()
-                let splitwiseConnected = SplitwiseAuthService.currentAccessToken != nil
                 let ynabConnected = await ynabTokenTask != nil
-                splitwiseNotAuthenticated = !splitwiseConnected
                 ynabNotAuthenticated = !ynabConnected
                 connectivityChecked = true
-                // Only one connected — that's the only real destination.
-                if ynabConnected, !splitwiseConnected {
+                await ledgerStore.refresh(force: false)
+                // Only one usable — that's the only real destination. A ledger
+                // counts as being able to split.
+                let canSplit = !availableLedgers.isEmpty
+                if ynabConnected, !canSplit {
                     destination = .ynab
-                } else if splitwiseConnected, !ynabConnected {
-                    destination = .splitwise
+                } else if canSplit, !ynabConnected {
+                    destination = .split
                 }
                 await loadActiveTarget()
                 await maybeAutoParse()
@@ -222,12 +219,12 @@ struct SharedFileImportView: View {
                 hasStaged = true
                 destination = reloaded.destination
                 selectedAccountId = selectedAccountId ?? reloaded.accountId
-                if splitTarget == nil, let friendId = reloaded.friendId {
+                if splitTarget == nil, let zoneName = reloaded.ledgerZoneName {
                     splitTarget = WalletTransactionConfig.CachedSplitTarget(
-                        id: friendId,
-                        firstName: reloaded.friendFirstName ?? "",
-                        fullName: reloaded.friendFullName ?? "",
-                        isGroup: reloaded.friendIsGroup == true
+                        zoneName: zoneName,
+                        participantID: reloaded.ledgerParticipantID,
+                        firstName: reloaded.targetFirstName ?? "",
+                        fullName: reloaded.targetFullName ?? ""
                     )
                 }
                 includeMemos = reloaded.includeMemos
@@ -250,10 +247,6 @@ struct SharedFileImportView: View {
             .onChange(of: includeMemos) { syncStagingTargets() }
             .onAuthenticated(ynabAuth.isAuthenticated) {
                 ynabNotAuthenticated = false
-                Task { await loadActiveTarget() }
-            }
-            .onAuthenticated(splitwiseAuth.isAuthenticated) {
-                splitwiseNotAuthenticated = false
                 Task { await loadActiveTarget() }
             }
             .columnMappingPrompt(prompt)
@@ -284,7 +277,7 @@ struct SharedFileImportView: View {
                     DraftDetailRow(icon: "arrow.triangle.branch", title: "Import To") {
                         MenuPickerField(selection: $destination.animation(.default), label: destination.label) {
                             Text("YNAB").tag(FileImportDestination.ynab)
-                            Text("Splitwise").tag(FileImportDestination.splitwise)
+                            Text("Split").tag(FileImportDestination.split)
                         }
                     }
                     .cardRowBackground()
@@ -292,14 +285,13 @@ struct SharedFileImportView: View {
 
                 if activeNotAuthenticated {
                     NotConnectedRow(service: destination.label) {
-                        destination == .splitwise ? splitwiseAuth.signIn() : ynabAuth.signIn()
+                        ynabAuth.signIn()
                     }
                     .cardRowBackground()
-                } else if destination == .splitwise {
-                    SplitwiseTargetPickerRow(
+                } else if destination == .split {
+                    SplitTargetPickerRow(
                         isLoading: isLoadingFriends,
-                        friends: friends,
-                        groups: groups,
+                        ledgers: availableLedgers,
                         target: $splitTarget,
                         isIncomplete: staging != nil && splitTarget == nil
                     )
@@ -422,7 +414,7 @@ struct SharedFileImportView: View {
     private var bottomButtonLabel: LocalizedStringKey {
         if isDone { return "Done" }
         let count = selectedIDs.wrappedValue.count
-        return destination == .splitwise
+        return destination == .split
             ? "Split \(count) Selected"
             : "Import \(count) Selected"
     }
@@ -462,7 +454,7 @@ struct SharedFileImportView: View {
     private func rowSubtitle(for row: FileImportRow, handled: Bool) -> String {
         var parts = [row.date.formatted(date: .abbreviated, time: .omitted)]
         if handled {
-            parts.append(destination == .splitwise ? "Already split" : "Already imported")
+            parts.append(destination == .split ? "Already split" : "Already imported")
         }
         return parts.joined(separator: " · ")
     }
@@ -491,42 +483,23 @@ struct SharedFileImportView: View {
 
     private func loadActiveTarget() async {
         switch destination {
-        case .splitwise: await loadFriends()
-        case .ynab: await loadAccounts()
+        case .split:
+            await loadFriends()
+        case .ynab:
+            await loadAccounts()
         }
     }
 
+    /// Ledgers replaced the friend/group lists this used to fetch; LedgerStore
+    /// already holds that snapshot, so this only asks it to be current.
     private func loadFriends() async {
-        guard let token = SplitwiseAuthService.currentAccessToken else {
-            splitwiseNotAuthenticated = true
-            return
-        }
-        if let cached = SplitwiseFriendCacheStore.load() {
-            friends = SplitwiseFriendUsageStore.sorted(cached)
-        }
-        if let cached = SplitwiseGroupCacheStore.load() {
-            groups = cached
-        }
-        if SplitwiseGroupCacheStore.isStale, let fetched = try? await SplitwiseGroupCacheStore.fetch(token: token) {
-            groups = fetched
-        }
-        // Only hit the network when the cache is stale, so re-opening this sheet
-        // doesn't re-fetch. Selection validation still runs either way.
-        if SplitwiseFriendCacheStore.isStale {
-            isLoadingFriends = friends.isEmpty && groups.isEmpty
-            defer { isLoadingFriends = false }
-            do {
-                friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
-            } catch {
-                logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
-            }
-        }
-        // A default friend removed or blocked since being set would otherwise
-        // leave the picker pointing at nothing.
-        // A friend removed or blocked since being picked would otherwise leave
-        // the row pointing at nothing. Groups aren't in this list, so they're
-        // not this check's to clear.
-        if let splitTarget, !splitTarget.isGroup, !friends.contains(where: { $0.id == splitTarget.id }) {
+        isLoadingFriends = availableLedgers.isEmpty
+        defer { isLoadingFriends = false }
+        await ledgerStore.refresh(force: false)
+
+        // A ledger deleted, or a share revoked, since the target was picked
+        // would otherwise leave the row pointing at nothing.
+        if let splitTarget, !availableLedgers.contains(where: { $0.zoneName == splitTarget.zoneName }) {
             self.splitTarget = nil
         }
     }
@@ -589,8 +562,8 @@ struct SharedFileImportView: View {
         } catch is CancellationError {
             return
         } catch {
-            errorMessage = destination == .splitwise
-                ? SplitwiseIntentError.message(for: error)
+            errorMessage = destination == .split
+                ? error.localizedDescription
                 : YNABIntentError.message(for: error)
             return
         }
@@ -610,10 +583,10 @@ struct SharedFileImportView: View {
             importedAt: Date(),
             accountId: selectedAccountId,
             includeMemos: includeMemos,
-            friendId: splitTarget?.id,
-            friendFirstName: splitTarget?.firstName,
-            friendFullName: splitTarget?.fullName,
-            friendIsGroup: splitTarget?.isGroup ?? false
+            ledgerZoneName: splitTarget?.zoneName,
+            targetFirstName: splitTarget?.firstName,
+            targetFullName: splitTarget?.fullName,
+            ledgerParticipantID: splitTarget?.participantID
         )
         do {
             try FileImportStagingStore.save(newStaging)
@@ -630,7 +603,7 @@ struct SharedFileImportView: View {
 
     private func submit() async {
         switch destination {
-        case .splitwise: await submitSplitwise()
+        case .split: await submitSplit()
         case .ynab: await submitYNAB()
         }
     }
@@ -638,7 +611,7 @@ struct SharedFileImportView: View {
     /// Splitwise has no bulk endpoint, so this goes sequentially with 300ms
     /// pacing (same as PendingOperationQueue.flush). Only rows that succeeded are
     /// removed, so a failure leaves them to retry.
-    private func submitSplitwise() async {
+    private func submitSplit() async {
         guard let staging else { return }
         guard let friendEntity = splitTargetEntity else { return }
 
@@ -655,7 +628,7 @@ struct SharedFileImportView: View {
 
         for row in selectedRows {
             do {
-                let outcome = try await SplitwiseExpenseHelper.addExpense(
+                let outcome = try await SplitExpenseService.addExpense(
                     amount: row.splitAmount,
                     description: row.payeeName,
                     friend: friendEntity,
@@ -674,7 +647,7 @@ struct SharedFileImportView: View {
         }
 
         if !doneIds.isEmpty {
-            FileImportHistoryStore.record(doneIds, destination: .splitwise)
+            FileImportHistoryStore.record(doneIds, destination: .split)
         }
         totalCreated += createdCount
         totalSecondary += queuedCount
@@ -737,10 +710,10 @@ struct SharedFileImportView: View {
         guard var staging else { return }
         staging.accountId = selectedAccountId
         staging.includeMemos = includeMemos
-        staging.friendId = splitTarget?.id
-        staging.friendFirstName = splitTarget?.firstName
-        staging.friendFullName = splitTarget?.fullName
-        staging.friendIsGroup = splitTarget?.isGroup ?? false
+        staging.ledgerZoneName = splitTarget?.zoneName
+        staging.ledgerParticipantID = splitTarget?.participantID
+        staging.targetFirstName = splitTarget?.firstName
+        staging.targetFullName = splitTarget?.fullName
         self.staging = staging
         try? FileImportStagingStore.save(staging)
     }

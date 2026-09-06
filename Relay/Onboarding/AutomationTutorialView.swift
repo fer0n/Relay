@@ -62,7 +62,7 @@ struct AutomationTutorialView: View {
             case .step3:
                 return "Select all cards & categories on the next screen. Then, tap \"Create New Shortcut\"."
             case .step4:
-                return "Search actions for \"Add Wallet Transaction to YNAB\" (YNAB, optionally split with Splitwise) or \"Add Wallet Transaction to Splitwise\" (Splitwise only). Tap \"Amount\", scroll right, then select \"Shortcut Input\"."
+                return "Search actions for \"Add Wallet Transaction to YNAB\", which can also split to a ledger. Tap \"Amount\", scroll right, then select \"Shortcut Input\"."
             case .step5:
                 return "Tap on \"Shortcut Input\" on top, then select \"Amount\"."
             case .step6:

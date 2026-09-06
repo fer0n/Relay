@@ -66,7 +66,7 @@ struct BackupImportExportSection: View {
                     .foregroundStyle(.red)
             }
         } footer: {
-            Text("Export your templates, auto-match rules, merchants, cards, import settings, and preferences as a JSON backup, or restore one. Account logins aren't included — you'll reconnect YNAB and Splitwise after restoring.")
+            Text("Export your templates, auto-match rules, merchants, cards, import settings, and preferences as a JSON backup, or restore one. A read-only copy of your ledgers rides along; importing never writes it back. Account logins aren't included — you'll reconnect YNAB after restoring.")
                 .footerText()
         }
         .cardRowBackground()
@@ -124,7 +124,7 @@ struct BackupImportExportSection: View {
 
     private func export() {
         exportErrorMessage = nil
-        guard let data = try? BackupService.exportData() else {
+        guard let data = try? BackupService.encode(BackupService.makeBackupIncludingLedgers()) else {
             exportErrorMessage = "Failed to export: couldn't encode backup."
             return
         }

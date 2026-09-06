@@ -27,6 +27,11 @@ struct TransactionSummaryRow: View {
     /// "· detail" suffix (e.g. a draft, where nothing's been chosen yet).
     var detail: String?
     var errorMessage: String?
+    /// Added on this device but still waiting in `PendingOperationQueue` to
+    /// reach the service. Marked rather than hidden or greyed out: it counts
+    /// toward the balance here already, and the only thing that isn't true of
+    /// it yet is that anyone else can see it.
+    var isPending: Bool = false
     /// How many later runs were recognised as this same purchase and dropped
     /// (see TransactionClaim) — marks a row that stands in for more than one
     /// automation run, rather than letting the dedupe happen invisibly. The
@@ -53,6 +58,10 @@ struct TransactionSummaryRow: View {
                 HStack(spacing: 4) {
                     if errorMessage != nil {
                         Image(systemName: Const.Symbol.syncError)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    } else if isPending {
+                        Image(systemName: Const.Symbol.pending)
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -92,14 +101,22 @@ struct TransactionSummaryRow: View {
 #Preview {
     List {
         TransactionSummaryRow(service: .ynab, date: Date(), title: "Coffee Shop", amount: "-4.50", detail: "Dining Out")
-        TransactionSummaryRow(service: .splitwise, date: Date().addingTimeInterval(-86400 * 3), title: "Groceries", amount: "32.10", detail: "Alex")
-        TransactionSummaryRow(service: .ynab, secondaryService: .splitwise, date: Date().addingTimeInterval(-86400 * 7), title: "Restaurant", amount: "-45.00", detail: "Dining Out · Alex")
+        TransactionSummaryRow(service: .ledger, date: Date().addingTimeInterval(-86400 * 3), title: "Groceries", amount: "32.10", detail: "Alex")
+        TransactionSummaryRow(service: .ynab, secondaryService: .ledger, date: Date().addingTimeInterval(-86400 * 7), title: "Restaurant", amount: "-45.00", detail: "Dining Out · Alex")
         TransactionSummaryRow(
             service: .ynab,
             date: Date().addingTimeInterval(-86400 * 20),
             title: "Starbucks",
             amount: "-12.34",
             errorMessage: "No connection — will retry automatically."
+        )
+        TransactionSummaryRow(
+            service: .ledger,
+            date: Date().addingTimeInterval(-1800),
+            title: "Taxi",
+            amount: "18.00",
+            detail: "Alex",
+            isPending: true
         )
         TransactionSummaryRow(
             service: .ynab,

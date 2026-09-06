@@ -3,11 +3,15 @@
 //  Relay
 //
 //  Shared "try now (briefly retrying on connectivity failures), otherwise
-//  queue it for later" logic used by every intent that writes to YNAB or
-//  Splitwise. A non-connectivity failure (bad auth, rate limit, validation)
-//  is surfaced immediately instead — retrying those wouldn't help, and
-//  queueing a request YNAB/Splitwise actively rejected risks it failing the
-//  same way forever.
+//  queue it for later" logic for writes to YNAB. A non-connectivity failure
+//  (bad auth, rate limit, validation) is surfaced immediately instead —
+//  retrying those wouldn't help, and queueing a request YNAB actively
+//  rejected risks it failing the same way forever.
+//
+//  Ledger writes queue too, but from `LedgerStore.save` rather than here:
+//  every path into a ledger goes through it, it already holds the optimistic
+//  row the queued expense keeps showing as, and a CloudKit write has no
+//  token to refresh or rate limit to interpret on the way.
 //
 
 import Foundation
@@ -34,24 +38,6 @@ nonisolated enum PendingSync {
         } catch {
             guard error.isConnectivityFailure else { throw YNABIntentError.from(error) }
             await PendingOperationQueue.shared.enqueue(.ynabTransaction(transaction), summary: summary, groupId: groupId, merchant: merchant)
-            return .queued
-        }
-    }
-
-    static func createSplitwiseExpense(
-        _ expense: SplitwiseExpenseRequest,
-        token: String,
-        summary: String,
-        groupId: UUID? = nil,
-        merchant: String? = nil
-    ) async throws -> PendingSyncOutcome {
-        do {
-            try await retryOnConnectivityFailure { try await SplitwiseService.createExpense(expense, token: token) }
-            TransactionHistoryStore.record(summary: summary, payload: .splitwiseExpense(expense), groupId: groupId, merchant: merchant)
-            return .created
-        } catch {
-            guard error.isConnectivityFailure else { throw SplitwiseIntentError.from(error) }
-            await PendingOperationQueue.shared.enqueue(.splitwiseExpense(expense), summary: summary, groupId: groupId, merchant: merchant)
             return .queued
         }
     }

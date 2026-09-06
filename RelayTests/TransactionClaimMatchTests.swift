@@ -169,7 +169,7 @@ struct TransactionClaimMatchTests {
     @Test
     func differingDestinationsDoNotMatch() {
         let ynabClaim = Self.claim(destination: .ynab, accountId: nil)
-        #expect(!ynabClaim.matches(Self.candidate(destination: .splitwise, at: 60, accountId: nil), window: Self.window))
+        #expect(!ynabClaim.matches(Self.candidate(destination: .ledger, at: 60, accountId: nil), window: Self.window))
     }
 
     // MARK: - State

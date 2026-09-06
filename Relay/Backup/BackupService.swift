@@ -20,42 +20,57 @@ enum BackupService {
     /// is a backup a user might open or diff by hand, not a wire format, so
     /// there's no cost to the extra whitespace. `.iso8601` keeps the usage
     /// stores' dates legible instead of raw reference-date doubles.
-    private static var encoder: JSONEncoder {
+    private nonisolated static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }
 
-    private static var decoder: JSONDecoder {
+    private nonisolated static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
 
     /// Snapshots every backed-up store into one value.
-    static func makeBackup() -> BackupData {
+    static func makeBackup(ledgers: LedgerBackup? = nil, deviceName: String? = nil) -> BackupData {
         BackupData(
             formatVersion: BackupData.currentVersion,
             walletTransactionConfig: WalletTransactionConfigStore.load(),
             fileImportConfig: FileImportConfigStore.load(),
-            splitwiseDefaultFriend: SplitwiseDefaultFriendStore.load(),
             notificationsEnabled: NotificationsPreferenceStore.isEnabled,
             ynabCategoryUsage: YNABCategoryUsageStore.load(),
-            splitwiseFriendUsage: SplitwiseFriendUsageStore.load(),
-            fileImportHistory: FileImportHistoryStore.load()
+            ledgerParticipantUsage: LedgerParticipantUsageStore.load(),
+            fileImportHistory: FileImportHistoryStore.load(),
+            ledgers: ledgers,
+            createdAt: Date(),
+            deviceName: deviceName
         )
     }
 
-    static func exportData() throws -> Data {
-        try encoder.encode(makeBackup())
+    /// The ledgers live on the MainActor store, so the full snapshot can only
+    /// be taken from there.
+    @MainActor
+    static func makeBackupIncludingLedgers(deviceName: String? = nil) -> BackupData {
+        let store = LedgerStore.shared
+        let ledgers = LedgerBackup(
+            ledgers: store.ledgers,
+            expenses: store.expenses,
+            currentUserID: store.currentUserID
+        )
+        return makeBackup(ledgers: ledgers.isEmpty ? nil : ledgers, deviceName: deviceName)
+    }
+
+    nonisolated static func encode(_ backup: BackupData) throws -> Data {
+        try encoder.encode(backup)
     }
 
     /// Decodes a full backup, or returns nil if `data` isn't one — lets
     /// TemplateImportService probe for the backup format before falling back
     /// to the older template/bucket shapes. Uses the same date strategy as
     /// `exportData`, so a round-trip preserves usage timestamps exactly.
-    static func decodeBackup(from data: Data) -> BackupData? {
+    nonisolated static func decodeBackup(from data: Data) -> BackupData? {
         try? decoder.decode(BackupData.self, from: data)
     }
 
@@ -90,11 +105,6 @@ enum BackupService {
             result.importedMappingCount = incoming.csvMappings.count + incoming.qifDateFormats.count
         }
 
-        if let friend = backup.splitwiseDefaultFriend {
-            try SplitwiseDefaultFriendStore.save(friend)
-            result.restoredDefaultFriend = true
-        }
-
         if let enabled = backup.notificationsEnabled {
             NotificationsPreferenceStore.isEnabled = enabled
             result.restoredNotificationsSetting = true
@@ -105,9 +115,9 @@ enum BackupService {
             result.restoredUsageCount += usage.lastUsedByCategoryId.count
         }
 
-        if let usage = backup.splitwiseFriendUsage {
-            SplitwiseFriendUsageStore.merge(usage)
-            result.restoredUsageCount += usage.lastUsedByFriendId.count
+        if let usage = backup.ledgerParticipantUsage {
+            LedgerParticipantUsageStore.merge(usage)
+            result.restoredUsageCount += usage.lastUsedByParticipantID.count
         }
 
         if let history = backup.fileImportHistory {

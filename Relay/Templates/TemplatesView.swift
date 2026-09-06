@@ -3,10 +3,10 @@
 //  Relay
 //
 //  In-app viewer/editor for the merchant templates that
-//  AddWalletTransactionToYNABIntent / AddWalletTransactionToSplitwiseIntent
+//  AddWalletTransactionToYNABIntent / AddLedgerExpenseIntent
 //  otherwise only build up interactively via Shortcuts prompts. Reads/writes
 //  the same WalletTransactionConfigStore JSON file both intents mutate — one
-//  template now carries both a YNAB category and a Splitwise split
+//  template now carries both a YNAB category and a split
 //  option/friend, so the same bucket works for either automation.
 //
 
@@ -17,18 +17,18 @@ import os
 private let logger = Logger(subsystem: Const.loggerSubsystem, category: "TemplatesView")
 
 struct TemplatesView: View {
-    @State private var splitwiseAuth = SplitwiseAuthService()
+    @State private var ledgerStore = LedgerStore.shared
     @State private var config = WalletTransactionConfigStore.load()
     @State private var pendingDeletion: String?
 
-    /// The default Splitwise template ("Shared Expenses" unless renamed) —
+    /// The default split template ("Shared Expenses" unless renamed) —
     /// pinned to the top since it's where new merchants are auto-filed. Only
-    /// when Splitwise is connected, matching when it actually behaves as the
+    /// when splitting is possible at all, matching when it actually behaves as the
     /// default (and when its "Default for new merchants" subtitle shows);
     /// otherwise it just sorts into the normal list like any other template.
     private var pinnedDefaultName: String? {
-        guard splitwiseAuth.isAuthenticated else { return nil }
-        return config.templates.first(where: { $0.value.isSplitwiseDefault })?.key
+        guard SplitAvailability.canSplit else { return nil }
+        return config.templates.first(where: { $0.value.isSplitDefault })?.key
     }
 
     private var otherTemplateNames: [String] {
@@ -36,6 +36,10 @@ struct TemplatesView: View {
     }
 
     var body: some View {
+        deleteConfirmation(list)
+    }
+
+    private var list: some View {
         List {
             Section {
                 NavigationLink {
@@ -84,7 +88,7 @@ struct TemplatesView: View {
             TemplateRow(
                 name: name,
                 template: config.templates[name] ?? WalletTransactionConfig.Template(),
-                splitwiseConnected: splitwiseAuth.isAuthenticated
+                canSplit: SplitAvailability.canSplit
             )
         }
         .transition(.contentRow)
@@ -96,17 +100,23 @@ struct TemplatesView: View {
             }
             .tint(.red)
         }
-        // Attached to the row itself, not the swipe button: on iOS 26 a dialog
-        // anchored to a control inside `.swipeActions` animates wrong, since
-        // that control is torn down as the swipe closes.
-        .confirmationDialog(
-            "Delete \"\(name)\"?",
+    }
+
+    /// One dialog for the list, not one per row: inside `templateLink` it
+    /// built a modifier and a binding for every template on screen. Attached
+    /// here rather than to the swipe button because on iOS 26 a dialog
+    /// anchored to a control inside `.swipeActions` animates wrong, that
+    /// control being torn down as the swipe closes.
+    private func deleteConfirmation<Content: View>(_ content: Content) -> some View {
+        content.confirmationDialog(
+            "Delete \"\(pendingDeletion ?? "")\"?",
             isPresented: Binding(
-                get: { pendingDeletion == name },
+                get: { pendingDeletion != nil },
                 set: { if !$0 { pendingDeletion = nil } }
             ),
-            titleVisibility: .visible
-        ) {
+            titleVisibility: .visible,
+            presenting: pendingDeletion
+        ) { name in
             Button("Delete", role: .destructive) {
                 // Deferred a tick so the dialog finishes dismissing on its own
                 // before the row-removal animation starts — doing both in the
@@ -115,7 +125,7 @@ struct TemplatesView: View {
                     withAnimation { deleteTemplate(name) }
                 }
             }
-        } message: {
+        } message: { _ in
             Text("Any merchants matched to this template will need a new one assigned.")
         }
     }
@@ -167,7 +177,7 @@ private struct CardsMappingRow: View {
 private struct TemplateRow: View {
     let name: String
     let template: WalletTransactionConfig.Template
-    let splitwiseConnected: Bool
+    let canSplit: Bool
 
     var body: some View {
         HStack {
@@ -184,20 +194,20 @@ private struct TemplateRow: View {
 
     private var subtitle: String {
         var parts: [String] = []
-        // Only meaningful once Splitwise is connected — it's the template new
-        // Splitwise merchants get auto-filed under.
-        if splitwiseConnected, template.isSplitwiseDefault {
+        // Only meaningful once splitting is possible — it's the template new
+        // split merchants get auto-filed under.
+        if canSplit, template.isSplitDefault {
             parts.append(String(localized: "Default"))
         }
         parts.append(String(localized: "\(template.autoMatch.count) rules"))
-        if splitwiseConnected, template.splitwiseOption != .never {
-            parts.append(template.splitwiseOption.label)
+        if canSplit, template.splitOption != .never {
+            parts.append(template.splitOption.label)
         }
         return parts.joined(separator: " · ")
     }
 }
 
-extension SplitwiseTemplateOption {
+extension SplitTemplateOption {
     /// Plain-text label for use in Relay's own SwiftUI screens, derived
     /// from `caseDisplayRepresentations` (the Shortcuts/Siri-facing
     /// strings) so the wording is only defined in one place.

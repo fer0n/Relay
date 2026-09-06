@@ -142,8 +142,8 @@ nonisolated enum TransactionDraftGuard {
     static func askSplitChoice(
         draftId: UUID?,
         context: TransactionDraft.PendingSplitContext,
-        ask: () async throws -> SplitwiseSplitOption
-    ) async rethrows -> SplitwiseSplitOption {
+        ask: () async throws -> SplitOption
+    ) async rethrows -> SplitOption {
         guard let draftId else { return try await ask() }
         armSplitChoice(draftId, context: context)
         let choice = try await withHeartbeat(draftId, ask: ask)

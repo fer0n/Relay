@@ -18,7 +18,7 @@ struct BucketImportFile: Codable {
     struct Bucket: Codable {
         var category: String?
         var autoMatch: [AutoMatch] = []
-        var splitwise: SplitwiseTemplateOption = .never
+        var split: SplitTemplateOption = .never
     }
 
     struct Merchant: Codable {

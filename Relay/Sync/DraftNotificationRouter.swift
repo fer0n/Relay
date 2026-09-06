@@ -27,7 +27,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     /// From a wallet success notification — opens that transaction's detail view.
     var pendingHistoryEntryID: UUID?
     /// Set by ImportSplitwiseFileIntent right after it stages a parsed import.
-    var pendingSplitwiseImport = false
+    var pendingSplitImport = false
     /// Set by `.onOpenURL` for a shared statement file. Carries the file itself,
     /// since nothing stages it until a destination is picked.
     var pendingSharedFile: SharedStatementFile?
@@ -138,7 +138,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
             break
         }
 
-        let splitAction: SplitwiseSplitOption
+        let splitAction: SplitOption
         switch actionIdentifier {
         case WalletSplitNotification.equallyAction:
             splitAction = .always

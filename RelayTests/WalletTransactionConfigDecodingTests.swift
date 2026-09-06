@@ -3,7 +3,7 @@
 //  RelayTests
 //
 //  Regression coverage for the data-loss bug where adding a new non-optional
-//  stored property (`isSplitwiseDefault`) to WalletTransactionConfig.Template
+//  stored property (`isSplitDefault`) to WalletTransactionConfig.Template
 //  made every config written by an older build fail to decode — the
 //  compiler-synthesized decoder throws `keyNotFound` for a missing key rather
 //  than using the property's default value, and one failed Template decode
@@ -17,8 +17,10 @@ import Testing
 
 @MainActor
 struct WalletTransactionConfigDecodingTests {
-    /// A config exactly as an older build (before `isSplitwiseDefault`
-    /// existed) would have written it — no `isSplitwiseDefault` key anywhere.
+    /// A config exactly as an older build would have written it: no
+    /// `isSplitwiseDefault` key anywhere, and a Splitwise friend as the
+    /// template's split target. Both the missing key and the now-unreadable
+    /// target have to leave the rest of the config intact.
     private static let legacyJSON = """
     {
       "merchants": {
@@ -38,7 +40,7 @@ struct WalletTransactionConfigDecodingTests {
     """
 
     @Test
-    func decodesConfigWrittenBeforeIsSplitwiseDefaultExisted() throws {
+    func decodesConfigWrittenBeforeIsSplitDefaultExisted() throws {
         let config = try JSONDecoder().decode(WalletTransactionConfig.self, from: Data(Self.legacyJSON.utf8))
 
         // The whole point: a missing new key must not wipe existing data.
@@ -47,36 +49,40 @@ struct WalletTransactionConfigDecodingTests {
         #expect(config.cards["Visa"] == "acct-1")
 
         let template = try #require(config.templates["Groceries"])
-        #expect(template.isSplitwiseDefault == false)
-        #expect(template.splitwiseOption == .ask)
+        #expect(template.isSplitDefault == false)
+        #expect(template.splitOption == .ask)
         #expect(template.autoMatch == [.init(pattern: "REWE.*", payeeName: "Rewe")])
-        #expect(template.splitwiseTarget?.id == 42)
-        #expect(template.splitwiseTarget?.fullName == "Sam Rivera")
+        // The Splitwise target is deliberately *not* carried over: it named a
+        // Splitwise friend by integer id, which nothing can resolve now. The
+        // template itself survives — its category, rules and split option are
+        // what took months to build up — and the user re-picks who to split
+        // with. See SplitwiseRemovalMigration.
+        #expect(template.splitTarget == nil)
     }
 
     @Test
-    func ensureSplitwiseDefaultTemplateCreatesAskTemplateAndIsIdempotent() {
+    func ensureSplitDefaultTemplateCreatesAskTemplateAndIsIdempotent() {
         var config = WalletTransactionConfig()
 
-        let name = config.ensureSplitwiseDefaultTemplate()
-        #expect(config.templates[name]?.isSplitwiseDefault == true)
-        #expect(config.templates[name]?.splitwiseOption == .ask)
+        let name = config.ensureSplitDefaultTemplate()
+        #expect(config.templates[name]?.isSplitDefault == true)
+        #expect(config.templates[name]?.splitOption == .ask)
 
         // A second call returns the same template rather than adding another.
-        let again = config.ensureSplitwiseDefaultTemplate()
+        let again = config.ensureSplitDefaultTemplate()
         #expect(again == name)
         #expect(config.templates.count == 1)
     }
 
     @Test
-    func isSplitwiseDefaultSurvivesEncodeDecodeRoundTrip() throws {
+    func isSplitDefaultSurvivesEncodeDecodeRoundTrip() throws {
         var config = WalletTransactionConfig()
-        _ = config.ensureSplitwiseDefaultTemplate()
+        _ = config.ensureSplitDefaultTemplate()
 
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(WalletTransactionConfig.self, from: data)
 
-        #expect(decoded.templates.values.filter(\.isSplitwiseDefault).count == 1)
+        #expect(decoded.templates.values.filter(\.isSplitDefault).count == 1)
     }
 
     /// The same tolerant-decoder guard applied to the top-level config: a
@@ -89,7 +95,7 @@ struct WalletTransactionConfigDecodingTests {
         let json = """
         {
           "templates": {
-            "Groceries": { "autoMatch": [], "splitwiseOption": "never" }
+            "Groceries": { "autoMatch": [], "splitOption": "never" }
           }
         }
         """

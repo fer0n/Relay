@@ -45,15 +45,15 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
 
     /// Only used when the resolved template's Splitwise option is "Ask Each Time".
     @Parameter(title: "Split Transaction?")
-    var splitwiseRuntimeChoice: SplitwiseSplitOption?
+    var splitRuntimeChoice: SplitOption?
 
     /// Unset falls back to the template's cached friend, then the app-wide
     /// default; with neither, the split is parked as a draft.
     @Parameter(title: "Split With")
-    var splitwiseFriend: SplitwiseSplitTargetEntity?
+    var splitTarget: SplitTargetEntity?
 
     @Parameter(title: "Your Share")
-    var splitwiseOwnShare: Double?
+    var splitOwnShare: Double?
 
     /// Lets the same purchase arriving from two automations be recognised. Blank
     /// means "wallet", keeping older automations working. Two runs sharing a
@@ -80,9 +80,9 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$amount) at \(\.$merchant) with \(\.$card) to YNAB") {
             \.$templateChoice
-            \.$splitwiseRuntimeChoice
-            \.$splitwiseFriend
-            \.$splitwiseOwnShare
+            \.$splitRuntimeChoice
+            \.$splitTarget
+            \.$splitOwnShare
             \.$source
             \.$requireConfirmation
             \.$ensureCompletion
@@ -172,7 +172,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
         }
 
         // The draft the safety-net reminder currently guards — swapped for a
-        // .splitwiseWallet one once YNAB is committed below, so the catch
+        // .ledgerWallet one once YNAB is committed below, so the catch
         // handler always fails whichever half is still outstanding.
         let activeDraftId = ensureCompletion
             ? TransactionDraftGuard.begin(.ynabWallet(merchant: merchant, amount: amount, card: card))
@@ -204,7 +204,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             // once and can't create a duplicate transaction on restart.
             let payeeName: String
             let categoryId: String?
-            let splitwiseOption: SplitwiseTemplateOption
+            let splitOption: SplitTemplateOption
             let templateFriend: WalletTransactionConfig.CachedSplitTarget?
 
             if let info = config.resolvedMerchantInfo(for: merchant) {
@@ -216,8 +216,8 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 let template = config.templates[info.templateName]
                 payeeName = info.payeeName
                 categoryId = template?.categoryId
-                splitwiseOption = template?.splitwiseOption ?? .never
-                templateFriend = template?.splitwiseTarget
+                splitOption = template?.splitOption ?? .never
+                templateFriend = template?.splitTarget
             } else {
                 let resolvedTemplateChoice: String
                 if let templateChoice {
@@ -258,8 +258,8 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 }
                 payeeName = merchant
                 categoryId = template.categoryId
-                splitwiseOption = template.splitwiseOption
-                templateFriend = template.splitwiseTarget
+                splitOption = template.splitOption
+                templateFriend = template.splitTarget
             }
 
             let accountId: String
@@ -334,8 +334,8 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
 
             // A template can carry a non-.never option from before Splitwise was
             // disconnected; don't ask for a friend/share that can only fail.
-            let effectiveSplitwiseOption = SplitwiseAuthService.currentAccessToken != nil ? splitwiseOption : .never
-            guard effectiveSplitwiseOption != .never else {
+            let effectiveSplitOption = SplitAvailability.hasKnownSharedLedger ? splitOption : .never
+            guard effectiveSplitOption != .never else {
                 if let activeDraftId {
                     TransactionDraftGuard.complete(activeDraftId)
                 }
@@ -359,34 +359,34 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
 
             // Resolved up front so it's on hand both for the split-choice
             // notification and for a background completion.
-            let resolvedFriend: SplitwiseSplitTargetEntity? = splitwiseFriend
-                ?? templateFriend.map { SplitwiseSplitTargetEntity(cachedTarget: $0) }
-                ?? SplitwiseDefaultFriendStore.load().map { SplitwiseSplitTargetEntity(defaultFriend: $0) }
+            let resolvedFriend: SplitTargetEntity? = splitTarget
+                ?? templateFriend.map { SplitTargetEntity(cachedTarget: $0) }
+                ?? DefaultSplitTargetStore.load().map { SplitTargetEntity(cachedTarget: $0) }
 
             // Repoints the SAME draft — and so the same notification slot — at
             // the remaining split, rather than completing one and beginning
             // another: a single run must never leave two reminders able to fire.
             if let activeDraftId {
-                TransactionDraftGuard.transition(activeDraftId, to: .splitwiseWallet(merchant: merchant, amount: amount))
+                TransactionDraftGuard.transition(activeDraftId, to: .ledgerWallet(merchant: merchant, amount: amount))
             }
 
-            let splitwiseAction: SplitwiseSplitOption
-            switch effectiveSplitwiseOption {
+            let splitAction: SplitOption
+            switch effectiveSplitOption {
             case .never:
-                splitwiseAction = .never // unreachable — guarded above
+                splitAction = .never // unreachable — guarded above
             case .always:
-                splitwiseAction = .always
+                splitAction = .always
             case .manual:
-                splitwiseAction = .manual
+                splitAction = .manual
             case .ask:
-                if let splitwiseRuntimeChoice {
-                    splitwiseAction = splitwiseRuntimeChoice
+                if let splitRuntimeChoice {
+                    splitAction = splitRuntimeChoice
                 } else {
-                    logger.log("splitwiseOption=ask — requesting runtime choice")
+                    logger.log("splitOption=ask — requesting runtime choice")
                     // With YNAB already committed, an interruption here can be
                     // answered straight from the reminder, so arm its split
                     // actions for the duration of the question.
-                    splitwiseAction = try await TransactionDraftGuard.askSplitChoice(
+                    splitAction = try await TransactionDraftGuard.askSplitChoice(
                         draftId: activeDraftId,
                         context: TransactionDraft.PendingSplitContext(
                             description: payeeName,
@@ -396,17 +396,17 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                         let splitDescription = payeeName.trimmingCharacters(in: .whitespacesAndNewlines)
                         let prompt: String
                         if splitDescription.isEmpty {
-                            prompt = String(localized: "Split this transaction with Splitwise?")
+                            prompt = String(localized: "Split this transaction?")
                         } else {
-                            prompt = String(format: String(localized: "Split this %@ transaction with Splitwise?"), splitDescription)
+                            prompt = String(format: String(localized: "Split this %@ transaction?"), splitDescription)
                         }
-                        return try await $splitwiseRuntimeChoice.requestValue(IntentDialog(stringLiteral: prompt))
+                        return try await $splitRuntimeChoice.requestValue(IntentDialog(stringLiteral: prompt))
                     }
                     touchDraft()
                 }
             }
 
-            guard splitwiseAction != .never else {
+            guard splitAction != .never else {
                 if let activeDraftId {
                     TransactionDraftGuard.complete(activeDraftId)
                 }
@@ -429,17 +429,17 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             }
 
             guard let friend = resolvedFriend else {
-                logger.log("splitwiseAction=\(splitwiseAction.rawValue, privacy: .public) but no friend available")
+                logger.log("splitAction=\(splitAction.rawValue, privacy: .public) but no friend available")
                 if let activeDraftId {
                     await TransactionDraftGuard.fail(activeDraftId)
-                    return .result(dialog: "\(dialog) – no Splitwise friend set, sent a reminder to finish the split in Relay.")
+                    return .result(dialog: "\(dialog) – nobody set to split with, sent a reminder to finish the split in Relay.")
                 }
-                return .result(dialog: "\(dialog) – no default Splitwise friend set, pick one in Relay or set \"Split With\" for this automation.")
+                return .result(dialog: "\(dialog) – no default split target set, pick one in Relay or set \"Split With\" for this automation.")
             }
 
-            var resolvedOwnShare: Double? = splitwiseOwnShare
-            if splitwiseAction == .manual, resolvedOwnShare == nil {
-                logger.log("splitwiseAction=manual — requesting own share")
+            var resolvedOwnShare: Double? = splitOwnShare
+            if splitAction == .manual, resolvedOwnShare == nil {
+                logger.log("splitAction=manual — requesting own share")
                 let prompt = String(
                     format: String(localized: "Your share of the %@ expense at %@, split with %@?"),
                     formattedAmount,
@@ -447,16 +447,16 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                     friend.firstName
                 )
                 resolvedOwnShare = try await TransactionDraftGuard.withHeartbeat(activeDraftId) {
-                    try await $splitwiseOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
+                    try await $splitOwnShare.requestValue(IntentDialog(stringLiteral: prompt))
                 }
             }
-            if splitwiseAction == .manual, let resolvedOwnShare {
-                try SplitwiseExpenseHelper.validateOwnShare(resolvedOwnShare, amount: amount)
+            if splitAction == .manual, let resolvedOwnShare {
+                try SplitExpenseService.validateOwnShare(resolvedOwnShare, amount: amount)
             }
 
-            let ownShare = (splitwiseAction == .manual) ? resolvedOwnShare : nil
+            let ownShare = (splitAction == .manual) ? resolvedOwnShare : nil
             let split = await WalletAutomationDialog.splitDialogFragment(amount: amount, description: payeeName, friend: friend, ownShare: ownShare, groupId: walletGroupId, merchant: merchant)
-            logger.log("Splitwise split result: \(split.fragment, privacy: .public)")
+            logger.log("split result: \(split.fragment, privacy: .public)")
             dialog += split.fragment
 
             if let activeDraftId {

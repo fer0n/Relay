@@ -3,7 +3,7 @@
 //  Relay
 //
 //  Create/edit form for one WalletTransactionConfig.Template, which can carry a
-//  YNAB category, a Splitwise split option/friend, or both — each provider's
+//  YNAB category, a split option/target, or both — each provider's
 //  fields hidden when that provider isn't connected.
 //
 
@@ -17,7 +17,7 @@ private let logger = Logger(subsystem: Const.loggerSubsystem, category: "Templat
 private struct TemplateDraft: Equatable {
     var name: String
     var categoryId: String?
-    var splitwiseOption: SplitwiseTemplateOption
+    var splitOption: SplitTemplateOption
     var target: WalletTransactionConfig.CachedSplitTarget?
     var autoMatchRules: [WalletTransactionConfig.AutoMatchRule]
     var linkedMerchants: [LinkedMerchant]
@@ -32,7 +32,6 @@ struct TemplateEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var ynabAuth = YNABAuthService()
-    @State private var splitwiseAuth = SplitwiseAuthService()
 
     @State private var name: String
 
@@ -40,10 +39,11 @@ struct TemplateEditView: View {
     @State private var selectedCategoryId: String?
     @State private var isLoadingCategories = false
 
-    @State private var friends: [SplitwiseFriend] = []
-    @State private var groups: [SplitwiseGroup] = []
+    @State private var ledgerStore = LedgerStore.shared
+
+    private var availableLedgers: [Ledger] { ledgerStore.sharedLedgers }
     @State private var selectedTarget: WalletTransactionConfig.CachedSplitTarget?
-    @State private var splitwiseOption: SplitwiseTemplateOption
+    @State private var splitOption: SplitTemplateOption
     @State private var isLoadingFriends = false
 
     @State private var autoMatchRules: [WalletTransactionConfig.AutoMatchRule]
@@ -55,7 +55,7 @@ struct TemplateEditView: View {
 
     /// Leaving this template's friend unset means "use the app-wide default", not
     /// "split with no one", so the picker names it rather than showing "None".
-    private let defaultFriend: SplitwiseDefaultFriend?
+    private let defaultTarget: WalletTransactionConfig.CachedSplitTarget?
 
     /// Compared against `currentDraft` so the Save bar only appears once something
     /// has actually been edited.
@@ -69,9 +69,9 @@ struct TemplateEditView: View {
         let existing = templateName.flatMap { config.templates[$0] }
         _name = State(initialValue: templateName ?? "")
         _selectedCategoryId = State(initialValue: existing?.categoryId)
-        _splitwiseOption = State(initialValue: existing?.splitwiseOption ?? .never)
-        _selectedTarget = State(initialValue: existing?.splitwiseTarget)
-        defaultFriend = SplitwiseDefaultFriendStore.load()
+        _splitOption = State(initialValue: existing?.splitOption ?? .never)
+        _selectedTarget = State(initialValue: existing?.splitTarget)
+        defaultTarget = DefaultSplitTargetStore.load()
         _autoMatchRules = State(initialValue: existing?.autoMatch ?? [])
         let linkedMerchants = config.merchants
             .filter { $0.value.templateName == templateName }
@@ -85,8 +85,8 @@ struct TemplateEditView: View {
         originalDraft = TemplateDraft(
             name: templateName ?? "",
             categoryId: existing?.categoryId,
-            splitwiseOption: existing?.splitwiseOption ?? .never,
-            target: existing?.splitwiseTarget,
+            splitOption: existing?.splitOption ?? .never,
+            target: existing?.splitTarget,
             autoMatchRules: existing?.autoMatch ?? [],
             linkedMerchants: linkedMerchants
         )
@@ -98,7 +98,7 @@ struct TemplateEditView: View {
         TemplateDraft(
             name: name.trimmingCharacters(in: .whitespaces),
             categoryId: selectedCategoryId,
-            splitwiseOption: splitwiseOption,
+            splitOption: splitOption,
             target: selectedTarget,
             autoMatchRules: autoMatchRules.filter { !$0.pattern.isEmpty && !$0.payeeName.isEmpty },
             linkedMerchants: linkedMerchants.map {
@@ -140,29 +140,31 @@ private var hasChanges: Bool {
             }
             .cardRowBackground()
 
-            if splitwiseAuth.isAuthenticated {
+            // Either backend is reason to show this section — a template is
+            // still worth a split setting when a ledger
+            // is all that's left.
+            if !availableLedgers.isEmpty {
                 Section {
-                    SplitwiseOptionRow(
+                    SplitOptionRow(
                         title: "Split Option",
                         isResolved: false,
                         resolvedOption: .never,
-                        newOption: $splitwiseOption
+                        newOption: $splitOption
                     )
-                    SplitwiseTargetPickerRow(
+                    SplitTargetPickerRow(
                         isLoading: isLoadingFriends,
-                        friends: friends,
-                        groups: groups,
+                        ledgers: availableLedgers,
                         target: $selectedTarget,
-                        noneLabel: defaultFriend.map { "Default (\($0.firstName))" } ?? "None"
+                        noneLabel: defaultTarget.map { "Default (\($0.firstName))" } ?? "None"
                     )
                 } header: {
-                    Text("Splitwise")
+                    Text("Split")
                 } footer: {
-                    if defaultFriend != nil {
-                        Text("\"Split With\" is optional — if it's left as Default, the app-wide default Splitwise friend (set in Settings) is used when a matching transaction needs to split.")
+                    if defaultTarget != nil {
+                        Text("\"Split With\" is optional — if it's left as Default, the app-wide default (set in Settings) is used when a matching transaction needs to split.")
                             .footerText()
                     } else {
-                        Text("\"Split With\" is optional — if it's left as None, you'll be asked to pick a friend the first time a matching transaction needs to split.")
+                        Text("\"Split With\" is optional — if it's left as None, you'll be asked to pick someone the first time a matching transaction needs to split.")
                             .footerText()
                     }
                 }
@@ -207,6 +209,7 @@ private var hasChanges: Bool {
         .task {
             await loadCategories()
             await loadFriends()
+            await ledgerStore.refresh(force: false)
         }
         .confirmationDialog(
             "Delete this template?",
@@ -237,29 +240,9 @@ private var hasChanges: Bool {
     }
 
     private func loadFriends() async {
-        guard splitwiseAuth.isAuthenticated, let token = SplitwiseAuthService.currentAccessToken else { return }
-        if let cached = SplitwiseFriendCacheStore.load() {
-            friends = SplitwiseFriendUsageStore.sorted(cached)
-        }
-        if let cached = SplitwiseGroupCacheStore.load() {
-            groups = cached
-        }
-        isLoadingFriends = friends.isEmpty && groups.isEmpty
+        isLoadingFriends = availableLedgers.isEmpty
         defer { isLoadingFriends = false }
-        if SplitwiseFriendCacheStore.isStale {
-            do {
-                friends = SplitwiseFriendUsageStore.sorted(try await SplitwiseFriendCacheStore.fetch(token: token))
-            } catch {
-                logger.error("failed to load friends: \(String(describing: error), privacy: .public)")
-            }
-        }
-        if SplitwiseGroupCacheStore.isStale {
-            do {
-                groups = try await SplitwiseGroupCacheStore.fetch(token: token)
-            } catch {
-                logger.error("failed to load groups: \(String(describing: error), privacy: .public)")
-            }
-        }
+        await ledgerStore.refresh(force: false)
     }
 
     private func save() {
@@ -274,23 +257,23 @@ private var hasChanges: Bool {
 
         let cleanedRules = autoMatchRules.filter { !$0.pattern.isEmpty && !$0.payeeName.isEmpty }
 
-        // The picker hands over the names as well as the id, so nothing here
-        // has to survive the friend list changing under it.
-        let resolvedFriend = selectedTarget
+        // The picker hands over the names as well as the ids, so nothing here
+        // has to survive the ledger's participant list changing under it.
+        let resolvedTarget = selectedTarget
 
         // save() rebuilds the template from the form's fields, which don't include
-        // the "default Splitwise template" flag, so carry it across by hand.
-        let wasSplitwiseDefault = templateName.flatMap { config.templates[$0]?.isSplitwiseDefault } ?? false
+        // the "default split template" flag, so carry it across by hand.
+        let wasSplitDefault = templateName.flatMap { config.templates[$0]?.isSplitDefault } ?? false
 
         let template = WalletTransactionConfig.Template(
             categoryId: selectedCategoryId,
-            isSplitwiseDefault: wasSplitwiseDefault,
+            isSplitDefault: wasSplitDefault,
             autoMatch: cleanedRules,
-            splitwiseOption: splitwiseOption,
-            splitwiseFriendId: resolvedFriend?.id,
-            splitwiseFriendFirstName: resolvedFriend?.firstName,
-            splitwiseFriendFullName: resolvedFriend?.fullName,
-            splitwiseTargetIsGroup: resolvedFriend?.isGroup ?? false
+            splitOption: splitOption,
+            ledgerZoneName: resolvedTarget?.zoneName,
+            ledgerParticipantID: resolvedTarget?.participantID,
+            splitTargetFirstName: resolvedTarget?.firstName,
+            splitTargetFullName: resolvedTarget?.fullName
         )
 
         if let templateName {
@@ -386,10 +369,10 @@ extension TemplateEditView {
         self.templateName = nil
         self.onSave = { _ in }
         self.onDelete = {}
-        defaultFriend = nil
+        defaultTarget = nil
         _name = State(initialValue: "Groceries")
         _selectedCategoryId = State(initialValue: nil)
-        _splitwiseOption = State(initialValue: .never)
+        _splitOption = State(initialValue: .never)
         _selectedTarget = State(initialValue: nil)
         _autoMatchRules = State(initialValue: previewAutoMatchRules)
         _linkedMerchants = State(initialValue: [])
@@ -397,7 +380,7 @@ extension TemplateEditView {
         originalDraft = TemplateDraft(
             name: "Groceries",
             categoryId: nil,
-            splitwiseOption: .never,
+            splitOption: .never,
             target: nil,
             autoMatchRules: previewAutoMatchRules,
             linkedMerchants: []

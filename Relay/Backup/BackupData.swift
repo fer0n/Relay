@@ -29,7 +29,7 @@
 
 import Foundation
 
-struct BackupData: Codable {
+nonisolated struct BackupData: Codable {
     /// Bumped when the schema changes in a way older builds can't read.
     /// Its *presence* is also the discriminator that lets import tell a full
     /// backup apart from a bare template export or the legacy bucket file:
@@ -42,11 +42,22 @@ struct BackupData: Codable {
 
     var walletTransactionConfig: WalletTransactionConfig?
     var fileImportConfig: FileImportConfig?
-    var splitwiseDefaultFriend: SplitwiseDefaultFriend?
     var notificationsEnabled: Bool?
     var ynabCategoryUsage: YNABCategoryUsage?
-    var splitwiseFriendUsage: SplitwiseFriendUsage?
+    var ledgerParticipantUsage: LedgerParticipantUsage?
     var fileImportHistory: FileImportHistory?
 
-    static let currentVersion = 1
+    /// Read-only: a copy of the ledgers and their expenses, with per-ledger
+    /// totals and a checksum to check it against. Restore never writes it
+    /// back — the CloudKit share can only be re-established from iCloud, so
+    /// importing a copy would create a second, unshared list rather than
+    /// rejoining the real one.
+    var ledgers: LedgerBackup?
+    var createdAt: Date?
+    var deviceName: String?
+
+    /// Bumped to 2 when the Splitwise sections (`splitwiseDefaultFriend`,
+    /// `splitTargetUsage`) were dropped, and to 3 for the ledger copy above.
+    /// Older backups still restore everything else.
+    static let currentVersion = 3
 }

@@ -21,12 +21,12 @@ struct RelayShortcuts: AppShortcutsProvider {
             systemImageName: "plus.circle"
         )
         AppShortcut(
-            intent: AddSplitwiseExpenseIntent(),
+            intent: AddLedgerExpenseIntent(),
             phrases: [
-                "Add a Splitwise expense in \(.applicationName)",
+                "Add a shared expense in \(.applicationName)",
                 "Split an expense in \(.applicationName)",
             ],
-            shortTitle: "Add Splitwise Expense",
+            shortTitle: "Add Shared Expense",
             systemImageName: "person.2.circle"
         )
         AppShortcut(
@@ -39,12 +39,12 @@ struct RelayShortcuts: AppShortcutsProvider {
             systemImageName: "doc.badge.plus"
         )
         AppShortcut(
-            intent: ImportSplitwiseFileIntent(),
+            intent: ImportLedgerFileIntent(),
             phrases: [
-                "Import a file to Splitwise in \(.applicationName)",
-                "Import a statement to Splitwise in \(.applicationName)",
+                "Import a file to split in \(.applicationName)",
+                "Import a statement to split in \(.applicationName)",
             ],
-            shortTitle: "Import File to Splitwise",
+            shortTitle: "Import File to Split",
             systemImageName: "doc.badge.plus"
         )
         // ImportTemplateFileIntent is intentionally *not* promoted as an App

@@ -27,10 +27,6 @@ nonisolated enum WalletTransactionConfigStore {
             config = WalletTransactionConfig()
         }
 
-        if let migrated = LegacySplitwiseConfigMigration.mergeIfNeeded(into: config) {
-            config = migrated
-            try? save(config)
-        }
         return config
     }
 

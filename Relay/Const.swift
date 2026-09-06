@@ -47,6 +47,9 @@ nonisolated struct Const {
         static let person = "person.fill"
         /// The Splitwise activity feed.
         static let activity = "bell.fill"
+        /// A shared expense list in iCloud. Not `friends`, which already names
+        /// the Splitwise balances row one line above it on the same screen.
+        static let ledger = "list.bullet.rectangle.fill"
         /// Operations waiting to reach YNAB/Splitwise.
         static let pending = "arrow.triangle.2.circlepath"
         static let fileImport = "doc.badge.plus"

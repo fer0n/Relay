@@ -41,6 +41,20 @@
 			</array>
 		</dict>
 	</array>
+	<key>CKSharingSupported</key>
+	<true/>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.octabits.relay</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Relay</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>
@@ -51,6 +65,10 @@
 			<key>UIApplicationShortcutItemType</key>
 			<string>com.octabits.relay.newTransaction</string>
 		</dict>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>

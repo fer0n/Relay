@@ -25,11 +25,12 @@ struct TransactionDetailView: View {
         case draft(id: UUID)
         case history(TransactionHistoryEntry)
         case pending(PendingOperation)
-        case splitwiseExpense(
-            SplitwiseExpense,
-            friendName: String,
-            onSave: (SplitwiseExpenseUpdateRequest) async throws -> Void,
-            onDelete: () async throws -> Void
+        /// A live ledger expense — the only source that edits and saves back.
+        case ledgerExpense(
+            LedgerExpense,
+            ledger: Ledger,
+            onSave: (LedgerExpense) async throws -> Void,
+            onDelete: () async -> Void
         )
     }
 
@@ -43,8 +44,8 @@ struct TransactionDetailView: View {
             HistoryDetailContent(entry: entry)
         case .pending(let operation):
             PendingDetailContent(operation: operation)
-        case .splitwiseExpense(let expense, let friendName, let onSave, let onDelete):
-            SplitwiseExpenseDetailView(expense: expense, friendName: friendName, onSave: onSave, onDelete: onDelete)
+        case .ledgerExpense(let expense, let ledger, let onSave, let onDelete):
+            LedgerExpenseDetailView(expense: expense, ledger: ledger, onSave: onSave, onDelete: onDelete)
         }
     }
 }
@@ -100,9 +101,9 @@ struct TransactionDetailContent<Sections: View>: View {
     /// interval coarsens with age so an open sheet doesn't re-invalidate the view
     /// graph every second for a day-old transaction.
     let date: Date
-    /// An icon + text line above the timestamp — e.g. Splitwise's "Paid by".
+    /// An icon + text line above the timestamp — e.g. an expense's "Paid by".
     var detailLine: (icon: String, text: String)? = nil
-    /// "Discard" for a not-yet-sent operation, "Delete" for a live Splitwise
+    /// "Discard" for a not-yet-sent operation, "Delete" for a live ledger
     /// expense. Only meaningful when `onDestroy` is set.
     var destroyLabel: LocalizedStringKey = "Discard"
     var destroyConfirmationTitle: LocalizedStringKey = "Discard this transaction?"
@@ -215,7 +216,7 @@ private struct HistoryDetailContent: View {
             detailLine: merchantDetailLine,
             destroyLabel: "Delete",
             destroyConfirmationTitle: "Delete this transaction?",
-            destroyConfirmationMessage: "This will only delete locally, YNAB/Splitwise are unaffected.",
+            destroyConfirmationMessage: "This will only delete locally, YNAB and the ledger are unaffected.",
             onDestroy: delete
         ) {
             Section {
@@ -227,7 +228,7 @@ private struct HistoryDetailContent: View {
                 // Description and payee are the same value at creation time, but
                 // this field edits the merchant's *go-forward* mapping rather
                 // than the frozen entry.
-                if entry.service == .splitwise, let info = linkedInfo {
+                if entry.service == .ledger, let info = linkedInfo {
                     DraftDetailRow(icon: Const.Symbol.template, title: "Template", isEditable: false) {
                         Text(info.templateName)
                     }

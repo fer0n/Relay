@@ -2,9 +2,10 @@
 //  TransactionService.swift
 //  Relay
 //
-//  The two external services Relay writes transactions to — shared by
-//  PendingOperation, TransactionDraft, and TransactionHistoryEntry so their
-//  list rows can all use the same TransactionSummaryRow.
+//  The two places Relay writes a transaction to — YNAB, and a shared iCloud
+//  ledger. Shared by PendingOperation, TransactionDraft, and
+//  TransactionHistoryEntry so their list rows can all use the same
+//  TransactionSummaryRow.
 //
 
 import Foundation
@@ -16,29 +17,34 @@ import SwiftUI
 /// raw values are free to be whatever reads best on disk.
 nonisolated enum TransactionService: String, Codable {
     case ynab
-    case splitwise
+    /// A shared iCloud ledger — see `Relay/Ledger/`. Replaced a `splitwise`
+    /// case; a claim file still containing that raw value fails to decode,
+    /// which SplitwiseRemovalMigration clears rather than leaving to fail on
+    /// every launch.
+    case ledger
 
     var displayName: String {
         switch self {
         case .ynab: "YNAB"
-        case .splitwise: "Splitwise"
+        case .ledger: "Ledger"
         }
     }
 
     var systemImage: String {
         switch self {
         case .ynab: "banknote.fill"
-        case .splitwise: "person.2.fill"
+        case .ledger: Const.Symbol.ledger
         }
     }
 
-    /// YNAB's title field is the payee; Splitwise's is a free-text
+    /// YNAB's title field is the payee; a split's is a free-text
     /// description — shared by every detail row that shows a transaction's
     /// title (TransactionDetailView's history/pending content).
     var titleFieldLabel: LocalizedStringKey {
         switch self {
         case .ynab: "Payee"
-        case .splitwise: "Description"
+        case .ledger: "Description"
         }
     }
+
 }

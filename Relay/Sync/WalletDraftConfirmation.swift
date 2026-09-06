@@ -33,8 +33,8 @@ case completed(title: String, dialog: String)
         switch draft.payload {
         case .ynabWallet(let merchant, let amount, let card):
             await confirmYNAB(draft: draft, merchant: merchant, amount: amount, card: card)
-        case .splitwiseWallet(let merchant, let amount, _):
-            await confirmSplitwise(draft: draft, merchant: merchant, amount: amount)
+        case .ledgerWallet(let merchant, let amount, _):
+            await confirmSplit(draft: draft, merchant: merchant, amount: amount)
         }
     }
 
@@ -60,7 +60,7 @@ case completed(title: String, dialog: String)
         let template = config.templates[info.templateName]
         // A template can carry a split setting from before Splitwise was
         // disconnected — same treatment as the intents give it.
-        let splitOption = SplitwiseAuthService.currentAccessToken != nil ? (template?.splitwiseOption ?? .never) : .never
+        let splitOption = await SplitAvailability.canSplit ? (template?.splitOption ?? .never) : .never
         let friend = WalletAutomationDialog.friendWithoutAsking(template: template)
 
         // A lone YNAB transaction needs no group id to hang a split off.
@@ -134,13 +134,13 @@ case completed(title: String, dialog: String)
         return .completed(title: content.title, dialog: content.body)
     }
 
-    // MARK: - Splitwise
+    // MARK: - Split
 
     /// Here the split *is* the transaction, so "Add" can only finish on its own
     /// when the template already says how to split and with whom.
-    private static func confirmSplitwise(draft: TransactionDraft, merchant: String, amount: Double) async -> Result {
-        guard SplitwiseAuthService.currentAccessToken != nil else {
-            logger.error("confirm: no Splitwise access token — needs app")
+    private static func confirmSplit(draft: TransactionDraft, merchant: String, amount: Double) async -> Result {
+        guard await SplitAvailability.canSplit else {
+            logger.error("confirm: nowhere to split — needs app")
             return .needsApp
         }
         let config = WalletTransactionConfigStore.load()
@@ -150,11 +150,11 @@ case completed(title: String, dialog: String)
         let friend = WalletAutomationDialog.friendWithoutAsking(template: template)
 
         guard let friend else {
-            logger.log("confirm: no Splitwise friend resolvable — needs app")
+            logger.log("confirm: no split target resolvable — needs app")
             return .needsApp
         }
 
-        guard template?.splitwiseOption == .always else {
+        guard template?.splitOption == .always else {
             // Includes "never", which pressing Add has just overridden — so the
             // honest reading is "add it, but you still have to say how".
             TransactionDraftGuard.askSplitChoiceViaNotification(
@@ -167,14 +167,14 @@ case completed(title: String, dialog: String)
 
         let formattedAmount = amount.asMoneyString
         do {
-            let outcome = try await SplitwiseExpenseHelper.addExpense(
+            let outcome = try await SplitExpenseService.addExpense(
                 amount: amount,
                 description: description,
                 friend: friend,
                 ownShare: nil,
                 merchant: merchant
             )
-            let dialog = WalletAutomationDialog.splitwiseWalletDialog(
+            let dialog = WalletAutomationDialog.ledgerWalletDialog(
                 outcome: outcome,
                 formattedAmount: formattedAmount,
                 description: description
@@ -192,7 +192,7 @@ case completed(title: String, dialog: String)
             )
             return .completed(title: content.title, dialog: content.body)
         } catch {
-            logger.error("confirm: Splitwise write failed: \(String(describing: error), privacy: .public)")
+            logger.error("confirm: split write failed: \(String(describing: error), privacy: .public)")
             return .needsApp
         }
     }
@@ -214,9 +214,9 @@ case completed(title: String, dialog: String)
         merchant: String,
         amount: Double,
         description: String,
-        friend: SplitwiseSplitTargetEntity?
+        friend: SplitTargetEntity?
     ) {
-        TransactionDraftGuard.transition(draft.id, to: .splitwiseWallet(merchant: merchant, amount: amount))
+        TransactionDraftGuard.transition(draft.id, to: .ledgerWallet(merchant: merchant, amount: amount))
         TransactionDraftGuard.askSplitChoiceViaNotification(
             draft.id,
             context: TransactionDraft.PendingSplitContext(description: description, target: friend)

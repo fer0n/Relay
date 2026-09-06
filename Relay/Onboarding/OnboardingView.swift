@@ -20,10 +20,8 @@ import UserNotifications
 /// which requires a scroll-position-driven pager inside `withAnimation`.
 struct OnboardingView: View {
     @State private var ynabAuth = YNABAuthService()
-    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var scrollPosition: OnboardingPage? = .welcome
     @State private var isRequestingNotificationPermission = false
-    @State private var splitwiseFriendCanContinue = SplitwiseDefaultFriendStore.load() != nil
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
 
@@ -37,12 +35,9 @@ struct OnboardingView: View {
     private var isContinueDisabled: Bool {
         switch page {
         case .welcome:
-            return !ynabAuth.isAuthenticated && !splitwiseAuth.isAuthenticated
-        case .splitwiseFriend:
-            return !splitwiseFriendCanContinue
+            return !ynabAuth.isAuthenticated
         case .notifications:
             return isRequestingNotificationPermission
-                || (splitwiseAuth.isAuthenticated && !splitwiseFriendCanContinue)
         case .automation:
             return false
         }
@@ -51,8 +46,6 @@ struct OnboardingView: View {
     private var isSecondaryDisabled: Bool {
         switch page {
         case .welcome:
-            return false
-        case .splitwiseFriend:
             return false
         case .notifications:
             return isRequestingNotificationPermission
@@ -64,7 +57,6 @@ struct OnboardingView: View {
     private var continueTitle: LocalizedStringKey {
         switch page {
         case .welcome: return "Continue"
-        case .splitwiseFriend: return "Continue"
         case .notifications: return "Enable Notifications"
         case .automation: return "Setup Automation"
         }
@@ -73,7 +65,6 @@ struct OnboardingView: View {
     private var secondaryTitle: LocalizedStringKey {
         switch page {
         case .welcome: return "Skip"
-        case .splitwiseFriend: return "Skip"
         case .notifications: return "Skip"
         case .automation: return "Close"
         }
@@ -81,14 +72,12 @@ struct OnboardingView: View {
 
     private enum OnboardingPage: Int, CaseIterable, Hashable, Sendable {
         case welcome
-        case splitwiseFriend
         case notifications
         case automation
 
         var title: LocalizedStringKey {
             switch self {
             case .welcome: return "Welcome to Relay"
-            case .splitwiseFriend: return "Split with"
             case .notifications: return "Enable Reminders"
             case .automation: return "Setup Wallet Automation"
             }
@@ -97,9 +86,7 @@ struct OnboardingView: View {
         var description: LocalizedStringKey {
             switch self {
             case .welcome:
-                return "Connect YNAB and/or Splitwise to get started"
-            case .splitwiseFriend:
-                return "Choose who to split expenses with by default"
+                return "Connect YNAB to get started. Splitting runs on iCloud — no account needed."
             case .notifications:
                 return "Reminds you about an incomplete wallet transaction or offline transactions that are waiting to sync. Nothing else."
             case .automation:
@@ -152,13 +139,10 @@ struct OnboardingView: View {
             // between pages of different heights doesn't move them.
             ScrollView(.horizontal) {
                 HStack(spacing: 0) {
-                    OnboardingWelcomePage(ynabAuth: ynabAuth, splitwiseAuth: splitwiseAuth)
+                    OnboardingWelcomePage(ynabAuth: ynabAuth)
                         .containerRelativeFrame(.horizontal)
                         .id(OnboardingPage.welcome)
 
-                    OnboardingSplitwiseFriendPage(splitwiseAuth: splitwiseAuth, canContinue: $splitwiseFriendCanContinue)
-                        .containerRelativeFrame(.horizontal)
-                        .id(OnboardingPage.splitwiseFriend)
 
                     OnboardingNotificationsPage()
                         .containerRelativeFrame(.horizontal)
@@ -176,7 +160,7 @@ struct OnboardingView: View {
             .scrollIndicators(.hidden)
 
             HStack(spacing: 6) {
-                ForEach(OnboardingPage.allCases.filter { $0 != .splitwiseFriend || splitwiseAuth.isAuthenticated }, id: \.self) { candidate in
+                ForEach(OnboardingPage.allCases, id: \.self) { candidate in
                     Circle()
                         .fill(candidate == page ? Color.secondary : Color.secondary.opacity(0.3))
                         .frame(width: 8, height: 8)
@@ -190,12 +174,6 @@ struct OnboardingView: View {
                 Button {
                     switch page {
                     case .welcome:
-                        if splitwiseAuth.isAuthenticated {
-                            withAnimation { scrollPosition = .splitwiseFriend }
-                        } else {
-                            withAnimation { scrollPosition = .notifications }
-                        }
-                    case .splitwiseFriend:
                         withAnimation { scrollPosition = .notifications }
                     case .notifications:
                         withAnimation { scrollPosition = .automation }
@@ -216,12 +194,6 @@ struct OnboardingView: View {
                 Button {
                     switch page {
                     case .welcome:
-                        if splitwiseAuth.isAuthenticated {
-                            withAnimation { scrollPosition = .splitwiseFriend }
-                        } else {
-                            withAnimation { scrollPosition = .notifications }
-                        }
-                    case .splitwiseFriend:
                         withAnimation { scrollPosition = .notifications }
                     case .notifications:
                         NotificationsPreferenceStore.isEnabled = true

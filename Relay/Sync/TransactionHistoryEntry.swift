@@ -2,11 +2,11 @@
 //  TransactionHistoryEntry.swift
 //  Relay
 //
-//  A YNAB transaction or Splitwise expense that was actually created, so
+//  A YNAB transaction or ledger expense that was actually created, so
 //  ContentView can offer the last few as a quick "re-add". Reuses
 //  PendingOperation's payload/service shape, being the same request data.
 //
-//  One wallet run can create both a YNAB transaction and a Splitwise split;
+//  One wallet run can create both a YNAB transaction and a ledger split;
 //  those share a `groupId` so TransactionHistoryStore folds them into a single
 //  entry, shown as one row and re-added together.
 //
@@ -20,7 +20,7 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     var payload: PendingOperation.Payload
     /// Shared by every write from the same run; nil for standalone writes.
     var groupId: UUID?
-    /// The Splitwise split created alongside this entry's YNAB transaction.
+    /// The ledger split created alongside this entry's YNAB transaction.
     var split: Split?
     /// The Shortcuts-supplied merchant string this entry resolved from; nil for a
     /// manual/re-add entry. Shown under the amount in the detail view — the one
@@ -38,24 +38,42 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     /// built up over months.
     var suppressed: [SuppressedRun] = []
 
+    /// The split created alongside this entry's YNAB transaction.
     struct Split: Codable {
         let summary: String
-        let expense: SplitwiseExpenseRequest
+        let ledgerExpense: LedgerExpenseRequest
+
+        init(summary: String, ledgerExpense: LedgerExpenseRequest) {
+            self.summary = summary
+            self.ledgerExpense = ledgerExpense
+        }
+
+        /// Nil for a YNAB payload — that's the primary half of a run, never
+        /// the split — which is what lets `merging` reject two YNAB writes
+        /// sharing a group instead of nesting one inside the other.
+        init?(summary: String, payload: PendingOperation.Payload) {
+            switch payload {
+            case .ledgerExpense(let expense): self.init(summary: summary, ledgerExpense: expense)
+            case .ynabTransaction: return nil
+            }
+        }
+
+        var payload: PendingOperation.Payload { .ledgerExpense(ledgerExpense) }
     }
 
     var service: TransactionService {
         switch payload {
         case .ynabTransaction: .ynab
-        case .splitwiseExpense: .splitwise
+        case .ledgerExpense: .ledger
         }
     }
 
     /// Nil for a plain single-service entry.
     var secondaryService: TransactionService? {
-        split == nil ? nil : .splitwise
+        split == nil ? nil : .ledger
     }
 
-    /// Payee (YNAB) or description (Splitwise).
+    /// Payee (YNAB) or description (a split).
     var title: String { payload.title }
 
     var formattedAmount: String { payload.formattedAmount }
@@ -63,8 +81,7 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
     /// The row's "· detail" suffix.
     var detail: String? {
         guard let split else { return payload.detail }
-        let splitDetail = PendingOperation.Payload.splitwiseExpense(split.expense).detail
-        let combined = [payload.detail, splitDetail].compactMap { $0 }.joined(separator: " · ")
+        let combined = [payload.detail, split.payload.detail].compactMap { $0 }.joined(separator: " · ")
         return combined.isEmpty ? nil : combined
     }
 }
@@ -84,16 +101,13 @@ nonisolated extension TransactionHistoryEntry {
     }
 
     /// Who it was split with and their share, e.g. "Alex: 12.00 €". Nil for a
-    /// YNAB-only entry or while nobody on it is cached.
+    /// YNAB-only entry. Always resolves otherwise: the names travel in the
+    /// payload rather than being looked up.
     var splitSummary: String? {
-        let request: SplitwiseExpenseRequest
-        if let split {
-            request = split.expense
-        } else if case .splitwiseExpense(let expense) = payload {
-            request = expense
-        } else {
-            return nil
+        if let split { return split.payload.detail }
+        switch payload {
+        case .ledgerExpense: return payload.detail
+        case .ynabTransaction: return nil
         }
-        return request.participantsShareSummary
     }
 }

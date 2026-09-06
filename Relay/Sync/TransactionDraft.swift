@@ -14,30 +14,30 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
     let startedAt: Date
     let payload: Payload
 
-    /// Set on a `.splitwiseWallet` draft once YNAB is committed and the only thing
+    /// Set on a `.ledgerWallet` draft once YNAB is committed and the only thing
     /// left is the split choice. Its presence is what lets the reminder offer
     /// Split Equally / Manually / Don't Split as quick replies, and gives
     /// "dismiss = leave it, YNAB already done" its meaning. A plain
-    /// `.splitwiseWallet` draft, where the split *is* the transaction, has none.
+    /// `.ledgerWallet` draft, where the split *is* the transaction, has none.
     var pendingSplitContext: PendingSplitContext?
 
     enum Payload: Codable {
         case ynabWallet(merchant: String, amount: Double, card: String)
         /// `ownShare` carries forward an already-resolved manual split amount so
         /// the form can prefill it instead of asking again.
-        case splitwiseWallet(merchant: String, amount: Double, ownShare: Double? = nil)
+        case ledgerWallet(merchant: String, amount: Double, ownShare: Double? = nil)
 
         var merchant: String {
             switch self {
             case .ynabWallet(let merchant, _, _): merchant
-            case .splitwiseWallet(let merchant, _, _): merchant
+            case .ledgerWallet(let merchant, _, _): merchant
             }
         }
 
         var amount: Double {
             switch self {
             case .ynabWallet(_, let amount, _): amount
-            case .splitwiseWallet(_, let amount, _): amount
+            case .ledgerWallet(_, let amount, _): amount
             }
         }
     }
@@ -51,23 +51,22 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
         /// Set when a target was resolvable without asking. When nil, Split
         /// Equally / Manually can't finish in the background and fall back to
         /// opening the draft; Don't Split still resolves it.
-        var friendId: Int?
-        var friendFirstName: String?
-        var friendFullName: String?
-        /// Whether the three fields above name a group rather than a person —
-        /// a shortcut's "Split With" takes either. Optional so a context
-        /// written before this field existed still decodes.
-        var friendIsGroup: Bool?
+        var ledgerZoneName: String?
+        /// nil with a zone set means everyone on that ledger — the same
+        /// convention `SplitTargetEntity` uses.
+        var ledgerParticipantID: String?
+        var targetFirstName: String?
+        var targetFullName: String?
 
-        /// nil unless all three id/name fields are present, mirroring
-        /// `WalletTransactionConfig.Template.splitwiseTarget`.
-        var friend: SplitwiseSplitTargetEntity? {
-            guard let friendId, let friendFirstName, let friendFullName else { return nil }
-            return SplitwiseSplitTargetEntity(
-                kind: friendIsGroup == true ? .group : .friend,
-                splitwiseId: friendId,
-                firstName: friendFirstName,
-                fullName: friendFullName
+        /// nil unless the ledger and both names are present, mirroring
+        /// `WalletTransactionConfig.Template.splitTarget`.
+        var friend: SplitTargetEntity? {
+            guard let ledgerZoneName, let targetFirstName, let targetFullName else { return nil }
+            return SplitTargetEntity(
+                zoneName: ledgerZoneName,
+                participantID: ledgerParticipantID,
+                firstName: targetFirstName,
+                fullName: targetFullName
             )
         }
     }
@@ -75,7 +74,7 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
     var service: TransactionService {
         switch payload {
         case .ynabWallet: .ynab
-        case .splitwiseWallet: .splitwise
+        case .ledgerWallet: .ledger
         }
     }
 
@@ -83,10 +82,10 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
 
     var amount: Double { payload.amount }
 
-    /// `.splitwiseWallet` only — a manual split amount the creating run had already
+    /// `.ledgerWallet` only — a manual split amount the creating run had already
     /// resolved.
     var ownShare: Double? {
-        if case .splitwiseWallet(_, _, let ownShare) = payload {
+        if case .ledgerWallet(_, _, let ownShare) = payload {
             return ownShare
         }
         return nil
@@ -111,16 +110,14 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
 }
 
 nonisolated extension TransactionDraft.PendingSplitContext {
-    /// Flattens a resolved "Split With" pick into the stored fields — a person
-    /// and a group differ only by `friendIsGroup`, and getting that wrong turns
-    /// a group split into an expense with a stranger's user id.
-    init(description: String, target: SplitwiseSplitTargetEntity?) {
+    /// Flattens a resolved "Split With" pick into the stored fields.
+    init(description: String, target: SplitTargetEntity?) {
         self.init(
             description: description,
-            friendId: target?.splitwiseId,
-            friendFirstName: target?.firstName,
-            friendFullName: target?.fullName,
-            friendIsGroup: target.map { $0.kind == .group }
+            ledgerZoneName: target?.zoneName,
+            ledgerParticipantID: target?.participantID,
+            targetFirstName: target?.firstName,
+            targetFullName: target?.fullName
         )
     }
 }

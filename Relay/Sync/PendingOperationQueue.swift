@@ -2,7 +2,7 @@
 //  PendingOperationQueue.swift
 //  Relay
 //
-//  Holds YNAB transactions / Splitwise expenses that couldn't be sent while
+//  Holds YNAB transactions and ledger expenses that couldn't be sent while
 //  offline until they can be retried. Drained opportunistically: on app
 //  foreground, at the start of every App Intent, and manually from
 //  PendingQueueView. There's no OS-level background sync (BGTaskScheduler isn't
@@ -42,12 +42,35 @@ final class PendingOperationQueue {
         }
     }
 
-    func enqueue(_ payload: PendingOperation.Payload, summary: String, groupId: UUID? = nil, merchant: String? = nil) {
+    func enqueue(
+        _ payload: PendingOperation.Payload,
+        summary: String,
+        groupId: UUID? = nil,
+        merchant: String? = nil,
+        recordsHistory: Bool = true
+    ) {
         let wasEmpty = operations.isEmpty
+        let operation = PendingOperation(
+            id: UUID(),
+            queuedAt: Date(),
+            summary: summary,
+            attemptCount: 0,
+            lastError: nil,
+            payload: payload,
+            groupId: groupId,
+            merchant: merchant,
+            recordsHistory: recordsHistory
+        )
         withAnimation {
-            operations.append(
-                PendingOperation(id: UUID(), queuedAt: Date(), summary: summary, attemptCount: 0, lastError: nil, payload: payload, groupId: groupId, merchant: merchant)
-            )
+            // An expense edited again before the first attempt syncs replaces
+            // its own queued write rather than adding a second one for the
+            // same record — they'd both save the same recordID, and the
+            // stale one would win by running last.
+            if let index = indexOfQueuedLedgerExpense(id: payload.ledgerExpenseID) {
+                operations[index] = operation
+            } else {
+                operations.append(operation)
+            }
         }
         persist()
         updateBadge()
@@ -57,7 +80,44 @@ final class PendingOperationQueue {
         logger.log("queued operation: \(summary, privacy: .public)")
     }
 
+    /// The expenses this queue is still holding, so `LedgerStore` can keep
+    /// showing them on the ledger they were added to.
+    var pendingLedgerExpenses: [LedgerExpenseRequest] {
+        operations.compactMap {
+            guard case .ledgerExpense(let expense) = $0.payload else { return nil }
+            return expense
+        }
+    }
+
+    func isPending(expenseID: String) -> Bool {
+        indexOfQueuedLedgerExpense(id: expenseID) != nil
+    }
+
+    /// Drops the queued write for an expense that's since been deleted
+    /// locally. No-op if it already synced.
+    func cancelLedgerExpense(id: String) {
+        guard let index = indexOfQueuedLedgerExpense(id: id) else { return }
+        remove(id: operations[index].id)
+    }
+
+    private func indexOfQueuedLedgerExpense(id: String?) -> Int? {
+        guard let id else { return nil }
+        return operations.firstIndex { $0.payload.ledgerExpenseID == id }
+    }
+
+    /// User-initiated: abandons the write for good, which for a ledger
+    /// expense also means taking the row back off the ledger it was
+    /// optimistically added to.
     func delete(id: UUID) {
+        if case .ledgerExpense(let expense)? = operations.first(where: { $0.id == id })?.payload {
+            LedgerStore.shared.discardQueued(expenseID: expense.expenseID, zoneName: expense.zoneName)
+        }
+        remove(id: id)
+    }
+
+    /// Drops the operation without touching what it was going to write —
+    /// what a successful sync leaves behind.
+    private func remove(id: UUID) {
         withAnimation {
             operations.removeAll { $0.id == id }
         }
@@ -80,7 +140,7 @@ final class PendingOperationQueue {
         for operation in operations where operations.contains(where: { $0.id == operation.id }) {
             switch await attempt(operation) {
             case .success:
-                delete(id: operation.id)
+                remove(id: operation.id)
             case .failure(let message, let isConnectivity):
                 update(id: operation.id, lastError: message)
                 if isConnectivity { return }
@@ -93,7 +153,7 @@ final class PendingOperationQueue {
         guard let operation = operations.first(where: { $0.id == id }) else { return }
         switch await attempt(operation) {
         case .success:
-            delete(id: id)
+            remove(id: id)
         case .failure(let message, _):
             update(id: id, lastError: message)
         }
@@ -115,16 +175,16 @@ final class PendingOperationQueue {
                 if let categoryId = transaction.categoryId {
                     YNABCategoryUsageStore.recordUsage(categoryId: categoryId)
                 }
-            case .splitwiseExpense(let expense):
-                guard let token = SplitwiseAuthService.currentAccessToken else {
-                    throw SplitwiseIntentError.notAuthenticated
+            case .ledgerExpense(let expense):
+                guard let ledger = LedgerStore.shared.ledgers.first(where: { $0.zoneName == expense.zoneName }) else {
+                    throw LedgerExpenseError.validation("Couldn't find that ledger.")
                 }
-                try await SplitwiseService.createExpense(expense, token: token)
-                for participant in expense.others {
-                    SplitwiseFriendUsageStore.recordUsage(friendId: participant.userId)
-                }
+                try await LedgerService.save(expense.asExpense, in: ledger)
+                LedgerParticipantUsageStore.recordUsage(participantIDs: expense.others.map(\.participantID))
             }
-            TransactionHistoryStore.record(summary: operation.summary, payload: operation.payload, groupId: operation.groupId, merchant: operation.merchant)
+            if operation.shouldRecordHistory {
+                TransactionHistoryStore.record(summary: operation.summary, payload: operation.payload, groupId: operation.groupId, merchant: operation.merchant)
+            }
             logger.log("synced queued operation: \(operation.summary, privacy: .public)")
             return .success
         } catch {
@@ -141,7 +201,9 @@ final class PendingOperationQueue {
     private func describe(_ error: Error, for payload: PendingOperation.Payload) -> String {
         switch payload {
         case .ynabTransaction: YNABIntentError.message(for: error)
-        case .splitwiseExpense: SplitwiseIntentError.message(for: error)
+        // No token to invalidate and no rate limit to explain, so the error's
+        // own description is already the most specific thing there is.
+        case .ledgerExpense: error.localizedDescription
         }
     }
 
@@ -173,7 +235,7 @@ final class PendingOperationQueue {
 
         let content = UNMutableNotificationContent()
         content.title = String(localized: "Pending Transactions")
-        content.body = String(localized: "Some transactions are still waiting to sync with YNAB/Splitwise.")
+        content.body = String(localized: "Some transactions are still waiting to sync.")
         content.sound = .default
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Self.reminderDelay, repeats: false)

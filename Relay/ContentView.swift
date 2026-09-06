@@ -10,14 +10,10 @@ struct ContentView: View {
     // ContentView+Coordination.swift can see it.
     @State var pendingQueue = PendingOperationQueue.shared
     @State var draftRouter = DraftNotificationRouter.shared
-    @State private var splitwiseAuth = SplitwiseAuthService()
     @State private var drafts = TransactionDraftStore.load()
     @State var fileImportCount = Self.loadFileImportCount()
     @State var history = TransactionHistoryStore.load()
-    /// nil hides the balance card in favor of the plain logo.
-    @State private var defaultSplitwiseFriend = Self.loadDefaultSplitwiseFriendFromCache()
-    /// Shown on the balance card as "Last refreshed …".
-    @State private var splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
+    @State private var ledgerStore = LedgerStore.shared
     @State var path: [ContentRoute] = []
     @State var continueDraft: TransactionDraft?
     @State var manualEntry: ManualEntry?
@@ -43,12 +39,12 @@ struct ContentView: View {
     struct ManualEntry: Identifiable {
         let draft: TransactionDraft
         let prefill: TransactionHistoryEntry?
-        let friendOverride: SplitwiseSplitTargetEntity?
+        let friendOverride: SplitTargetEntity?
 
         var id: UUID { draft.id }
     }
 
-    /// SharedFileImportView resolves the YNAB-vs-Splitwise destination itself, so
+    /// SharedFileImportView resolves the YNAB-vs-split destination itself, so
     /// both cases route to the same view — and both close with one "Done".
     enum ImportSheetContent: Identifiable, Hashable {
         case sharedFile(SharedStatementFile)
@@ -61,24 +57,17 @@ struct ContentView: View {
         FileImportStagingStore.load()?.rows.count ?? 0
     }
 
-    /// Nil when the app-wide default is a group: the balance card is a
-    /// per-friend view, and a group has no single balance to show.
-    private static func loadDefaultSplitwiseFriendFromCache() -> SplitwiseFriend? {
-        guard let stored = SplitwiseDefaultFriendStore.load(), !stored.isGroup else { return nil }
-        let defaultId = stored.id
-        return SplitwiseFriendCacheStore.load()?.first { $0.id == defaultId }
+    /// The ledger pinned at the top of the list — whichever the app-wide
+    /// default split target names. Nil (showing the plain logo) when no
+    /// default is set, or when the ledger it names is gone.
+    private var defaultLedger: Ledger? {
+        guard let zoneName = DefaultSplitTargetStore.load()?.zoneName else { return nil }
+        return ledgerStore.ledgers.first { $0.zoneName == zoneName }
     }
 
     /// "Show All" links to TransactionDraftsView for everything else.
     private var topDrafts: [TransactionDraft] {
         Array(drafts.sorted { $0.startedAt > $1.startedAt }.prefix(3))
-    }
-
-    /// `defaultSplitwiseFriend`, but only while connected — otherwise the disk
-    /// cache from a previous sign-in would keep showing a stale balance card
-    /// after signing out in Settings.
-    private var visibleSplitwiseFriend: SplitwiseFriend? {
-        splitwiseAuth.isAuthenticated ? defaultSplitwiseFriend : nil
     }
 
     // Split into `navigationContent` + two modifier-applying functions (in
@@ -120,18 +109,16 @@ struct ContentView: View {
             PendingQueueView()
         case .transactionDrafts:
             TransactionDraftsView()
-        case .splitwiseFriendTransactions(let friendId):
-            if let friend = SplitwiseFriendCacheStore.load()?.first(where: { $0.id == friendId }) {
-                SplitwiseTransactionsView(friend: friend)
+        case .ledgers:
+            LedgersView()
+        case .ledger(let zoneName):
+            if let ledger = LedgerStore.shared.ledgers.first(where: { $0.zoneName == zoneName }) {
+                LedgerDetailView(ledger: ledger)
             }
-        case .splitwiseGroupTransactions(let groupId):
-            if let group = SplitwiseGroupCacheStore.load()?.first(where: { $0.id == groupId }) {
-                SplitwiseTransactionsView(group: group)
+        case .ledgerMembers(let zoneName):
+            if let ledger = LedgerStore.shared.ledgers.first(where: { $0.zoneName == zoneName }) {
+                LedgerMembersView(ledger: ledger)
             }
-        case .splitwiseBalances:
-            SplitwiseBalancesView()
-        case .splitwiseActivity:
-            SplitwiseActivityView()
         case .settings:
             SettingsView(
                 onRequestShowTutorial: {
@@ -147,14 +134,23 @@ struct ContentView: View {
     }
 
     private var mainList: some View {
-        List {
-            ContentBalanceHeaderSection(friend: visibleSplitwiseFriend, lastRefreshedAt: splitwiseFriendLastRefreshedAt) {
-                if let visibleSplitwiseFriend {
-                    path.append(.splitwiseFriendTransactions(friendId: visibleSplitwiseFriend.id))
+        // Resolved once per pass and passed down: it was read four times
+        // through `defaultLedger`, and each read went to disk for the
+        // stored default.
+        let pinnedLedger = defaultLedger
+        return List {
+            ContentBalanceHeaderSection(
+                ledger: pinnedLedger,
+                balances: pinnedLedger.map { ledgerStore.balances(in: $0) } ?? .empty,
+                currentUserID: pinnedLedger?.currentUserID,
+                lastRefreshedAt: ledgerStore.lastRefreshedAt
+            ) {
+                if let pinnedLedger {
+                    path.append(.ledger(zoneName: pinnedLedger.zoneName))
                 }
             }
 
-            ContentQuickLinksSection(splitwiseConnected: splitwiseAuth.isAuthenticated)
+            ContentQuickLinksSection()
 
             if pendingQueue.operations.count > 0 {
                 NavigationLink(value: ContentRoute.pendingQueue) {
@@ -213,42 +209,26 @@ struct ContentView: View {
         // Once per launch rather than on every appearance —
         // reloadMainListState() covers those from the disk cache, and
         // foregrounding live-refreshes via withLifecycleHandlers.
-        .task { await refreshDefaultSplitwiseFriend(force: false) }
-        .refreshable { await refreshDefaultSplitwiseFriend(force: true) }
+        .task {
+            await LedgerStore.shared.refresh(force: false)
+            await AutomaticBackup.runIfNeeded()
+        }
+        .refreshable { await LedgerStore.shared.refresh(force: true) }
     }
 
     // Re-reads the file-backed stores that feed the main list, from every
     // lifecycle transition that can leave those snapshots stale.
     func reloadMainListState() {
-        // Picks up a sign-in/out from Settings' own SplitwiseAuthService instance,
-        // which this one can't see otherwise.
-        splitwiseAuth.refreshFromKeychain()
         withAnimation {
             drafts = TransactionDraftStore.load()
             fileImportCount = Self.loadFileImportCount()
             history = TransactionHistoryStore.load()
-            defaultSplitwiseFriend = Self.loadDefaultSplitwiseFriendFromCache()
-            splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
-        }
-    }
-
-    /// `force` is false for `.task` and foregrounding, leaving a recent cache
-    /// (and its "Last refreshed …" timestamp) untouched, and true for
-    /// pull-to-refresh so pulling down always re-fetches.
-    func refreshDefaultSplitwiseFriend(force: Bool) async {
-        guard force || SplitwiseFriendCacheStore.isStale else { return }
-        guard let stored = SplitwiseDefaultFriendStore.load(), !stored.isGroup,
-              let token = SplitwiseAuthService.currentAccessToken else { return }
-        let defaultId = stored.id
-        if let fetched = try? await SplitwiseFriendCacheStore.fetch(token: token) {
-            defaultSplitwiseFriend = fetched.first { $0.id == defaultId }
-            splitwiseFriendLastRefreshedAt = SplitwiseFriendCacheStore.lastFetchedAt
         }
     }
 
     /// Blank for the "+" button and the quick action, or seeded from a history
     /// entry for "Re-add" — either way the user reviews before submitting.
-    func startManualEntry(prefill: TransactionHistoryEntry?, friendOverride: SplitwiseSplitTargetEntity? = nil) {
+    func startManualEntry(prefill: TransactionHistoryEntry?, friendOverride: SplitTargetEntity? = nil) {
         manualEntry = ManualEntry(
             draft: TransactionDraft(id: UUID(), startedAt: Date(), payload: .ynabWallet(merchant: "", amount: 0, card: "")),
             prefill: prefill,
@@ -270,9 +250,6 @@ struct ContentView: View {
 private func seedPreviewData() {
     UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
 
-    let friend = SplitwiseFriend(id: 1, firstName: "Alex", lastName: "Kim", balance: [SplitwiseBalance(currencyCode: Const.currencyCode, amount: "42.50")], picture: nil)
-    SplitwiseFriendCacheStore.save([friend])
-    try? SplitwiseDefaultFriendStore.save(SplitwiseDefaultFriend(id: friend.id, firstName: friend.firstName, fullName: friend.fullName))
 
     YNABCategoryCacheStore.save([
         YNABCategory(id: "cat-dining", name: "Dining Out", hidden: false, deleted: false),
@@ -282,7 +259,6 @@ private func seedPreviewData() {
 
     try? TransactionDraftStore.save([
         TransactionDraft(id: UUID(), startedAt: Date().addingTimeInterval(-1800), payload: .ynabWallet(merchant: "Coffee Shop", amount: 4.50, card: "Visa")),
-        TransactionDraft(id: UUID(), startedAt: Date().addingTimeInterval(-3600), payload: .splitwiseWallet(merchant: "Groceries", amount: 32.10)),
     ])
 
     try? FileImportStagingStore.save(FileImportStaging(
@@ -309,11 +285,6 @@ private func seedPreviewData() {
     TransactionHistoryStore.record(
         summary: "45.00 at Restaurant",
         payload: .ynabTransaction(YNABTransactionRequest(accountId: "acct-checking", date: "2026-07-21", amount: -45000, payeeName: "Restaurant", categoryId: "cat-dining", cleared: Const.YNAB.cleared, approved: true)),
-        groupId: groupId
-    )
-    TransactionHistoryStore.record(
-        summary: "Alex: 22.50 €",
-        payload: .splitwiseExpense(SplitwiseExpenseRequest(costCents: 4500, description: "Restaurant", currencyCode: Const.currencyCode, payerUserId: 999, payerOwedCents: 2250, friendUserId: friend.id, friendOwedCents: 2250, date: nil)),
         groupId: groupId
     )
     TransactionHistoryStore.record(

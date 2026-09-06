@@ -150,25 +150,31 @@ nonisolated enum TransactionHistoryStore {
 
 private nonisolated extension TransactionHistoryEntry {
     /// Folds a sibling write into this entry, keeping the YNAB transaction as
-    /// `payload` and the Splitwise expense as `split`. Nil when the two can't
-    /// combine — two writes of the same service sharing a group — so the caller
-    /// records the second on its own.
+    /// `payload` and the split as `split`. Nil when the two can't combine —
+    /// two writes of the same kind sharing a group — so the caller records the
+    /// second on its own.
+    ///
+    /// A run pairs one YNAB transaction with one split; which *backend* that
+    /// split went to doesn't change the pairing, so both are handled by the
+    /// same two branches.
     func merging(summary newSummary: String, payload newPayload: PendingOperation.Payload) -> TransactionHistoryEntry? {
         switch (payload, newPayload) {
-        case (.ynabTransaction, .splitwiseExpense(let expense)):
+        case (.ynabTransaction, _):
+            guard let split = Split(summary: newSummary, payload: newPayload) else { return nil }
             var copy = self
-            copy.split = Split(summary: newSummary, expense: expense)
+            copy.split = split
             return copy
-        case (.splitwiseExpense(let expense), .ynabTransaction):
+        case (_, .ynabTransaction):
             // Sibling writes can land out of order under `async let`, so promote
-            // the YNAB transaction and demote the earlier expense to the split.
+            // the YNAB transaction and demote the earlier split.
+            guard let split = Split(summary: summary, payload: payload) else { return nil }
             return TransactionHistoryEntry(
                 id: id,
                 createdAt: createdAt,
                 summary: newSummary,
                 payload: newPayload,
                 groupId: groupId,
-                split: Split(summary: summary, expense: expense),
+                split: split,
                 merchant: merchant,
                 suppressed: suppressed
             )

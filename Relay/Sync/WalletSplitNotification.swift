@@ -5,7 +5,7 @@
 //  The interactive-notification category behind answering a wallet
 //  transaction's "split with Splitwise?" question straight from the draft
 //  reminder, without opening the app. The three actions mirror the intent's
-//  live SplitwiseSplitOption prompt (Split Equally / Manually / Don't
+//  live SplitOption prompt (Split Equally / Manually / Don't
 //  Split); the manual case is a text-input action whose reply is the user's
 //  own share. Registered once in DraftNotificationRouter.start(); attached
 //  to a draft notification only by TransactionDraftGuard.armSplitChoice,
@@ -31,7 +31,7 @@ nonisolated enum WalletSplitNotification {
         )
         // A text-input action so the one extra value manual splitting needs —
         // the user's own share — can be typed inline; parsed/validated by
-        // SplitwiseExpenseHelper.parseOwnShare, same as the in-app form.
+        // SplitExpenseService.parseOwnShare, same as the in-app form.
         let manual = UNTextInputNotificationAction(
             identifier: manualAction,
             title: String(localized: "Split Manually…"),

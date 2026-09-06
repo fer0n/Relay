@@ -57,7 +57,7 @@ struct DraftDetailRow<Content: View>: View {
             .cardRowBackground()
 
             DraftDetailRow(icon: "person.2", title: "Provider") {
-                Text("Splitwise")
+                Text("Ledger")
             }
             .cardRowBackground()
         }

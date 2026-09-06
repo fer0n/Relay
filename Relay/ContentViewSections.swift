@@ -16,18 +16,29 @@ extension AnyTransition {
     static let contentRow = AnyTransition.opacity.combined(with: .move(edge: .top))
 }
 
-/// The pinned Splitwise balance card, or the faint logo watermark when no
-/// default friend is configured.
+/// The pinned card for the default ledger (set in Settings), or the faint
+/// logo watermark when none is set — the slot the default Splitwise friend's
+/// balance card used to occupy, answering the same question about the ledger
+/// you split on most.
 struct ContentBalanceHeaderSection: View {
-    let friend: SplitwiseFriend?
+    let ledger: Ledger?
+    let balances: LedgerBalances
+    let currentUserID: String?
+    /// Shown on the card as "Last refreshed …".
     let lastRefreshedAt: Date?
     let onTap: () -> Void
 
     var body: some View {
         Section {
-            if let friend {
-                SplitwiseBalanceGrid(friend: friend, lastRefreshedAt: lastRefreshedAt, onTap: onTap)
-                    .padding(.bottom, 8)
+            if let ledger {
+                LedgerBalanceGrid(
+                    ledger: ledger,
+                    balances: balances,
+                    currentUserID: currentUserID,
+                    lastRefreshedAt: lastRefreshedAt,
+                    onTap: onTap
+                )
+                .padding(.bottom, 8)
             } else {
                 Image("Logo")
                     .resizable()
@@ -44,19 +55,16 @@ struct ContentBalanceHeaderSection: View {
     }
 }
 
-/// The always-present navigation rows (Templates / Settings), plus a
-/// "Splitwise" section for Balances and Activity. That second section is
-/// omitted wholesale — header included — when Splitwise isn't connected:
-/// without a token both destinations are empty (an empty grid, an empty
-/// feed), and gating only the rows would leave a titled section with nothing
-/// under it.
+/// The always-present navigation rows: Templates, Ledgers, Settings.
 struct ContentQuickLinksSection: View {
-    let splitwiseConnected: Bool
 
     var body: some View {
         Section {
             NavigationLink(value: ContentRoute.templates) {
                 RowLabel(title: "Templates", systemImage: Const.Symbol.template)
+            }
+            NavigationLink(value: ContentRoute.ledgers) {
+                RowLabel(title: "Ledgers", systemImage: Const.Symbol.ledger)
             }
             NavigationLink(value: ContentRoute.settings) {
                 RowLabel(title: "Settings", systemImage: "switch.2")
@@ -64,17 +72,6 @@ struct ContentQuickLinksSection: View {
         }
         .cardRowBackground()
 
-        if splitwiseConnected {
-            Section("Splitwise") {
-                NavigationLink(value: ContentRoute.splitwiseBalances) {
-                    RowLabel(title: "Balances", systemImage: Const.Symbol.friends)
-                }
-                NavigationLink(value: ContentRoute.splitwiseActivity) {
-                    RowLabel(title: "Activity", systemImage: Const.Symbol.activity)
-                }
-            }
-            .cardRowBackground()
-        }
     }
 }
 
@@ -97,6 +94,7 @@ struct ContentDraftsSection: View {
                     TransactionSummaryRow(service: draft.service, date: draft.startedAt, title: draft.merchant, amount: draft.formattedAmount)
                 }
                 .cardRowBackground()
+                .transition(.contentRow)
                 .matchedTransitionSource(id: draft.id, in: namespace)
                 .swipeActions {
                     Button(role: .destructive) {
@@ -126,8 +124,8 @@ struct ContentRecentSection: View {
     let onDelete: (TransactionHistoryEntry) -> Void
 
     /// Set by the swipe action's Delete button to gate a confirmation before
-    /// actually deleting — attached to the row itself rather than the swipe
-    /// button, same reasoning as SplitwiseTransactionsView.
+    /// actually deleting. The dialog it drives hangs off the section, not the
+    /// row — see below.
     @State private var entryPendingDelete: TransactionHistoryEntry?
 
     var body: some View {
@@ -147,6 +145,10 @@ struct ContentRecentSection: View {
                     )
                 }
                 .cardRowBackground()
+                // The row itself, not just the section around it: without
+                // this, adding a transaction to a list that already had one
+                // popped the new row in while everything below it jumped down.
+                .transition(.contentRow)
                 .matchedTransitionSource(id: entry.id, in: namespace)
                 .contextMenu {
                     Button {
@@ -163,24 +165,30 @@ struct ContentRecentSection: View {
                     }
                     .tint(.red)
                 }
-                .confirmationDialog(
-                    "Delete this transaction?",
-                    isPresented: Binding(
-                        get: { entryPendingDelete?.id == entry.id },
-                        set: { if !$0 { entryPendingDelete = nil } }
-                    ),
-                    titleVisibility: .visible
-                ) {
-                    Button("Delete", role: .destructive) {
-                        withAnimation {                        
-                            entryPendingDelete = nil
-                            onDelete(entry)
-                        }
-                    }
-                } message: {
-                    Text("This will only delete locally, YNAB/Splitwise are unaffected.")
+            }
+        }
+        // One dialog for the section, not one per row: attached inside the
+        // ForEach it built a modifier and a binding for every entry on
+        // screen. Same fix, and the same anchoring reason, as
+        // LedgerDetailView's — it stays off the swipe button, which is torn
+        // down as the swipe closes.
+        .confirmationDialog(
+            "Delete this transaction?",
+            isPresented: Binding(
+                get: { entryPendingDelete != nil },
+                set: { if !$0 { entryPendingDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: entryPendingDelete
+        ) { entry in
+            Button("Delete", role: .destructive) {
+                withAnimation {
+                    entryPendingDelete = nil
+                    onDelete(entry)
                 }
             }
+        } message: { _ in
+            Text("This will only delete locally, YNAB and your ledgers are unaffected.")
         }
     }
 }

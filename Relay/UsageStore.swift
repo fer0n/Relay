@@ -8,7 +8,7 @@ import Foundation
 nonisolated enum UsageStore {
     /// Most-recently-used first, keyed by `key`; items with no recorded
     /// usage keep their original relative order, appended after all used
-    /// ones. Shared by YNABCategoryUsageStore and SplitwiseFriendUsageStore.
+    /// ones. Shared by YNABCategoryUsageStore and LedgerParticipantUsageStore.
     static func sorted<T>(_ items: [T], lastUsed: [String: Date], key: (T) -> String) -> [T] {
         items.enumerated()
             .sorted { lhs, rhs in

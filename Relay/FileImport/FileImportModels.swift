@@ -3,22 +3,28 @@
 //  Relay
 //
 //  The destination-independent model behind SharedFileImportView. Parsing a
-//  statement produces one list of [FileImportRow] that both YNAB and Splitwise
-//  show and select from identically; the destination only changes the top
-//  settings, the submit button, and what happens on submit — never the rows.
+//  statement produces one list of [FileImportRow] that both destinations show
+//  and select from identically; the destination only changes the top settings,
+//  the submit button, and what happens on submit — never the rows.
 //
 
 import Foundation
 
 /// Codable so the active destination survives a dismiss/reopen.
+///
+/// The raw values are frozen: they namespace FileImportHistoryStore's
+/// "already handled" ids and are stored in the staging file, so changing one
+/// orphans every badge. Hence `split` still writing "splitwise" on disk —
+/// the case was renamed when Splitwise was removed, but the stored string
+/// can't be, and the two kinds of import are the same two they always were.
 enum FileImportDestination: String, Codable, Hashable {
     case ynab
-    case splitwise
+    case split = "splitwise"
 
     var label: String {
         switch self {
         case .ynab: return "YNAB"
-        case .splitwise: return "Splitwise"
+        case .split: return "Split"
         }
     }
 }

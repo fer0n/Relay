@@ -12,7 +12,7 @@
 //  so this creates the whole transaction (and Don't Split resolves it to
 //  nothing, matching the intent's own skip).
 //
-//  Only called for a `.splitwiseWallet` draft carrying a PendingSplitContext,
+//  Only called for a `.ledgerWallet` draft carrying a PendingSplitContext,
 //  i.e. one armed at the split question with its description + friend already
 //  resolved. Everything comes from that context — no re-resolution against
 //  config that may not have been saved when the run was interrupted.
@@ -39,12 +39,12 @@ nonisolated enum WalletDraftCompletion {
 
     static func complete(
         draft: TransactionDraft,
-        action: SplitwiseSplitOption,
+        action: SplitOption,
         ownShareReply: String?
     ) async -> Result {
-        guard case .splitwiseWallet(_, let amount, let draftOwnShare) = draft.payload,
+        guard case .ledgerWallet(_, let amount, let draftOwnShare) = draft.payload,
               let context = draft.pendingSplitContext else {
-            logger.error("complete called on a draft without a Splitwise split context")
+            logger.error("complete called on a draft without a split context")
             return .needsApp
         }
 
@@ -67,7 +67,7 @@ nonisolated enum WalletDraftCompletion {
         let ownShare: Double?
         if action == .manual {
             let text = ownShareReply ?? draftOwnShare.map { String($0) } ?? ""
-            switch SplitwiseExpenseHelper.parseOwnShare(text, amount: amount) {
+            switch SplitExpenseService.parseOwnShare(text, amount: amount) {
             case .valid(let parsed):
                 ownShare = parsed
             case .invalid(let message):
@@ -80,14 +80,14 @@ nonisolated enum WalletDraftCompletion {
 
         let formattedAmount = amount.asMoneyString
         do {
-            let outcome = try await SplitwiseExpenseHelper.addExpense(
+            let outcome = try await SplitExpenseService.addExpense(
                 amount: amount,
                 description: context.description,
                 friend: friend,
                 ownShare: ownShare,
                 merchant: draft.merchant
             )
-            let dialog = WalletAutomationDialog.splitwiseWalletDialog(
+            let dialog = WalletAutomationDialog.ledgerWalletDialog(
                 outcome: outcome,
                 formattedAmount: formattedAmount,
                 description: context.description

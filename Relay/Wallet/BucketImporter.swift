@@ -37,7 +37,7 @@ enum BucketImporter {
             config.templates[bucketName] = WalletTransactionConfig.Template(
                 categoryId: categoryId,
                 autoMatch: bucket.autoMatch.map { WalletTransactionConfig.AutoMatchRule(pattern: $0.match, payeeName: $0.name) },
-                splitwiseOption: bucket.splitwise
+                splitOption: bucket.split
             )
         }
 

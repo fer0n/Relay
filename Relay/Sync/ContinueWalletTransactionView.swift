@@ -5,7 +5,7 @@
 //  In-app equivalent of the wallet intents' perform(), reached from a draft
 //  reminder after a Shortcuts run was interrupted. One form for both draft
 //  kinds: a `.ynabWallet` draft shows the YNAB fields plus an optional Split
-//  section, a `.splitwiseWallet` one shows just the split.
+//  section, a `.ledgerWallet` one shows just the split.
 //
 //  All field state and load/submit work lives in
 //  ContinueWalletTransactionModel; this is just the layout that binds to it.
@@ -19,12 +19,13 @@ struct ContinueWalletTransactionView: View {
     @State private var model: ContinueWalletTransactionModel
     @State private var showTemplateEditor = false
     @State private var editingTemplateName: String?
+    @State private var isKeyboardVisible = false
     @Environment(\.dismiss) private var dismiss
 
     /// Nil hides the Discard section entirely, e.g. for manual entries.
     let onDiscard: (() -> Void)?
 
-    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitwiseSplitTargetEntity? = nil) {
+    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitTargetEntity? = nil) {
         _model = State(initialValue: ContinueWalletTransactionModel(draft: draft, isManual: isManual, prefill: prefill, isAuthenticatedOverride: isAuthenticatedOverride, friendOverride: friendOverride))
         self.onDiscard = onDiscard
     }
@@ -34,36 +35,43 @@ struct ContinueWalletTransactionView: View {
             if model.isManual ? !model.isModeAuthenticated : model.notAuthenticated {
                 switch model.mode {
                 case .ynab: NotConnectedView(service: "YNAB", connect: model.ynabAuth.signIn)
-                case .splitwise: NotConnectedView(service: "Splitwise", connect: model.splitwiseAuth.signIn)
+                case .ledger: EmptyView()
                 }
             } else {
                 content
             }
         }
+        // The Payee field's suggestion bar sits in a keyboard toolbar, which has
+        // no width of its own to lay out against — see `keyboardBarWidthSource`.
+        .keyboardBarWidthSource()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if model.isManual {
                 ToolbarItem(placement: .principal) {
-                    // With one service connected the menu's other option would
-                    // only lead to a "Connect ___" dead end, so show a plain
-                    // label naming the usable one instead.
-                    if model.ynabAuth.isAuthenticated, model.splitwiseAuth.isAuthenticated {
+                    // With only one usable the menu's other option would only
+                    // lead to a dead end, so show a plain label naming the
+                    // usable one instead.
+                    if model.ynabAuth.isAuthenticated, model.canSplit {
+                        // There are only two modes, so a tap flips to the other
+                        // one; the menu is there for whoever expects to pick.
                         Menu {
                             Picker("Type", selection: manualModeBinding) {
                                 Text("Both").tag(ContinueWalletTransactionModel.Mode.ynab)
-                                Text("Splitwise").tag(ContinueWalletTransactionModel.Mode.splitwise)
+                                Text("Split Only").tag(ContinueWalletTransactionModel.Mode.ledger)
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text(model.mode == .ynab ? "Both" : "Splitwise")
+                                Text(model.mode == .ynab ? "Both" : "Split Only")
                                     .fontWeight(.semibold)
                                 Image(systemName: "chevron.down")
                                     .font(.caption2)
                             }
                             .foregroundStyle(Color.foregroundColor)
+                        } primaryAction: {
+                            model.setManualMode(model.manualMode == .ynab ? .ledger : .ynab)
                         }
                     } else {
-                        Text(model.mode == .ynab ? "YNAB" : "Splitwise")
+                        Text(model.mode == .ynab ? "YNAB" : "Split")
                             .fontWeight(.semibold)
                             .foregroundStyle(Color.foregroundColor)
                     }
@@ -71,7 +79,7 @@ struct ContinueWalletTransactionView: View {
             }
         }
         .task { await model.load() }
-        .onAuthenticated(model.mode == .ynab ? model.ynabAuth.isAuthenticated : model.splitwiseAuth.isAuthenticated) {
+        .onAuthenticated(model.ynabAuth.isAuthenticated) {
             model.notAuthenticated = false
             Task { await model.load() }
         }
@@ -85,8 +93,8 @@ struct ContinueWalletTransactionView: View {
         Binding(get: { model.selectedAccountId }, set: { model.setSelectedAccountId($0) })
     }
 
-    private var splitwiseChoiceBinding: Binding<SplitwiseSplitChoice?> {
-        Binding(get: { model.splitwiseRuntimeChoice }, set: { model.setSplitwiseRuntimeChoice($0) })
+    private var splitChoiceBinding: Binding<SplitChoice?> {
+        Binding(get: { model.splitRuntimeChoice }, set: { model.setSplitRuntimeChoice($0) })
     }
 
     private var content: some View {
@@ -138,16 +146,21 @@ struct ContinueWalletTransactionView: View {
                         payeeTextRow(title: "Payee", placeholder: model.draft.merchant, allowsEmpty: true)
                         descriptionRow
                     }
+                    splitDestinationRow
                     friendRow
                     splitPickerRow
                     splitDetailRows
                 }
             }
 
-            if model.mode == .ynab, model.splitwiseAuth.isAuthenticated {
+            // A ledger is reason enough to offer the Split section — gating it
+            // on Splitwise auth alone would hide splitting entirely from
+            // someone who's dropped Splitwise for a ledger.
+            if model.mode == .ynab, model.canSplit {
                 Section("Split") {
                     splitPickerRow
-                    if model.resolvedSplitwiseAction != .never {
+                    if model.resolvedSplitAction != .never {
+                        splitDestinationRow
                         friendRow
                     }
                     splitDetailRows
@@ -161,12 +174,25 @@ struct ContinueWalletTransactionView: View {
                 .listRowBackground(Color.sheetBackgroundColor)
             }
 
+            // The pinned button steps aside for the keyboard, so while typing
+            // the form carries its own copy at the end of the list rather than
+            // making every entry dismiss the keyboard first.
+            if isKeyboardVisible {
+                Section {
+                    submitButton
+                        .frame(maxWidth: .infinity)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+
             if let onDiscard {
                 DiscardSection(confirmationTitle: "Discard this draft?", onConfirm: onDiscard)
             }
         }
+        .onKeyboardVisibilityChange($isKeyboardVisible)
         .themedList(background: .sheetBackgroundColor)
-        .animation(.default, value: model.resolvedSplitwiseAction)
+        .animation(.default, value: model.resolvedSplitAction)
         .onChange(of: model.templateChoice) { _, newTemplate in
             model.applyTemplate(newTemplate)
         }
@@ -199,12 +225,32 @@ struct ContinueWalletTransactionView: View {
         }
         .bottomBarActionButton(
             isPresented: true,
-            title: model.mode == .ynab ? "Add Transaction" : "Add Expense",
+            title: submitTitle,
             isLoading: model.isSubmitting,
-            isDisabled: !model.canSubmit || model.isSubmitting
-        ) {
-            Task { if await model.submit() { dismiss() } }
-        }
+            isDisabled: submitIsDisabled,
+            action: submit
+        )
+    }
+
+    private var submitTitle: LocalizedStringKey {
+        model.mode == .ynab ? "Add Transaction" : "Add Expense"
+    }
+
+    private var submitIsDisabled: Bool {
+        !model.canSubmit || model.isSubmitting
+    }
+
+    private var submitButton: some View {
+        BottomBarActionButton(
+            title: submitTitle,
+            isLoading: model.isSubmitting,
+            isDisabled: submitIsDisabled,
+            action: submit
+        )
+    }
+
+    private func submit() {
+        Task { if await model.submit() { dismiss() } }
     }
 
     // MARK: - Rows
@@ -240,7 +286,7 @@ struct ContinueWalletTransactionView: View {
     private var descriptionRow: some View {
         PayeeFieldRow(
             title: "Description",
-            placeholder: model.splitwisePayeeName,
+            placeholder: model.splitPayeeName,
             text: $model.descriptionText,
             suggestedNames: [],
             showsLinkToTemplate: false,
@@ -250,22 +296,30 @@ struct ContinueWalletTransactionView: View {
         )
     }
 
+    /// Only there once there's more than one ledger to choose between.
+    @ViewBuilder
+    private var splitDestinationRow: some View {
+        if model.availableLedgers.count > 1 {
+            SplitDestinationRow(
+                selectedLedgerName: model.selectedLedger?.name,
+                ledgers: model.availableLedgers,
+                onSelectLedger: model.selectLedger
+            )
+        }
+    }
+
     private var friendRow: some View {
-        SplitwiseParticipantPickerRow(
-            isLoading: model.isLoadingFriends,
-            friends: model.friends,
-            groups: model.groups,
-            selection: $model.participantSelection,
-            searchText: $model.participantSearchText,
-            emptyLabel: model.friendNoneLabel,
+        LedgerParticipantPickerRow(
+            ledger: model.selectedLedger,
+            selectedIDs: $model.ledgerParticipantIDs,
             isIncomplete: model.friendRowIsIncomplete
         )
     }
 
     private var splitPickerRow: some View {
-        SplitwiseSplitPickerRow(
-            choice: splitwiseChoiceBinding,
-            isIncomplete: model.splitwiseRuntimeChoice == nil
+        SplitPickerRow(
+            choice: splitChoiceBinding,
+            isIncomplete: model.splitRuntimeChoice == nil
         )
     }
 
@@ -273,9 +327,9 @@ struct ContinueWalletTransactionView: View {
     /// split, the amount for `.manual`, a weight each for `.shares`.
     @ViewBuilder
     private var splitDetailRows: some View {
-        switch model.resolvedSplitwiseAction {
+        switch model.resolvedSplitAction {
         case .manual:
-            SplitwiseOwnShareRow(ownShareText: $model.ownShareText, isIncomplete: Double(model.ownShareText) == nil)
+            OwnShareRow(ownShareText: $model.ownShareText, isIncomplete: Double(model.ownShareText) == nil)
         case .shares:
             ShareWeightRow(
                 name: String(localized: "You"),
@@ -314,7 +368,7 @@ struct ContinueWalletTransactionView: View {
         }
 }
 
-#Preview("Splitwise Draft") {
+#Preview("Ledger Draft") {
     Color.clear
         .sheet(isPresented: .constant(true)) {
             NavigationStack {
@@ -322,7 +376,7 @@ struct ContinueWalletTransactionView: View {
                     draft: TransactionDraft(
                         id: UUID(),
                         startedAt: Date().addingTimeInterval(-3600),
-                        payload: .splitwiseWallet(merchant: "Grocery Store", amount: 32.10)
+                        payload: .ledgerWallet(merchant: "Grocery Store", amount: 32.10)
                     ),
                     isAuthenticatedOverride: true
                 )

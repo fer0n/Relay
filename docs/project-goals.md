@@ -2,7 +2,7 @@
 
 ## Why
 
-Today, adding transactions to YNAB and Splitwise, and importing bank statement
+Today, adding transactions to YNAB and a bill-splitting service, and importing bank statement
 files into YNAB, happens through a set of Apple Shortcuts. That setup works
 but is cumbersome to maintain and edit. Relay is a native SwiftUI app
 (iOS/macOS/visionOS) meant to replace that Shortcuts-based workflow with a
@@ -13,13 +13,18 @@ via App Intents.
 
 1. **Authentication**
    - Sign in with YNAB (OAuth2)
-   - Sign in with Splitwise (OAuth2)
 2. **Add transactions** (exposed as App Intents, usable from Shortcuts/Siri/
    widgets, and as in-app quick-entry)
    - Add a transaction to YNAB
-   - Add an expense to Splitwise
+   - Add an expense to a shared iCloud ledger
 3. **File import**
    - Share-sheet / file import flow for bank/CSV statement files into YNAB
+4. **Ledgers** — shared expense lists in the user's own iCloud. These
+   *replaced* Splitwise outright: it now gates its API behind a Pro
+   subscription, and Tricount (the obvious alternative) has no public API at
+   all, only reverse-engineered clients that the "no undocumented endpoints"
+   rule rules out. CloudKit needs no account, no token and no third party, at
+   the cost of being iOS/iCloud-only with no web or Android fallback.
 
 ## Source of truth: existing Shortcuts
 
@@ -34,20 +39,21 @@ before implementing the equivalent feature.
 | YNAB Toolkit | Core YNAB logic — file import, adding transactions, etc. Called by other shortcuts | https://www.icloud.com/shortcuts/9f63c5965c644adcbc7a2d047fb32c5d |
 | YNAB File Import | Share-sheet action that imports a file into YNAB | https://www.icloud.com/shortcuts/17b4759eea6a4f2e8bf7bc8cd60bbe8f |
 | Add YNAB Expense | Adds one manual transaction; duplicated per recurring/individual transaction | https://www.icloud.com/shortcuts/729de384556a484399a2dd95789f7d59 |
-| Splitwise Master | Core Splitwise logic — adding expenses, etc. | https://www.icloud.com/shortcuts/bd9aa0c310c74c9398b9ae81e3a3c6c5 |
 
 ## Status
 
 - [ ] Inspect each Shortcut's actions (auth flow, API endpoints, field mappings)
 - [ ] Design App Intents + auth architecture
 - [ ] Implement YNAB auth
-- [ ] Implement Splitwise auth
 - [x] Implement "Add YNAB transaction" intent
-- [x] Implement "Add Splitwise expense" intent
+- [x] Implement "Add Shared Expense" intent
 - [x] Implement YNAB file import flow
+- [x] Ledgers: CloudKit model, sharing, settle-up, and change notifications;
+  selectable as a split target from the transaction form, App Intents,
+  templates and file import, and recorded in transaction history
 
 ## Future improvements
 
-- [ ] Splitwise expense currency is hardcoded to EUR (matching the original
-  Shortcut); make it a parameter or infer it if multi-currency support is
-  ever needed.
+- [ ] A ledger's currency is fixed at creation (defaulting to EUR, matching
+  the original Shortcut); make it pickable, or per-expense, if multi-currency
+  support is ever needed.
