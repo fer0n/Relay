@@ -21,7 +21,7 @@ nonisolated enum AmountParser {
     private static let dotThousandsStyle = try! NSRegularExpression(pattern: #"^-?\d+(?:\.\d{3})*,?\d*$"#)
 
     static func parse(_ rawValue: String) throws -> Double {
-        let stripped = rawValue.replacingOccurrences(of: " ", with: "")
+        let stripped = try sanitize(rawValue)
         var normalized = stripped
         if let separator = try thousandsSeparator(in: stripped) {
             normalized = normalized.replacingOccurrences(of: separator, with: "")
@@ -31,6 +31,34 @@ nonisolated enum AmountParser {
             throw AmountParserError.invalidFormat(rawValue)
         }
         return value
+    }
+
+    /// Reduces "-269,83 €", "1.234,56 EUR", "269,83-" or "(269,83)" to digits,
+    /// separators and at most a leading "-", which is all the styles below match.
+    private static func sanitize(_ rawValue: String) throws -> String {
+        var text = rawValue.filter { !$0.isWhitespace }
+        let isParenthesized = text.hasPrefix("(") && text.hasSuffix(")")
+        if isParenthesized {
+            text = String(text.dropFirst().dropLast())
+        }
+
+        var isNegative = isParenthesized
+        var digits = ""
+        for character in text {
+            switch character {
+            case "0"..."9", ",", ".":
+                digits.append(character)
+            case "-", "\u{2212}":
+                isNegative = true
+            default:
+                continue
+            }
+        }
+
+        guard digits.contains(where: \.isNumber) else {
+            throw AmountParserError.invalidFormat(rawValue)
+        }
+        return isNegative ? "-" + digits : digits
     }
 
     /// Returns the character to strip as a thousands separator before

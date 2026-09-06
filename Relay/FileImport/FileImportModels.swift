@@ -52,6 +52,8 @@ nonisolated enum FileImportRowBuilder {
     /// StatementTransactionBuilder so the ids line up with YNAB import_ids — see
     /// `FileImportRow.id`. There's deliberately no staleness filter: the review
     /// screen shows every parsed row rather than dropping any silently.
+    /// The result is then re-sorted newest-first for the review list; ids are
+    /// assigned by that point and don't move.
     static func build(from rows: [ImportedStatementRow]) -> [FileImportRow] {
         struct Draft {
             let dateString: String
@@ -80,7 +82,9 @@ nonisolated enum FileImportRowBuilder {
                 amount: draft.row.amount
             ))
         }
-        return result
+        return result.sorted {
+            $0.date == $1.date ? $0.id < $1.id : $0.date > $1.date
+        }
     }
 }
 

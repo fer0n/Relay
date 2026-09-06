@@ -56,7 +56,19 @@ nonisolated enum DateFormatDetector {
         return .needsDisambiguation(candidates: matching.isEmpty ? candidateFormats : matching)
     }
 
+    /// Tolerates a trailing clock time ("07.09.2026 17:48"), which several bank
+    /// exports put in the date column. No candidate format contains a space.
     static func parse(_ dateString: String, format: String) -> Date? {
+        if let date = parseExact(dateString, format: format) {
+            return date
+        }
+        guard let datePart = dateString.split(separator: " ").first, datePart.count != dateString.count else {
+            return nil
+        }
+        return parseExact(String(datePart), format: format)
+    }
+
+    private static func parseExact(_ dateString: String, format: String) -> Date? {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .current

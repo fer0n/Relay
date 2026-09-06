@@ -42,12 +42,13 @@ nonisolated enum CSVStatementParser {
     /// Simplified port of Python's `csv.Sniffer`: picks whichever candidate
     /// delimiter appears the same non-zero number of times across the
     /// first few lines.
+    /// Only separators outside quotes count — German exports quote the amount
+    /// ("-269,83 €") and the memo, both of which routinely contain a comma.
     private static func sniffDelimiter(in text: String) -> Character {
-        let sampleLines = text.split(separator: "\n", omittingEmptySubsequences: true).prefix(5)
         var bestDelimiter: Character = ","
         var bestScore = -1
         for delimiter in candidateDelimiters {
-            let counts = sampleLines.map { $0.filter { $0 == delimiter }.count }
+            let counts = unquotedDelimiterCountsPerLine(in: text, delimiter: delimiter, limit: 5)
             guard let first = counts.first, first > 0, counts.allSatisfy({ $0 == first }) else { continue }
             if first > bestScore {
                 bestScore = first
@@ -55,6 +56,43 @@ nonisolated enum CSVStatementParser {
             }
         }
         return bestDelimiter
+    }
+
+    /// Counts `delimiter` per record for the first `limit` records, skipping
+    /// anything inside quotes — including newlines, so a quoted field spanning
+    /// lines stays one record.
+    private static func unquotedDelimiterCountsPerLine(in text: String, delimiter: Character, limit: Int) -> [Int] {
+        var counts: [Int] = []
+        var current = 0
+        var inQuotes = false
+        var sawContent = false
+        for character in text {
+            if character == "\"" {
+                inQuotes.toggle()
+                sawContent = true
+                continue
+            }
+            if inQuotes {
+                sawContent = true
+                continue
+            }
+            switch character {
+            case delimiter:
+                current += 1
+                sawContent = true
+            case "\n", "\r":
+                if sawContent {
+                    counts.append(current)
+                    if counts.count >= limit { return counts }
+                }
+                current = 0
+                sawContent = false
+            default:
+                sawContent = true
+            }
+        }
+        if sawContent { counts.append(current) }
+        return counts
     }
 
     /// Char-by-char state machine so quoted fields can contain the
