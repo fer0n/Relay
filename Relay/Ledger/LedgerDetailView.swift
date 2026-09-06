@@ -164,21 +164,25 @@ struct LedgerDetailView: View {
     private func detailText(for expense: LedgerExpense) -> String? {
         let payerParticipants = expense.payers.compactMap { current.participant(id: $0.participantID) }
         // "You" conjugates differently than a name in German, so it needs its
-        // own template rather than substituting into "%@ paid".
+        // own template rather than substituting into "%@ paid %@".
         let isCurrentUserOnlyPayer = payerParticipants.count == 1 && payerParticipants[0].isCurrentUser
         let payerName = payerParticipants.isEmpty
             ? LedgerParticipant.unknownName
             : ListFormatter.localizedString(byJoining: payerParticipants.map(\.displayName))
 
+        // The row's own amount is the signed-in user's net, not the cost, so
+        // the payer's total only shows up here.
+        let amount = expense.costCents.asMoneyString
+
         guard expense.isSettlement,
               let recipient = expense.debtors.first.flatMap({ current.participant(id: $0.participantID) }) else {
             return isCurrentUserOnlyPayer
-                ? String(localized: "You paid")
-                : String(localized: "\(payerName) paid")
+                ? String(localized: "You paid \(amount)")
+                : String(localized: "\(payerName) paid \(amount)")
         }
         return isCurrentUserOnlyPayer
-            ? String(localized: "You paid \(recipient.displayName)")
-            : String(localized: "\(payerName) paid \(recipient.displayName)")
+            ? String(localized: "You paid \(recipient.displayName) \(amount)")
+            : String(localized: "\(payerName) paid \(recipient.displayName) \(amount)")
     }
 
     /// Otherwise invisible: they can't be split with.

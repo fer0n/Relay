@@ -128,15 +128,9 @@ nonisolated enum WalletAutomationDialog {
     }
 
     /// Finishes off a run that duplicates a purchase the other automation already
-    /// added (see TransactionClaim).
-    ///
-    /// The notification is the only trace the user sees, since a suppressed run
-    /// leaves no draft, but it's still gated on "Success Notification" — with
-    /// both automations wired up a duplicate arrives for nearly every purchase.
-    static func handleSuppression(
-        _ suppression: TransactionClaimStore.Suppression,
-        successNotification: Bool
-    ) -> String {
+    /// added (see TransactionClaim). Posts nothing: the run that claimed the
+    /// purchase owns its one notification.
+    static func handleSuppression(_ suppression: TransactionClaimStore.Suppression) -> String {
         let matched = suppression.matched
         // While the matched run is still in flight its suppressions ride along on
         // the claim instead, and it folds them in when it commits.
@@ -155,13 +149,6 @@ nonisolated enum WalletAutomationDialog {
             matched.claimedAt.formatted(.relative(presentation: .numeric))
         )
 
-        if successNotification {
-            WalletCompletionNotification.postConfirmation(
-                title: String(localized: "Duplicate Skipped"),
-                dialog: dialog,
-                historyEntryID: suppression.historyEntryId
-            )
-        }
         return dialog
     }
 

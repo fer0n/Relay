@@ -141,7 +141,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             )
         ) {
         case .suppressed(let suppression):
-            let dialog = WalletAutomationDialog.handleSuppression(suppression, successNotification: successNotification)
+            let dialog = WalletAutomationDialog.handleSuppression(suppression)
             logger.log("perform() done — suppressed as duplicate of \(suppression.matched.source, privacy: .public)")
             return .result(dialog: "\(dialog)")
         case .claimed(let id):

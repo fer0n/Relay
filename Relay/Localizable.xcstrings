@@ -199,22 +199,34 @@
         }
       }
     },
-    "%@ paid" : {
+    "%@ paid %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ hat bezahlt"
+            "value" : "%1$@ hat %2$@ bezahlt"
           }
-        }
-      }
-    },
-    "%@ paid %@" : {
-      "localizations" : {
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ paid %2$@"
+          }
+        }
+      }
+    },
+    "%@ paid %@ %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ hat %2$@ %3$@ bezahlt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ paid %2$@ %3$@"
           }
         }
       }
@@ -527,6 +539,9 @@
     "Add ${amount} expense for ${expenseDescription} split with ${target}" : {
 
     },
+    "Add ${amount} shared expense for ${merchant}" : {
+
+    },
     "Add ${amount} Splitwise expense for ${merchant}" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -636,6 +651,9 @@
         }
       }
     },
+    "Add Wallet Transaction to Ledger" : {
+
+    },
     "Add Wallet Transaction to Splitwise" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -666,6 +684,9 @@
           }
         }
       }
+    },
+    "Adds a shared iCloud ledger expense from a Wallet transaction, remembering split choices for next time." : {
+
     },
     "Adds a Splitwise expense from a Wallet transaction, remembering friend/split choices for next time." : {
       "extractionState" : "stale",
@@ -751,6 +772,9 @@
           }
         }
       }
+    },
+    "Amount must be a positive number." : {
+
     },
     "Any merchants matched to this template will need a new one assigned." : {
       "localizations" : {
@@ -1061,6 +1085,9 @@
         }
       }
     },
+    "Couldn't find that ledger." : {
+
+    },
     "Couldn't read that file: %@" : {
       "localizations" : {
         "de" : {
@@ -1110,6 +1137,9 @@
           }
         }
       }
+    },
+    "Create a shared ledger in Relay first." : {
+
     },
     "Create a Wallet Automation" : {
       "localizations" : {
@@ -1363,16 +1393,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entwürfe"
-          }
-        }
-      }
-    },
-    "Duplicate Skipped" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Duplikat übersprungen"
           }
         }
       }
@@ -1950,6 +1970,9 @@
     "Names and pictures are stored on the ledger itself, so everyone on it sees the same ones. Anyone can fill in a name that's missing — iCloud only tells you the names of people you already share contacts with." : {
 
     },
+    "Never add to a ledger automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay." : {
+
+    },
     "Never add to Splitwise automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2097,6 +2120,9 @@
         }
       }
     },
+    "Nobody else is on that ledger yet." : {
+
+    },
     "Nobody on this ledger yet" : {
 
     },
@@ -2175,7 +2201,6 @@
       }
     },
     "Only used when Split is Manual" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2341,6 +2366,9 @@
           }
         }
       }
+    },
+    "Pick at least one person to split with." : {
+
     },
     "Please check your connection and try again." : {
       "extractionState" : "stale",
@@ -2828,6 +2856,16 @@
         }
       }
     },
+    "Split %@ expenses with whom?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Ausgaben mit wem aufteilen?"
+          }
+        }
+      }
+    },
     "Split %lld Selected" : {
       "localizations" : {
         "de" : {
@@ -3169,6 +3207,12 @@
           }
         }
       }
+    },
+    "That ledger isn't available on this device any more." : {
+
+    },
+    "That person isn't on the ledger any more." : {
+
     },
     "The amounts add up to %@, but the total is %@." : {
       "localizations" : {
@@ -3537,22 +3581,22 @@
         }
       }
     },
-    "You paid" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du hast bezahlt"
-          }
-        }
-      }
-    },
     "You paid %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Du hast an %@ bezahlt"
+            "value" : "Du hast %@ bezahlt"
+          }
+        }
+      }
+    },
+    "You paid %@ %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast %1$@ %2$@ bezahlt"
           }
         }
       }
@@ -3586,6 +3630,9 @@
           }
         }
       }
+    },
+    "Your share must be between 0 and the total amount." : {
+
     },
     "Your share of the %@ expense at %@, split with %@?" : {
       "localizations" : {

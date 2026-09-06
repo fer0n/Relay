@@ -286,4 +286,86 @@ struct TransactionClaimMatchTests {
         let matched = TransactionClaim.firstMatch(in: [abandoned, committed], for: Self.candidate(at: 300), window: Self.window)
         #expect(matched?.id == committed.id)
     }
+
+    // MARK: - Two automations, one purchase
+
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func walletThenNotificationSuppressesTheSecondRun(destination: TransactionService) {
+        let wallet = Self.claim(source: "wallet", destination: destination, at: 0, accountId: nil, state: .committed)
+        let push = Self.candidate(source: "notif", destination: destination, at: 90, accountId: nil, parksDraftOnly: true)
+
+        #expect(TransactionClaim.firstMatch(in: [wallet], for: push, window: Self.window)?.id == wallet.id)
+    }
+
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func walletStillAskingStillSuppressesTheNotificationRun(destination: TransactionService) {
+        let wallet = Self.claim(source: "wallet", destination: destination, at: 0, accountId: nil, state: .inFlight)
+        let push = Self.candidate(source: "notif", destination: destination, at: 90, accountId: nil, parksDraftOnly: true)
+
+        #expect(TransactionClaim.firstMatch(in: [wallet], for: push, window: Self.window)?.id == wallet.id)
+    }
+
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func notificationThenWalletTakesOverTheConfirmationDraft(destination: TransactionService) {
+        let draftId = UUID()
+        let parked = Self.claim(
+            source: "notif",
+            destination: destination,
+            at: 0,
+            accountId: nil,
+            state: .awaitingConfirmation,
+            draftId: draftId
+        )
+
+        let walletRun = Self.candidate(source: "wallet", destination: destination, at: 90, accountId: nil)
+        #expect(TransactionClaim.firstMatch(in: [parked], for: walletRun, window: Self.window) == nil)
+
+        let wallet = Self.claim(source: "wallet", destination: destination, at: 90, accountId: nil, state: .committed)
+        let superseded = TransactionClaim.supersededConfirmations(in: [parked, wallet], by: wallet, window: Self.window)
+        #expect(superseded.map(\.draftId) == [draftId])
+    }
+
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func notificationThenUnfileableWalletRunDoesNotStackASecondDraft(destination: TransactionService) {
+        let parked = Self.claim(
+            source: "notif",
+            destination: destination,
+            at: 0,
+            accountId: nil,
+            state: .awaitingConfirmation,
+            draftId: UUID()
+        )
+        let walletRun = Self.candidate(source: "wallet", destination: destination, at: 90, accountId: nil, parksDraftOnly: true)
+
+        #expect(TransactionClaim.firstMatch(in: [parked], for: walletRun, window: Self.window)?.id == parked.id)
+    }
+
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func walletParkedAsDraftThenNotificationIsSuppressed(destination: TransactionService) {
+        let parked = Self.claim(
+            source: "wallet",
+            destination: destination,
+            at: 0,
+            accountId: nil,
+            state: .awaitingConfirmation,
+            draftId: UUID()
+        )
+        let push = Self.candidate(source: "notif", destination: destination, at: 90, accountId: nil, parksDraftOnly: true)
+
+        #expect(parked.matches(push, window: Self.window))
+    }
+
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func blankSourceOnTheSecondAutomationDefeatsMerging(destination: TransactionService) {
+        let wallet = Self.claim(source: "wallet", destination: destination, at: 0, accountId: nil, state: .committed)
+        let unnamed = Self.candidate(
+            source: TransactionClaim.normalizedSource(nil),
+            destination: destination,
+            at: 90,
+            accountId: nil,
+            parksDraftOnly: true
+        )
+
+        #expect(TransactionClaim.firstMatch(in: [wallet], for: unnamed, window: Self.window) == nil)
+    }
 }
