@@ -12,10 +12,10 @@
 //  What's in a backup: every piece of durable, user-authored configuration
 //  and learned preference that would be painful to recreate on a new device.
 //  What's deliberately NOT in a backup:
-//    - Auth tokens. YNAB's and Splitwise's Terms of Service forbid exporting
+//    - Auth tokens. YNAB's Terms of Service forbid exporting
 //      access tokens anywhere but their own APIs (see CLAUDE.md); the user
 //      re-authenticates after restoring. Tokens live only in the Keychain.
-//    - API caches (YNAB categories/accounts, Splitwise friends/current user).
+//    - API caches (YNAB categories and accounts).
 //      Regenerated on the next fetch, so there's no point carrying them.
 //    - In-flight / transient state (transaction drafts, the pending-operation
 //      sync queue, the recent-transaction log, the staged file import).
@@ -56,8 +56,8 @@ nonisolated struct BackupData: Codable {
     var createdAt: Date?
     var deviceName: String?
 
-    /// Bumped to 2 when the Splitwise sections (`splitwiseDefaultFriend`,
-    /// `splitTargetUsage`) were dropped, and to 3 for the ledger copy above.
-    /// Older backups still restore everything else.
+    /// 2 dropped the Splitwise sections (`splitwiseDefaultFriend`,
+    /// `splitwiseFriendUsage`); 3 added the ledger copy above. Older backups
+    /// still restore everything else.
     static let currentVersion = 3
 }

@@ -39,13 +39,17 @@ nonisolated enum ICloudBackupService {
         return directory
     }
 
+    /// Coordinated, like `loadBackup` — an uncoordinated write into the
+    /// ubiquity container races the sync daemon.
     @discardableResult
     static func write(_ data: Data, deviceName: String, date: Date = Date(), manual: Bool) throws -> URL {
         guard let directory = backupsDirectory() else { throw ICloudBackupError.iCloudUnavailable }
         let url = directory.appendingPathComponent(
             BackupFileName.make(deviceName: deviceName, date: date, manual: manual)
         )
-        try data.write(to: url, options: .atomic)
+        try coordinate(writingItemAt: url, options: .forReplacing) {
+            try data.write(to: $0, options: .atomic)
+        }
         return url
     }
 
@@ -82,12 +86,29 @@ nonisolated enum ICloudBackupService {
         var deleted = 0
         for file in stale {
             do {
-                try FileManager.default.removeItem(at: file.url)
+                try coordinate(writingItemAt: file.url, options: .forDeleting) {
+                    try FileManager.default.removeItem(at: $0)
+                }
                 deleted += 1
             } catch {
                 logger.error("Deleting backup failed: \(error.localizedDescription, privacy: .public)")
             }
         }
         return deleted
+    }
+
+    /// Surfaces whichever failed: the coordination itself, or the write inside it.
+    private static func coordinate(
+        writingItemAt url: URL,
+        options: NSFileCoordinator.WritingOptions,
+        _ body: (URL) throws -> Void
+    ) throws {
+        var writeError: Error?
+        var coordinationError: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: options, error: &coordinationError) { writeURL in
+            do { try body(writeURL) } catch { writeError = error }
+        }
+        if let coordinationError { throw coordinationError }
+        if let writeError { throw writeError }
     }
 }
