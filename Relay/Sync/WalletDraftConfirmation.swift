@@ -58,8 +58,8 @@ case completed(title: String, dialog: String)
         }
 
         let template = config.templates[info.templateName]
-        // A template can carry a split setting from before Splitwise was
-        // disconnected — same treatment as the intents give it.
+        // A template can carry a split setting from before the last ledger
+        // went away — same treatment as the intents give it.
         let splitOption = await SplitAvailability.canSplit ? (template?.splitOption ?? .never) : .never
         let friend = WalletAutomationDialog.friendWithoutAsking(template: template)
 

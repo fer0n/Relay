@@ -919,15 +919,10 @@ final class ContinueWalletTransactionModel {
         }
 
         if !isManual {
-            // The template's split option is left as-is — the runtime choice
-            // here is one-shot, not a setting. Same for who's on it: a template
-            // caches one friend, so a group or a multi-person split only links
-            // the merchant, leaving the template's own friend untouched.
-            // Only a Splitwise friend can be cached here: a template's
-            // Only a single-person split is cached: a whole-ledger split has
-            // no one person to remember, so it links the merchant without
-            // touching the template's own target — same as a Splitwise group
-            // used to.
+            // The split option is left as-is: the runtime choice is one-shot,
+            // not a setting. Only a single-person split is cached — a
+            // whole-ledger one has nobody to remember, so it links the
+            // merchant without touching the template's own target.
             let cachedTarget = target.soleParticipant.map { participant in
                 WalletTransactionConfig.CachedSplitTarget(
                     zoneName: target.zoneName,

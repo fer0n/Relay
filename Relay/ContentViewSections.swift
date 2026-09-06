@@ -16,10 +16,8 @@ extension AnyTransition {
     static let contentRow = AnyTransition.opacity.combined(with: .move(edge: .top))
 }
 
-/// The pinned card for the default ledger (set in Settings), or the faint
-/// logo watermark when none is set — the slot the default Splitwise friend's
-/// balance card used to occupy, answering the same question about the ledger
-/// you split on most.
+/// The pinned card for the default ledger (set in Settings), or a faint logo
+/// watermark when none is.
 struct ContentBalanceHeaderSection: View {
     let ledger: Ledger?
     let balances: LedgerBalances

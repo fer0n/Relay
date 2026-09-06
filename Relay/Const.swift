@@ -19,14 +19,14 @@ nonisolated struct Const {
     static let loggerSubsystem = bundleID
     static let keychainService = bundleID
 
-    /// Fallback currency for amounts Relay creates itself — Splitwise requires an
-    /// explicit code on `create_expense`, and statement rows carry no currency.
+    /// Fallback for amounts Relay creates itself; statement rows carry no
+    /// currency.
     static let currencyCode = "EUR"
 
     /// YNAB amounts are milliunits, with outflows negative.
     static let milliunitsPerUnit: Double = 1000
 
-    /// Splitwise amounts are in minor units.
+    /// Ledger amounts are in minor units.
     static let centsPerUnit: Double = 100
 
     /// SF Symbols shown on more than one screen, so the same thing always draws
@@ -34,7 +34,7 @@ nonisolated struct Const {
     /// what changes when the design does. A symbol whose call sites don't share
     /// one job stays an inline literal at each site instead.
     struct Symbol {
-        /// A transaction's free-text title — YNAB payee, Splitwise description,
+        /// A transaction's free-text title — YNAB payee, expense description,
         /// statement memo. See `TransactionService.titleFieldLabel`.
         static let titleField = "text.alignleft"
         /// Where the money came from: a YNAB account, a card, an expense's payer.
@@ -45,12 +45,9 @@ nonisolated struct Const {
         static let friends = "person.2.fill"
         /// One participant: a friend with no avatar, a single person's share.
         static let person = "person.fill"
-        /// The Splitwise activity feed.
-        static let activity = "bell.fill"
-        /// A shared expense list in iCloud. Not `friends`, which already names
-        /// the Splitwise balances row one line above it on the same screen.
+        /// A shared expense list in iCloud.
         static let ledger = "list.bullet.rectangle.fill"
-        /// Operations waiting to reach YNAB/Splitwise.
+        /// Operations waiting to reach YNAB or a ledger.
         static let pending = "arrow.triangle.2.circlepath"
         static let fileImport = "doc.badge.plus"
         static let drafts = "square.and.pencil"
@@ -74,8 +71,8 @@ nonisolated struct Const {
         static let retryAfterHeader = "Retry-After"
         static let jsonContentType = "application/json"
 
-        /// Only ever passed to YNAB's/Splitwise's own API and never logged, per
-        /// the token-handling rules in CLAUDE.md.
+        /// Only ever passed to YNAB's own API and never logged, per the
+        /// token-handling rules in CLAUDE.md.
         static func bearer(_ token: String) -> String { "Bearer \(token)" }
     }
 

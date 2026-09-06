@@ -16,7 +16,7 @@ nonisolated enum TransactionHistoryStore {
     private static let fileURL = ApplicationSupportFile.url("transaction-history.json")
 
     // record() is a load-modify-write, and callers record concurrently (the
-    // intents fire their YNAB and Splitwise writes with `async let`). Serializing
+    // intents fire their YNAB and ledger writes with `async let`). Serializing
     // the whole read/merge/write is what lets a groupId merge see its sibling.
     private static let lock = NSLock()
 
@@ -81,7 +81,7 @@ nonisolated enum TransactionHistoryStore {
         }
     }
 
-    /// Local-only: the underlying YNAB transaction and Splitwise expense are
+    /// Local-only: the underlying YNAB transaction and ledger expense are
     /// untouched, which is why callers must confirm that with the user first.
     static func delete(id: UUID) {
         lock.lock()

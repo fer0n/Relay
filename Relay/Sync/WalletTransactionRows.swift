@@ -2,8 +2,8 @@
 //  WalletTransactionRows.swift
 //  Relay
 //
-//  Row-level building blocks for ContinueWalletTransactionView's YNAB-side
-//  fields. The Splitwise "Split" rows live in SplitwiseSplitRows.swift.
+//  ContinueWalletTransactionView's YNAB-side fields. The "Split" rows live
+//  in Relay/Split/SplitRows.swift.
 //
 
 import SwiftUI
@@ -55,7 +55,7 @@ struct TemplatePickerRow: View {
     let templates: [String]
     @Binding var choice: String?
     let onCreateNew: () -> Void
-    /// True for YNAB, which requires a template; Splitwise can auto-create one.
+    /// True for YNAB, which requires a template; a split can auto-create one.
     var isIncomplete: Bool = false
 
     var body: some View {
@@ -111,7 +111,7 @@ struct AccountPickerRow: View {
     }
 }
 
-/// The payee (YNAB) / description (Splitwise) field, with a custom keyboard
+/// The payee (YNAB) / description (split) field, with a custom keyboard
 /// toolbar of suggestions above the keyboard. Owns the focus state, since the
 /// toolbar only makes sense scoped to this field.
 struct PayeeFieldRow: View {
@@ -127,7 +127,7 @@ let showsLinkToTemplate: Bool
     /// See ContinueWalletTransactionModel.linkToTemplateName.
     let linkToTemplateName: String
     let onLinkToTemplate: () -> Void
-    /// Don't flag a blank field incomplete — for the Splitwise fields, which fall
+    /// Don't flag a blank field incomplete — for the split fields, which fall
     /// back to what their placeholder shows rather than requiring input.
     var allowsEmpty: Bool = false
 
@@ -216,7 +216,7 @@ let showsLinkToTemplate: Bool
 }
 
 /// No suggestion bar: unlike the payee, a memo is one-off text rather than a name
-/// that repeats and is worth autocompleting. Also appended to the Splitwise
+/// that repeats and is worth autocompleting. Also appended to the split
 /// description when the transaction is split, so both sides carry the same note.
 struct MemoFieldRow: View {
     @Binding var text: String

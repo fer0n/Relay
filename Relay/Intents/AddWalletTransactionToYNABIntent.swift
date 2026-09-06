@@ -43,7 +43,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
     @Parameter(title: "Account")
     var accountOverride: YNABAccountEntity?
 
-    /// Only used when the resolved template's Splitwise option is "Ask Each Time".
+    /// Only used when the resolved template's split option is "Ask Each Time".
     @Parameter(title: "Split Transaction?")
     var splitRuntimeChoice: SplitOption?
 
@@ -304,9 +304,8 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 }
             }
 
-            // Committed ahead of the Splitwise questions, which it never depends
-            // on, so an interruption during the optional split below still
-            // leaves the YNAB transaction complete.
+            // Committed ahead of the split questions, which it never depends
+            // on, so an interruption below still leaves YNAB complete.
             //
             // The shared group id folds both writes into one history entry.
             let walletGroupId = UUID()
@@ -332,8 +331,8 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
             // newestEntryID() would name an earlier, unrelated transaction.
             commitClaim(historyEntryId: ynabOutcome == .created ? TransactionHistoryStore.newestEntryID() : nil)
 
-            // A template can carry a non-.never option from before Splitwise was
-            // disconnected; don't ask for a friend/share that can only fail.
+            // A template can carry a non-.never option from before the last
+            // ledger went away; don't ask for a target that can only fail.
             let effectiveSplitOption = SplitAvailability.hasKnownSharedLedger ? splitOption : .never
             guard effectiveSplitOption != .never else {
                 if let activeDraftId {

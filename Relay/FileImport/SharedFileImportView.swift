@@ -608,9 +608,8 @@ struct SharedFileImportView: View {
         }
     }
 
-    /// Splitwise has no bulk endpoint, so this goes sequentially with 300ms
-    /// pacing (same as PendingOperationQueue.flush). Only rows that succeeded are
-    /// removed, so a failure leaves them to retry.
+    /// Sequential with 300ms pacing, like PendingOperationQueue.flush. Only
+    /// rows that succeeded are removed, so a failure leaves them to retry.
     private func submitSplit() async {
         guard let staging else { return }
         guard let friendEntity = splitTargetEntity else { return }

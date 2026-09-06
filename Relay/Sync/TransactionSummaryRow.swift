@@ -2,7 +2,7 @@
 //  TransactionSummaryRow.swift
 //  Relay
 //
-//  Shared summary row for a YNAB/Splitwise transaction — date on the left,
+//  Shared summary row for a YNAB or ledger transaction — date on the left,
 //  payee/description and service/category-or-friend in the middle, amount
 //  on the right. Used for the pending queue, transaction drafts, and
 //  recently created transactions.
@@ -13,17 +13,17 @@ import SwiftUI
 struct TransactionSummaryRow: View {
     let service: TransactionService
     /// A second service shown alongside `service` for a combined
-    /// YNAB+Splitwise entry (its icon and name follow the primary one).
+    /// YNAB+ledger entry (its icon and name follow the primary one).
     var secondaryService: TransactionService?
     let date: Date
-    /// Payee (YNAB) or description (Splitwise).
+    /// Payee (YNAB) or description (ledger).
     let title: String
     let amount: String
-    /// Overrides the amount's color (e.g. green for a Splitwise expense the
+    /// Overrides the amount's color (e.g. green for a ledger expense the
     /// signed-in user lent money on) — nil keeps the default themed text
     /// color every other call site relies on.
     var amountColor: Color?
-    /// Category name (YNAB) or friend's name (Splitwise) — nil hides the
+    /// Category name (YNAB) or who it's split with — nil hides the
     /// "· detail" suffix (e.g. a draft, where nothing's been chosen yet).
     var detail: String?
     var errorMessage: String?

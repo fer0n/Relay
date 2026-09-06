@@ -51,7 +51,7 @@ nonisolated enum TransactionDraftGuard {
         return draft.id
     }
 
-    /// A draft whose reminder is the split question itself — on the Splitwise
+    /// A draft whose reminder is the split question itself — on the ledger
     /// path that doubles as the confirmation, "Don't Split" creating nothing.
     @discardableResult
     static func beginAwaitingSplitChoice(

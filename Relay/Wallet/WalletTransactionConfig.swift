@@ -123,16 +123,11 @@ nonisolated struct WalletTransactionConfig: Codable {
 
         enum CodingKeys: String, CodingKey {
             case categoryId, autoMatch
-            // Kept at their old spellings so a config written before Splitwise
-            // was removed keeps its per-template split setting and its
-            // auto-file flag; only the target itself was Splitwise-shaped and
-            // is cleared by SplitwiseRemovalMigration.
-            // These two raw values must stay at their old Splitwise spellings:
-            // they're what's on disk in every config written before the
-            // removal, and a rename here silently resets each template's split
-            // setting to `.never` and forgets which one merchants auto-file
-            // under. Only the *target* was Splitwise-shaped; the setting itself
-            // is still meaningful and is deliberately preserved.
+            // These two must stay at their old spellings: they're what's on
+            // disk in every config written before Splitwise was removed, and a
+            // rename resets each template's split setting to `.never` and
+            // forgets which one merchants auto-file under. Only the *target*
+            // was Splitwise-shaped, and that's cleared by the migration.
             case isSplitDefault = "isSplitwiseDefault"
             case splitOption = "splitwiseOption"
             case ledgerZoneName, ledgerParticipantID, splitTargetFirstName, splitTargetFullName

@@ -2,20 +2,15 @@
 //  WalletDraftCompletion.swift
 //  Relay
 //
-//  Answers the "split with Splitwise?" question from a notification action,
-//  in the background, without opening the app. Always does just the Splitwise
-//  half, via the same SplitwiseExpenseHelper / WalletAutomationDialog path the
-//  intents and ContinueWalletTransactionView use. Both wallet
-//  automations arm this: for the YNAB one the YNAB transaction is already
-//  committed by the time the split is asked, so this finishes an optional
-//  side-split; for the standalone Splitwise one the expense *is* the split,
-//  so this creates the whole transaction (and Don't Split resolves it to
-//  nothing, matching the intent's own skip).
+//  Answers the "split?" question from a notification action in the
+//  background, doing only the split half via the same SplitExpenseService /
+//  WalletAutomationDialog path the intents use. On the YNAB automation the
+//  transaction is already committed, so this is an optional side-split; on
+//  the ledger-only one the expense *is* the split.
 //
-//  Only called for a `.ledgerWallet` draft carrying a PendingSplitContext,
-//  i.e. one armed at the split question with its description + friend already
-//  resolved. Everything comes from that context — no re-resolution against
-//  config that may not have been saved when the run was interrupted.
+//  Only for a `.ledgerWallet` draft carrying a PendingSplitContext, i.e. one
+//  armed at the split question with everything already resolved — no
+//  re-resolution against config an interrupted run may not have saved.
 //
 
 import Foundation
@@ -104,7 +99,7 @@ nonisolated enum WalletDraftCompletion {
             )
             return .completed(title: content.title, dialog: content.body)
         } catch {
-            // A non-connectivity Splitwise failure (bad auth, validation) —
+            // A non-connectivity failure (bad auth, validation) —
             // send the user into the app to sort it out rather than silently
             // dropping the split.
             logger.error("background split failed: \(String(describing: error), privacy: .public)")

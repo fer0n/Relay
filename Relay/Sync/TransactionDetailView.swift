@@ -4,15 +4,12 @@
 //
 //  Unified detail screen for a single transaction:
 //
-//  - `.draft(id:)` — routes to the editable continue flow, or explains there's
-//    nothing left to do if the draft was resolved since the notification fired.
-//  - `.history(_:)` — read-only summary of a created transaction/expense.
-//    Re-adding stays on the row's context menu.
-//  - `.pending(_:)` — read-only summary of one still waiting to be sent.
-//    Retry/delete stay on the row's swipe actions.
-//  - `.splitwiseExpense(_:)` — an expense fetched live from Splitwise, whose
-//    total and shares can be edited back onto it. Lives in
-//    SplitwiseExpenseDetailView.swift.
+//  - `.draft(id:)` — the editable continue flow, or an explanation if the
+//    draft was resolved since the notification fired.
+//  - `.history(_:)` / `.pending(_:)` — read-only; re-add, retry and delete
+//    stay on the row's context menu and swipe actions.
+//  - `.ledgerExpense(_:)` — editable, saving back to the ledger. Lives in
+//    LedgerExpenseDetailView.swift.
 //
 
 import SwiftUI
@@ -90,8 +87,8 @@ private struct DraftDetailContent: View {
 // MARK: - Shared layout
 
 /// Hero amount/service-icons/timestamp header plus caller-supplied sections —
-/// the common shell behind `HistoryDetailContent`, `PendingDetailContent`, and
-/// `SplitwiseExpenseDetailView`.
+/// the common shell behind `HistoryDetailContent`, `PendingDetailContent` and
+/// `LedgerExpenseDetailView`.
 struct TransactionDetailContent<Sections: View>: View {
     let amount: String
     /// Set to make the hero amount a bound text field; nil renders plain text.
@@ -180,8 +177,7 @@ private struct HistoryDetailContent: View {
     /// re-read the config store from disk on every keystroke in the Payee field.
     /// Nil when the entry predates `merchant` or the mapping was since removed.
     @State private var linkedInfo: WalletTransactionConfig.MerchantInfo?
-    /// Editable only for a Splitwise entry with a resolvable merchant; the row is
-    /// hidden otherwise.
+    /// Editable only for an entry with a resolvable merchant.
     @State private var payeeText: String
 
     @Environment(\.dismiss) private var dismiss
@@ -202,7 +198,7 @@ private struct HistoryDetailContent: View {
 
     /// What the automation was handed, which the Payee row below is the tidied-up
     /// form of. Sits under the amount rather than in the card: it's what this
-    /// entry *was*, like Splitwise's "Paid by", not another field of it.
+    /// entry *was*, not another field of it.
     private var merchantDetailLine: (icon: String, text: String)? {
         guard let merchant = entry.merchant, !merchant.isEmpty else { return nil }
         return ("storefront", merchant)

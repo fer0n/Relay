@@ -12,7 +12,7 @@
 //  by definition, still unwritten — a run that had already committed
 //  something transitions or completes the draft rather than leaving it on
 //  this plain reminder (see TransactionDraftGuard.transition, used when the
-//  YNAB half lands and only the Splitwise split is still open). So
+//  YNAB half lands and only the split is still open). So
 //  discarding here only ever drops the part that never happened, exactly
 //  like WalletConfirmNotification's Discard.
 //

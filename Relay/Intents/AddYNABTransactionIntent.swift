@@ -5,8 +5,8 @@
 //  Siri/Shortcuts equivalent of the "Add YNAB Expense" Shortcut being replaced
 //  (see docs/project-goals.md), with the same fields.
 //
-//  `splitOption` mirrors the original's "splitwise" field: set it fixed for
-//  always/never, or leave it "Ask Each Time" for a live per-run choice.
+//  `splitOption` mirrors the original's "splitwise" field: fixed for
+//  always/never, or "Ask Each Time" for a live per-run choice.
 //
 
 import AppIntents
@@ -60,9 +60,9 @@ struct AddYNABTransactionIntent: AppIntent {
             throw YNABIntentError.notAuthenticated
         }
 
-        // parameterSummary has to be a compile-time value, so splitOption can't
-        // be hidden when Splitwise isn't connected. Treat it as "never split" at
-        // run time rather than prompting for a friend/share that can only fail.
+        // parameterSummary has to be a compile-time value, so splitOption
+        // can't be hidden when there's no ledger. Treat it as "never split"
+        // rather than prompting for a target that can only fail.
         let effectiveSplitOption = SplitAvailability.hasKnownSharedLedger ? splitOption : .never
 
         // Resolve everything before the YNAB call below: throwing needsValueError
@@ -102,7 +102,7 @@ struct AddYNABTransactionIntent: AppIntent {
 
         // Never depends on the YNAB call's outcome, so it runs concurrently rather
         // than paying for both round-trips back to back. Catches its own errors, so
-        // a Splitwise failure can't cancel the in-flight YNAB call.
+        // a split failure can't cancel the in-flight YNAB call.
         func createSplitIfNeeded() async -> String? {
             guard effectiveSplitOption != .never, let friend = splitTarget else { return nil }
             // Mirrors the original shortcut's description: "payee (memo)" when a memo is set.

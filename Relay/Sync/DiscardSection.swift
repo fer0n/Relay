@@ -2,13 +2,10 @@
 //  DiscardSection.swift
 //  Relay
 //
-//  Shared destructive row — a centered, red-styled button gated behind
-//  a destructive confirmationDialog. Used by the editable continue flow
-//  (ContinueWalletTransactionView, "Discard"), the read-only pending detail
-//  view (TransactionDetailView's PendingDetailContent, "Discard"), and the
-//  read-only Splitwise expense detail view (SplitwiseExpenseDetailContent,
-//  "Delete" — the only one of the three that reaches an actual network
-//  call, hence `onConfirm` being async).
+//  A centered red button behind a destructive confirmationDialog. Used for
+//  "Discard" by the continue flow and the pending detail view, and "Delete"
+//  by the ledger expense editor — which reaches the network, hence the
+//  async `onConfirm`.
 //
 
 import SwiftUI

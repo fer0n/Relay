@@ -7,7 +7,7 @@
 //  so category pickers — Shortcuts' native one via YNABCategoryQuery, and
 //  the wallet intent's requestDisambiguation prompt — surface recently-used
 //  categories first instead of whatever order the YNAB API returns.
-//  Mirrors SplitwiseFriendUsageStore.swift's approach exactly.
+//  Mirrors LedgerParticipantUsageStore.swift's approach.
 //
 
 import Foundation

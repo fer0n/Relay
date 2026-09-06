@@ -56,7 +56,7 @@ extension ContentView {
                 selectedHistoryEntry = entries.first { $0.id == newValue }
                 draftRouter.pendingHistoryEntryID = nil
             }
-            // ImportSplitwiseFileIntent brought Relay forward itself to land here.
+            // ImportLedgerFileIntent brought Relay forward itself to land here.
             // A sheet rather than a push onto `path`, so this, the "File Import"
             // row, and the share-sheet flow all share one "Done" button.
             .onChange(of: draftRouter.pendingSplitImport) { _, pending in

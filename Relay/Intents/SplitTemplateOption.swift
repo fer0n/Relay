@@ -4,7 +4,7 @@
 //
 //  The persisted, per-merchant-template counterpart to
 //  `SplitOption`. Mirrors the original "Transaction → YNAB"
-//  shortcut's per-bucket "Use Splitwise?" setting exactly: `always`/
+//  shortcut's per-bucket "Use Splitwise?" setting: `always`/
 //  `never`/`ask`, saved on the template and reused for every future
 //  transaction that matches it. Unlike `SplitOption` (a one-shot,
 //  per-invocation choice where Shortcuts' native "Ask Each Time" already

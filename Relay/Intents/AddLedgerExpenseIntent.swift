@@ -8,11 +8,10 @@
 //  own share (splits the cost equally when left blank). The signed-in user
 //  always pays the full cost up front and is owed back the others' shares.
 //
-//  Replaces AddSplitwiseExpenseIntent, which was deleted rather than
-//  renamed — a saved shortcut referencing it will show a missing action and
-//  needs re-adding. There was no way to avoid that: Shortcuts keys on the
-//  intent's type name, and keeping the old one alive would have meant an
-//  action called "Add Splitwise Expense" that writes somewhere else.
+//  Replaces AddSplitwiseExpenseIntent by deletion, not rename: Shortcuts keys
+//  on the type name, so a saved shortcut shows a missing action and needs
+//  re-adding. Keeping the old name would have meant an action called "Add
+//  Splitwise Expense" writing somewhere else.
 //
 
 import AppIntents

@@ -5,11 +5,9 @@
 //  Remembers the FileImportRow ids that were actually submitted, per
 //  destination, so SharedFileImportView can flag a row as "Already
 //  imported"/"Already split" when the same statement (or an overlapping date
-//  range) is imported again later. Per-destination because splitting a row on
-//  Splitwise says nothing about whether it was imported to YNAB. Replaces
-//  the Splitwise-only SplitwiseImportHistoryStore; ids are namespaced by
-//  destination in one file. Capped rather than growing forever — same
-//  Application Support JSON pattern as SplitwiseFriendUsageStore.swift.
+//  range) is imported again later. Per-destination because splitting a row
+//  says nothing about whether it was imported to YNAB; ids are namespaced by
+//  destination in one file, and capped rather than growing forever.
 //
 
 import Foundation

@@ -26,7 +26,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     var pendingQueueReminderTapped = false
     /// From a wallet success notification — opens that transaction's detail view.
     var pendingHistoryEntryID: UUID?
-    /// Set by ImportSplitwiseFileIntent right after it stages a parsed import.
+    /// Set by ImportLedgerFileIntent right after it stages a parsed import.
     var pendingSplitImport = false
     /// Set by `.onOpenURL` for a shared statement file. Carries the file itself,
     /// since nothing stages it until a destination is picked.

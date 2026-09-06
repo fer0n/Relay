@@ -3,7 +3,7 @@
 //  Relay
 //
 //  Shows everything PendingOperationQueue is still waiting to send to YNAB
-//  or Splitwise (queued because the device was offline when an intent ran),
+//  or a ledger (queued because the device was offline when an intent ran),
 //  with manual retry/delete since there's no OS-level background sync — see
 //  PendingOperationQueue's header comment.
 //

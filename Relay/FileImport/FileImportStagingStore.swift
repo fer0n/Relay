@@ -4,14 +4,10 @@
 //
 //  The single pending file import awaiting review in SharedFileImportView —
 //  whichever was most recently parsed, by the share-sheet flow or
-//  ImportSplitwiseFileIntent. Replaces the old parallel
-//  YNAB/Splitwise-specific staging stores: there's now one list of rows both
-//  destinations share, plus the remembered destination and per-destination
-//  target settings, so flipping "Import To" never rebuilds or loses the
-//  list. Only one pending import at a time — a new parse overwrites an
-//  unreviewed one. Same Application Support JSON pattern as the stores it
-//  replaces; decode is lenient so a file written by an older build (missing
-//  newer fields) still loads instead of failing outright.
+//  ImportLedgerFileIntent. One list of rows both destinations share, plus the
+//  remembered destination and per-destination target settings, so flipping
+//  "Import To" never rebuilds or loses the list. A new parse overwrites an
+//  unreviewed one. Decode is lenient, so a file from an older build loads.
 //
 
 import Foundation
@@ -23,7 +19,7 @@ nonisolated struct FileImportStaging: Codable {
     var rows: [FileImportRow]
     /// Persists the review checklist's selection across a dismiss/reopen.
     /// Shared across destinations (the same rows are selected whether you're
-    /// looking at the YNAB or Splitwise view).
+    /// looking at the YNAB or the split view).
     var selectedIDs: Set<String>
     let sourceFilename: String
     let importedAt: Date

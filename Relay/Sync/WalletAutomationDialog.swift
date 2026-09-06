@@ -36,7 +36,7 @@ nonisolated enum WalletAutomationDialog {
     }
 
     /// Never throws: the YNAB write already succeeded or queued by the time this
-    /// is worth calling, so a Splitwise failure is only a note in the dialog.
+    /// is worth calling, so a split failure is only a note in the dialog.
     ///
     /// `merchant` must be the same string the YNAB half was recorded with — the
     /// two writes fold into one history entry, and under `async let` whichever
@@ -145,7 +145,7 @@ nonisolated enum WalletAutomationDialog {
         }
 
         // "Handled" rather than "added": a suppressed run doesn't always shadow a
-        // written transaction — on the Splitwise-only path a deliberate "Don't
+        // written transaction — on the split-only path a deliberate "Don't
         // Split" also claims the purchase.
         let dialog = String(
             format: String(localized: "%@ at %@ was already handled by \"%@\" %@ – skipped."),
@@ -226,7 +226,7 @@ nonisolated enum WalletAutomationDialog {
         return (dialog, resolvedDraftId)
     }
 
-    /// The Splitwise flavour of `handleAwaitingConfirmation`.
+    /// The split flavour of `handleAwaitingConfirmation`.
     ///
     /// Under "Ask Each Time" the split question already *is* a confirmation: the
     /// expense is the whole transaction here, so "Don't Split" does what Discard
@@ -291,7 +291,7 @@ nonisolated enum WalletAutomationDialog {
         }
     }
 
-    /// Distinct from the standalone AddSplitwiseExpenseIntent, which deliberately
+    /// Distinct from the standalone AddLedgerExpenseIntent, which deliberately
     /// omits the amount from its own wording.
     static func ledgerWalletDialog(
         outcome: SplitExpenseOutcome,

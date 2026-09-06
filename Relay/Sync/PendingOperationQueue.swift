@@ -129,7 +129,7 @@ final class PendingOperationQueue {
     }
 
     /// Retries every queued operation once, in submission order, pausing between
-    /// calls (YNAB/Splitwise ToS: don't hammer retries). Stops early on a
+    /// calls (YNAB's ToS: don't hammer retries). Stops early on a
     /// connectivity failure — the rest are almost certainly offline too, and this
     /// runs often enough that there'll be another pass soon.
     func flush() async {

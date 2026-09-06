@@ -2,13 +2,8 @@
 //  HowRelayWorksView.swift
 //  Relay
 //
-//  A user-facing transparency screen explaining how Relay's YNAB/Splitwise
-//  connection actually works, in plain language. Every claim here must stay
-//  accurate to the real implementation — see YNABAuthService.swift,
-//  SplitwiseAuthService.swift, and oauth-relay/README.md. In particular:
-//  Splitwise doesn't get the same background-refresh treatment YNAB does
-//  (see SplitwiseAuthService.swift), so this deliberately doesn't claim it
-//  does.
+//  Plain-language transparency screen. Every claim must stay accurate to
+//  YNABAuthService.swift, Relay/Ledger/ and oauth-relay/README.md.
 //
 
 import SwiftUI

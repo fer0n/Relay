@@ -39,7 +39,7 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
     /// Two runs sharing a source are never duplicates of each other: the same
     /// automation firing twice means the user really did pay twice.
     let source: String
-    /// Part of the match key, so a YNAB-destined and a Splitwise-destined card
+    /// Part of the match key, so a YNAB-destined and a ledger-destined card
     /// charged the same amount in the same window don't collapse. A real
     /// duplicate pair always shares a destination.
     let destination: TransactionService
@@ -47,7 +47,7 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
     let claimedAt: Date
     /// Compared instead of the raw card string, since Wallet's "Visa ••1234" and
     /// a bank app's "DKB Visa" map to the same account id. Nil when the card
-    /// isn't mapped, and always nil on the Splitwise path — so `matches` reads a
+    /// isn't mapped, and always nil on the ledger path — so `matches` reads a
     /// nil as no signal rather than as agreement.
     var accountId: String?
     var merchant: String

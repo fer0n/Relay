@@ -68,7 +68,7 @@ extension Date {
 }
 
 extension DateFormatter {
-    /// "yyyy-MM-dd" in the current time zone — used for YNAB/Splitwise import IDs and API date strings.
+    /// "yyyy-MM-dd" in the current time zone — YNAB import IDs and API dates.
     nonisolated static let yyyyMMdd: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"

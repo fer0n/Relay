@@ -3,7 +3,7 @@
 //  Relay
 //
 //  The interactive-notification category behind answering a wallet
-//  transaction's "split with Splitwise?" question straight from the draft
+//  transaction's "split?" question straight from the draft
 //  reminder, without opening the app. The three actions mirror the intent's
 //  live SplitOption prompt (Split Equally / Manually / Don't
 //  Split); the manual case is a text-input action whose reply is the user's

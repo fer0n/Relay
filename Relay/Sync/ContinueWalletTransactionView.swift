@@ -153,9 +153,7 @@ struct ContinueWalletTransactionView: View {
                 }
             }
 
-            // A ledger is reason enough to offer the Split section — gating it
-            // on Splitwise auth alone would hide splitting entirely from
-            // someone who's dropped Splitwise for a ledger.
+            // A ledger is reason enough to offer the Split section.
             if model.mode == .ynab, model.canSplit {
                 Section("Split") {
                     splitPickerRow
