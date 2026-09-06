@@ -177,7 +177,7 @@ final class PendingOperationQueue {
                 }
             case .ledgerExpense(let expense):
                 guard let ledger = LedgerStore.shared.ledgers.first(where: { $0.zoneName == expense.zoneName }) else {
-                    throw LedgerExpenseError.validation("Couldn't find that ledger.")
+                    throw LedgerExpenseError.validation(String(localized: "Couldn't find that ledger."))
                 }
                 try await LedgerService.save(expense.asExpense, in: ledger)
                 LedgerParticipantUsageStore.recordUsage(participantIDs: expense.others.map(\.participantID))

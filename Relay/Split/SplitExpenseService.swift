@@ -35,10 +35,10 @@ enum SplitExpenseService {
         merchant: String? = nil
     ) async throws -> SplitExpenseOutcome {
         guard amount.isFinite, amount > 0 else {
-            throw LedgerExpenseError.validation("Amount must be a positive number.")
+            throw LedgerExpenseError.validation(String(localized: "Amount must be a positive number."))
         }
         guard let ledger = target.ledger else {
-            throw LedgerExpenseError.validation("That ledger isn't available on this device any more.")
+            throw LedgerExpenseError.validation(String(localized: "That ledger isn't available on this device any more."))
         }
         // The ledger's own id first — what every existing share is keyed
         // by. The container's is the same string, for before it loads.
@@ -49,7 +49,7 @@ enum SplitExpenseService {
         // A whole-ledger target includes the payer, who'd be billed twice.
         let others = target.participants.filter { $0.id != payerID }
         guard !others.isEmpty else {
-            throw LedgerExpenseError.validation("Pick at least one person to split with.")
+            throw LedgerExpenseError.validation(String(localized: "Pick at least one person to split with."))
         }
 
         let costCents = Int((amount * Const.centsPerUnit).rounded())
@@ -59,7 +59,7 @@ enum SplitExpenseService {
             participantIDs: [payerID] + others.map(\.id),
             allocation: allocation
         ) else {
-            throw LedgerExpenseError.validation("Your share must be between 0 and the total amount.")
+            throw LedgerExpenseError.validation(String(localized: "Your share must be between 0 and the total amount."))
         }
 
         let expense = LedgerExpense(
@@ -140,15 +140,17 @@ enum SplitExpenseService {
     /// otherwise exist with no matching split.
     nonisolated static func validateOwnShare(_ ownShare: Double, amount: Double) throws {
         guard ownShare.isFinite, (0...amount).contains(ownShare) else {
-            throw LedgerExpenseError.validation("Your share must be between 0 and the total amount.")
+            throw LedgerExpenseError.validation(String(localized: "Your share must be between 0 and the total amount."))
         }
     }
 
-    /// The amount, or a user-facing message.
+    /// The amount, or a user-facing message. Via `SplitShareMath` so a comma
+    /// decimal separator parses, as it does in every other amount field.
     nonisolated static func parseOwnShare(_ text: String, amount: Double) -> OwnShareParse {
-        guard let parsed = Double(text) else {
+        guard let cents = SplitShareMath.cents(text) else {
             return .invalid(message: String(localized: "Enter a valid share amount."))
         }
+        let parsed = Double(cents) / Const.centsPerUnit
         do {
             try validateOwnShare(parsed, amount: amount)
         } catch {

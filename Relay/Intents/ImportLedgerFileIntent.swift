@@ -59,7 +59,7 @@ struct ImportLedgerFileIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard await SplitAvailability.canSplit else {
-            throw LedgerExpenseError.validation("Create a shared ledger in Relay first.")
+            throw LedgerExpenseError.validation(String(localized: "Create a shared ledger in Relay first."))
         }
 
         let filename = file.filename

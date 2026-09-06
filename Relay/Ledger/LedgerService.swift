@@ -253,9 +253,11 @@ nonisolated enum LedgerService {
         isOwned: Bool
     ) -> [LedgerParticipant] {
         guard let share else {
+            // Nil, not "You": `displayName` localizes that, and a literal
+            // here would prefill the profile editor with it.
             return [LedgerParticipant(
                 id: currentUserID,
-                name: "You",
+                name: nil,
                 isCurrentUser: true,
                 hasAccepted: true,
                 isOwner: isOwned

@@ -17,18 +17,18 @@ enum SplitTargetResolver {
             await store.refresh(force: true)
         }
         guard let ledger = store.ledgers.first(where: { $0.zoneName == entity.zoneName }) else {
-            throw LedgerExpenseError.validation("Couldn't find that ledger.")
+            throw LedgerExpenseError.validation(String(localized: "Couldn't find that ledger."))
         }
 
         guard let participantID = entity.participantID else {
             let target = SplitTarget(ledger: ledger)
             guard !target.isEmpty else {
-                throw LedgerExpenseError.validation("Nobody else is on that ledger yet.")
+                throw LedgerExpenseError.validation(String(localized: "Nobody else is on that ledger yet."))
             }
             return target
         }
         guard let participant = ledger.participant(id: participantID), !participant.isCurrentUser else {
-            throw LedgerExpenseError.validation("That person isn't on the ledger any more.")
+            throw LedgerExpenseError.validation(String(localized: "That person isn't on the ledger any more."))
         }
         return SplitTarget(
             participants: [SplitParticipant(participant)],

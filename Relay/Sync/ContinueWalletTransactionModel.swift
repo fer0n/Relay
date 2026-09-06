@@ -317,8 +317,8 @@ final class ContinueWalletTransactionModel {
         case .always, .never:
             return .equal
         case .manual:
-            guard let own = Double(ownShareText) else { return nil }
-            return .ownShare(cents: Int((own * Const.centsPerUnit).rounded()))
+            guard let own = SplitShareMath.cents(ownShareText) else { return nil }
+            return .ownShare(cents: own)
         case .shares:
             return shareWeights.map { .weights($0) }
         }
