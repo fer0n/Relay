@@ -39,6 +39,9 @@ struct SharedFileImportView: View {
     /// FileImportHistoryStore), so the "already imported/split" badge is a set
     /// lookup rather than a disk read per row.
     @State private var handledIDs: Set<String> = []
+    /// Rows matching an expense already on the target ledger; weaker than
+    /// `handledIDs`, and split-only.
+    @State private var likelyExistingIDs: Set<String> = []
 
     @State private var ynabAuth = YNABAuthService()
 
@@ -207,6 +210,7 @@ struct SharedFileImportView: View {
                     destination = .split
                 }
                 await loadActiveTarget()
+                refreshLikelyExisting()
                 await maybeAutoParse()
             }
             // A Shortcut import may have written staging while this already-open
@@ -229,6 +233,7 @@ struct SharedFileImportView: View {
                 }
                 includeMemos = reloaded.includeMemos
                 handledIDs = FileImportHistoryStore.handledIDs(destination: destination)
+                refreshLikelyExisting()
                 Task { await loadActiveTarget() }
             }
             .onChange(of: destination) { _, newValue in
@@ -239,11 +244,15 @@ struct SharedFileImportView: View {
                     try? FileImportStagingStore.save(staging)
                 }
                 handledIDs = FileImportHistoryStore.handledIDs(destination: newValue)
+                refreshLikelyExisting()
                 Task { await loadActiveTarget() }
             }
             // Keeps the staged target/settings in sync so a reopen restores them.
             .onChange(of: selectedAccountId) { syncStagingTargets() }
-            .onChange(of: splitTarget) { _, _ in syncStagingTargets() }
+            .onChange(of: splitTarget) { _, _ in
+                syncStagingTargets()
+                refreshLikelyExisting()
+            }
             .onChange(of: includeMemos) { syncStagingTargets() }
             .onAuthenticated(ynabAuth.isAuthenticated) {
                 ynabNotAuthenticated = false
@@ -428,17 +437,18 @@ struct SharedFileImportView: View {
     /// One shared row for both destinations.
     private func rowContent(_ row: FileImportRow) -> some View {
         let handled = handledIDs.contains(row.id)
+        let likelyExisting = !handled && likelyExistingIDs.contains(row.id)
         return HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(row.payeeName).font(.body)
-                Text(rowSubtitle(for: row, handled: handled))
+                Text(rowSubtitle(for: row, handled: handled, likelyExisting: likelyExisting))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if handled {
-                Image(systemName: "circle.fill")
-                    .font(.system(size: 6))
+            if handled || likelyExisting {
+                Image(systemName: handled ? "circle.fill" : "circle")
+                    .font(.system(size: 6, weight: .bold))
                     .foregroundStyle(.orange)
             }
             Text(row.amount, format: .currency(code: Const.currencyCode))
@@ -451,12 +461,26 @@ struct SharedFileImportView: View {
     /// Date, plus "Already imported"/"Already split" when this row overlaps a
     /// previous import. The orange lives on the badge icon next to the price, so
     /// this stays a plain secondary string.
-    private func rowSubtitle(for row: FileImportRow, handled: Bool) -> String {
+    private func rowSubtitle(for row: FileImportRow, handled: Bool, likelyExisting: Bool) -> String {
         var parts = [row.date.formatted(date: .abbreviated, time: .omitted)]
         if handled {
             parts.append(destination == .split ? "Already split" : "Already imported")
+        } else if likelyExisting {
+            parts.append("Possibly on ledger")
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// Reads the snapshot LedgerStore already holds — no fetch of its own.
+    private func refreshLikelyExisting() {
+        guard destination == .split, let zoneName = splitTarget?.zoneName, let staging else {
+            likelyExistingIDs = []
+            return
+        }
+        likelyExistingIDs = ImportedRowLedgerMatcher.likelyExistingIDs(
+            rows: staging.rows,
+            expenses: ledgerStore.expenses[zoneName] ?? []
+        )
     }
 
     private func toggleSelectAll() {
@@ -502,6 +526,7 @@ struct SharedFileImportView: View {
         if let splitTarget, !availableLedgers.contains(where: { $0.zoneName == splitTarget.zoneName }) {
             self.splitTarget = nil
         }
+        refreshLikelyExisting()
     }
 
     private func loadAccounts() async {
@@ -597,6 +622,7 @@ struct SharedFileImportView: View {
         hasStaged = true
         handledIDs = FileImportHistoryStore.handledIDs(destination: destination)
         withAnimation { staging = newStaging }
+        refreshLikelyExisting()
     }
 
     // MARK: - Submit
