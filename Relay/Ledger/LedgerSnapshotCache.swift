@@ -52,11 +52,23 @@ nonisolated struct LedgerSnapshot: Codable, Sendable {
     var ledgers: [StoredLedger]
     /// Keyed by zone name, as in the store.
     var expenses: [String: [LedgerExpense]]
+    /// Optional so an older cache still decodes; nil means the next fetch
+    /// walks the zone.
+    var profiles: [String: [String: LedgerProfile]]?
+    var changeTokens: [String: Data]?
     var currentUserID: String?
 
-    init(ledgers: [Ledger], expenses: [String: [LedgerExpense]], currentUserID: String?) {
+    init(
+        ledgers: [Ledger],
+        expenses: [String: [LedgerExpense]],
+        profiles: [String: [String: LedgerProfile]] = [:],
+        changeTokens: [String: Data] = [:],
+        currentUserID: String?
+    ) {
         self.ledgers = ledgers.map(StoredLedger.init)
         self.expenses = expenses
+        self.profiles = profiles
+        self.changeTokens = changeTokens
         self.currentUserID = currentUserID
     }
 }

@@ -4,7 +4,8 @@
 //
 //  CloudKit client. One zone per ledger, shared zone-wide so any participant
 //  can add expenses; read via `recordZoneChanges`, which needs no queryable
-//  indexes and is immediately consistent.
+//  indexes, is immediately consistent, and hands back a token that makes the
+//  next read a delta.
 //
 
 import CloudKit
@@ -18,6 +19,20 @@ enum LedgerError: Error {
     /// Shares don't add up to the cost.
     case unbalanced
     case notFound
+}
+
+/// One zone's contents and the archived `CKServerChangeToken` that produced
+/// them. The two always travel and persist together.
+nonisolated struct LedgerZoneContents: Sendable {
+    var expenses: [LedgerExpense] = []
+    var profiles: [String: LedgerProfile] = [:]
+    var changeToken: Data?
+
+    static let empty = LedgerZoneContents()
+
+    /// A walk from nil reports every live record but nothing deleted before
+    /// it, so a base without its token can't be read forward.
+    var usableAsBase: LedgerZoneContents { changeToken == nil ? .empty : self }
 }
 
 nonisolated enum LedgerService {
@@ -137,38 +152,63 @@ nonisolated enum LedgerService {
 
     // MARK: - Expenses
 
-    /// Together: one `recordZoneChanges` walk returns both.
+    /// Together: one `recordZoneChanges` walk returns both. `base` is what
+    /// the delta applies to, carrying the token the last walk ended on.
     static func fetchContents(
         in ledger: Ledger,
-        currentUserID: String? = nil
-    ) async throws -> (expenses: [LedgerExpense], profiles: [String: LedgerProfile]) {
+        currentUserID: String? = nil,
+        base: LedgerZoneContents = .empty
+    ) async throws -> LedgerZoneContents {
         let currentUserID = if let currentUserID { currentUserID } else { try await self.currentUserID() }
         let database = self.database(for: ledger)
-        var expenses: [String: LedgerExpense] = [:]
-        var profiles: [String: LedgerProfile] = [:]
-        var token: CKServerChangeToken?
+        let base = base.usableAsBase
+        var token = changeToken(from: base.changeToken)
+        var expenses = Dictionary(base.expenses.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        var profiles = base.profiles
         var moreComing = true
         while moreComing {
-            let changes = try await database.recordZoneChanges(inZoneWith: ledger.zoneID, since: token)
-            for (_, result) in changes.modificationResultsByID {
-                guard let record = try? result.get().record else { continue }
-                if let expense = LedgerRecords.expense(from: record, currentUserID: currentUserID) {
-                    expenses[expense.id] = expense
-                } else if let profile = LedgerRecords.profile(from: record) {
-                    profiles[profile.participantID] = profile
+            do {
+                let changes = try await database.recordZoneChanges(inZoneWith: ledger.zoneID, since: token)
+                for (_, result) in changes.modificationResultsByID {
+                    guard let record = try? result.get().record else { continue }
+                    if let expense = LedgerRecords.expense(from: record, currentUserID: currentUserID) {
+                        expenses[expense.id] = expense
+                    } else if let profile = LedgerRecords.profile(from: record) {
+                        profiles[profile.participantID] = profile
+                    }
                 }
-            }
-            for deletion in changes.deletions {
-                let name = deletion.recordID.recordName
-                expenses[name] = nil
-                if let participantID = LedgerRecords.participantID(ofProfile: name) {
-                    profiles[participantID] = nil
+                for deletion in changes.deletions {
+                    let name = deletion.recordID.recordName
+                    expenses[name] = nil
+                    if let participantID = LedgerRecords.participantID(ofProfile: name) {
+                        profiles[participantID] = nil
+                    }
                 }
+                token = changes.changeToken
+                moreComing = changes.moreComing
+            } catch let error as CKError where error.code == .changeTokenExpired {
+                logger.notice("Ledger change token expired; walking the zone from scratch")
+                expenses = [:]
+                profiles = [:]
+                token = nil
+                moreComing = true
             }
-            token = changes.changeToken
-            moreComing = changes.moreComing
         }
-        return (expenses.values.sorted(by: LedgerExpense.isOrderedBefore), profiles)
+        return LedgerZoneContents(
+            expenses: expenses.values.sorted(by: LedgerExpense.isOrderedBefore),
+            profiles: profiles,
+            changeToken: archived(token)
+        )
+    }
+
+    private static func changeToken(from data: Data?) -> CKServerChangeToken? {
+        guard let data else { return nil }
+        return try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: data)
+    }
+
+    private static func archived(_ token: CKServerChangeToken?) -> Data? {
+        guard let token else { return nil }
+        return try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
     }
 
     /// Any participant may write any other's: whoever's name is missing is

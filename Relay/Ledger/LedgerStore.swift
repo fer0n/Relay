@@ -46,6 +46,11 @@ final class LedgerStore {
     /// from a view body, so deriving them there re-walks every expense on
     /// every invalidation.
     private(set) var balances: [String: LedgerBalances] = [:]
+    /// A delta that carries no profile records must not blank out the names
+    /// it didn't mention, so they're held rather than re-derived.
+    private var profiles: [String: [String: LedgerProfile]] = [:]
+    /// Written only in the same pass as the expenses it describes.
+    private var changeTokens: [String: Data] = [:]
     private(set) var currentUserID: String?
     private(set) var accountStatus: CKAccountStatus = .couldNotDetermine
     private(set) var isRefreshing = false
@@ -61,6 +66,8 @@ final class LedgerStore {
         guard let snapshot = cache.load() else { return }
         ledgers = snapshot.ledgers.map(\.ledger)
         setExpenses(snapshot.expenses)
+        profiles = snapshot.profiles ?? [:]
+        changeTokens = snapshot.changeTokens ?? [:]
         currentUserID = snapshot.currentUserID
         lastRefreshedAt = cache.lastFetchedAt
         // Nothing caches until a refresh confirmed the account, so it was
@@ -81,6 +88,14 @@ final class LedgerStore {
 
     func balances(in ledger: Ledger) -> LedgerBalances {
         balances[ledger.zoneName] ?? .empty
+    }
+
+    private func contents(inZone zoneName: String) -> LedgerZoneContents {
+        LedgerZoneContents(
+            expenses: expenses[zoneName] ?? [],
+            profiles: profiles[zoneName] ?? [:],
+            changeToken: changeTokens[zoneName]
+        )
     }
 
     /// The only way `expenses` changes, so a balance can't go stale behind it.
@@ -120,7 +135,13 @@ final class LedgerStore {
     }
 
     private func persistSnapshot() {
-        cache.save(LedgerSnapshot(ledgers: ledgers, expenses: expenses, currentUserID: currentUserID))
+        cache.save(LedgerSnapshot(
+            ledgers: ledgers,
+            expenses: expenses,
+            profiles: profiles,
+            changeTokens: changeTokens,
+            currentUserID: currentUserID
+        ))
     }
 
     /// `force` is false for appear/foreground, true for pull-to-refresh.
@@ -139,6 +160,8 @@ final class LedgerStore {
                 // Not an error: signing out is a choice. The cache goes too.
                 ledgers = []
                 setExpenses([:])
+                profiles = [:]
+                changeTokens = [:]
                 cache.delete()
                 lastError = nil
                 return
@@ -148,31 +171,45 @@ final class LedgerStore {
             // Accumulated, not assigned per zone, which would animate the
             // list rebuilding itself one ledger at a time.
             let userID = currentUserID
-            let contents = try await withThrowingTaskGroup(
-                of: (String, [LedgerExpense], [String: LedgerProfile]).self
-            ) { group in
+            let bases = fetched.reduce(into: [String: LedgerZoneContents]()) {
+                $0[$1.zoneName] = contents(inZone: $1.zoneName)
+            }
+            let zones = try await withThrowingTaskGroup(of: (String, LedgerZoneContents).self) { group in
                 for ledger in fetched {
+                    let base = bases[ledger.zoneName] ?? .empty
                     group.addTask {
-                        let contents = try await LedgerService.fetchContents(in: ledger, currentUserID: userID)
-                        return (ledger.zoneName, contents.expenses, contents.profiles)
+                        let contents = try await LedgerService.fetchContents(
+                            in: ledger,
+                            currentUserID: userID,
+                            base: base
+                        )
+                        return (ledger.zoneName, contents)
                     }
                 }
-                var byZone: [String: ([LedgerExpense], [String: LedgerProfile])] = [:]
-                for try await (zoneName, expenses, profiles) in group {
-                    byZone[zoneName] = (expenses, profiles)
+                var byZone: [String: LedgerZoneContents] = [:]
+                for try await (zoneName, contents) in group {
+                    byZone[zoneName] = contents
                 }
                 return byZone
             }
             var fetchedExpenses: [String: [LedgerExpense]] = [:]
+            var fetchedProfiles: [String: [String: LedgerProfile]] = [:]
+            var fetchedTokens: [String: Data] = [:]
             for index in fetched.indices {
-                guard let (expenses, profiles) = contents[fetched[index].zoneName] else { continue }
-                fetchedExpenses[fetched[index].zoneName] = expenses
-                fetched[index] = fetched[index].applyingProfiles(profiles)
+                let zoneName = fetched[index].zoneName
+                guard let zone = zones[zoneName] else { continue }
+                fetchedExpenses[zoneName] = zone.expenses
+                fetchedProfiles[zoneName] = zone.profiles
+                fetchedTokens[zoneName] = zone.changeToken
+                fetched[index] = fetched[index].applyingProfiles(zone.profiles)
             }
             // Assigned only after a successful pass, so a failed refresh
-            // doesn't empty a live screen.
+            // doesn't empty a live screen. Wholesale, so a zone that's gone
+            // leaves no token behind.
             withAnimation {
                 ledgers = fetched
+                profiles = fetchedProfiles
+                changeTokens = fetchedTokens
                 setExpenses(mergingQueued(fetchedExpenses))
             }
             SplitAvailability.recordHasSharedLedger(fetched.contains(where: \.isShared))
@@ -187,13 +224,20 @@ final class LedgerStore {
 
     func refreshExpenses(in ledger: Ledger) async {
         do {
-            let contents = try await LedgerService.fetchContents(in: ledger, currentUserID: currentUserID)
+            let contents = try await LedgerService.fetchContents(
+                in: ledger,
+                currentUserID: currentUserID,
+                base: self.contents(inZone: ledger.zoneName)
+            )
             withAnimation {
+                profiles[ledger.zoneName] = contents.profiles
+                changeTokens[ledger.zoneName] = contents.changeToken
                 setExpenses(mergingQueued(contents.expenses, inZone: ledger.zoneName), inZone: ledger.zoneName)
                 if let index = ledgers.firstIndex(where: { $0.zoneName == ledger.zoneName }) {
                     ledgers[index] = ledgers[index].applyingProfiles(contents.profiles)
                 }
             }
+            persistSnapshot()
             lastError = nil
         } catch {
             logger.error("Ledger expense refresh failed: \(error.localizedDescription, privacy: .public)")
@@ -206,6 +250,8 @@ final class LedgerStore {
         do {
             let ledger = try await LedgerService.createLedger(name: name, currencyCode: currencyCode)
             ledgers.append(ledger)
+            profiles[ledger.zoneName] = [:]
+            changeTokens[ledger.zoneName] = nil
             setExpenses([], inZone: ledger.zoneName)
             lastError = nil
             return ledger
@@ -342,6 +388,8 @@ final class LedgerStore {
                 try await LedgerService.leave(ledger)
             }
             withAnimation { ledgers.removeAll { $0.zoneID == ledger.zoneID } }
+            profiles[ledger.zoneName] = nil
+            changeTokens[ledger.zoneName] = nil
             setExpenses(nil, inZone: ledger.zoneName)
             lastError = nil
         } catch {

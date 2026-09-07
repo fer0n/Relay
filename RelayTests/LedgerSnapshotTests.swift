@@ -201,4 +201,67 @@ struct LedgerSnapshotTests {
         #expect(restored?.createdBy == "alex")
         #expect(restored?.createdAt == expense.createdAt)
     }
+
+    @Test func cachedProfilesAndChangeTokensSurvive() throws {
+        let profile = LedgerProfile(
+            participantID: "alex",
+            displayName: "Alex",
+            imageData: Data([0xFF, 0xD8, 0xFF])
+        )
+        let restored = try Self.roundTrip(LedgerSnapshot(
+            ledgers: [Self.ledger()],
+            expenses: [:],
+            profiles: ["Ledger-1": ["alex": profile]],
+            changeTokens: ["Ledger-1": Data([0x01, 0x02])],
+            currentUserID: "me"
+        ))
+
+        #expect(restored.profiles?["Ledger-1"]?["alex"] == profile)
+        #expect(restored.changeTokens?["Ledger-1"] == Data([0x01, 0x02]))
+    }
+
+    /// A cache written before change tokens existed has expenses but no token
+    /// to read them forward from: the base has to be dropped, or an expense
+    /// deleted while this build wasn't running would never leave the list.
+    @Test func aCacheWithoutChangeTokensDecodesAndYieldsNoBase() throws {
+        let json = Data("""
+        {
+          "ledgers": [],
+          "expenses": { "Ledger-1": [] },
+          "currentUserID": "me"
+        }
+        """.utf8)
+        let snapshot = try JSONDecoder().decode(LedgerSnapshot.self, from: json)
+
+        #expect(snapshot.changeTokens == nil)
+        #expect(snapshot.profiles == nil)
+
+        let base = LedgerZoneContents(
+            expenses: [Self.anExpense()],
+            profiles: ["alex": LedgerProfile(participantID: "alex", displayName: "Alex")],
+            changeToken: snapshot.changeTokens?["Ledger-1"]
+        )
+        #expect(base.usableAsBase.expenses.isEmpty)
+        #expect(base.usableAsBase.profiles.isEmpty)
+    }
+
+    @Test func aBaseWithATokenIsKept() {
+        let base = LedgerZoneContents(
+            expenses: [Self.anExpense()],
+            profiles: [:],
+            changeToken: Data([0x01])
+        )
+
+        #expect(base.usableAsBase.expenses.count == 1)
+    }
+
+    private static func anExpense() -> LedgerExpense {
+        LedgerExpense(
+            title: "Dinner",
+            costCents: 1000,
+            currencyCode: "EUR",
+            date: Date(timeIntervalSince1970: 0),
+            shares: [LedgerExpenseShare(participantID: "me", paidCents: 1000, owedCents: 1000)]
+        )
+    }
 }
