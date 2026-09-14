@@ -97,22 +97,24 @@ struct LedgerBalanceCard: View {
 
         // Pairwise, not net: a net position mixes in what third parties owe.
         // Which pairwise figure is `simplifiesDebts` to say.
-        memberBalances = currentUserID.map { me in
-            ledger.others
-                .map { participant in
-                    (participant, balances.cents(me: me, other: participant.id, simplified: ledger.simplifiesDebts))
-                }
-                .filter { $0.1 != 0 }
-                .sorted { abs($0.1) > abs($1.1) }
-                .map { participant, cents in
-                    MemberBalance(
-                        id: participant.id,
-                        name: participant.firstName,
-                        amountText: cents.asMoney(ledger.currencyCode),
-                        amountColor: .ledgerBalance(cents)
-                    )
-                }
-        } ?? []
+        memberBalances = ledger.others.count > 1
+            ? currentUserID.map { me in
+                ledger.others
+                    .map { participant in
+                        (participant, balances.cents(me: me, other: participant.id, simplified: ledger.simplifiesDebts))
+                    }
+                    .filter { $0.1 != 0 }
+                    .sorted { abs($0.1) > abs($1.1) }
+                    .map { participant, cents in
+                        MemberBalance(
+                            id: participant.id,
+                            name: participant.firstName,
+                            amountText: cents.asMoney(ledger.currencyCode),
+                            amountColor: .ledgerBalance(cents)
+                        )
+                    }
+            } ?? []
+            : []
 
         self.lastRefreshedAt = lastRefreshedAt
         self.maxWidth = maxWidth
