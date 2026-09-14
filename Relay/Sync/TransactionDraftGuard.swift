@@ -39,8 +39,8 @@ nonisolated enum TransactionDraftGuard {
     /// own. The quiet-period delay doubles as a grace window for the other
     /// automation to supersede it (see TransactionClaim.supersededConfirmations).
     @discardableResult
-    static func beginAwaitingConfirmation(_ payload: TransactionDraft.Payload, source: String) -> UUID {
-        let draft = create(payload)
+    static func beginAwaitingConfirmation(_ payload: TransactionDraft.Payload, id: UUID = UUID(), source: String) -> UUID {
+        let draft = create(payload, id: id)
         scheduleNotification(
             for: draft,
             title: String(localized: "Confirm Transaction"),
@@ -56,9 +56,10 @@ nonisolated enum TransactionDraftGuard {
     @discardableResult
     static func beginAwaitingSplitChoice(
         _ payload: TransactionDraft.Payload,
+        id: UUID = UUID(),
         context: TransactionDraft.PendingSplitContext
     ) -> UUID {
-        let draft = create(payload, context: context)
+        let draft = create(payload, id: id, context: context)
         scheduleNotification(for: draft)
         return draft.id
     }
@@ -77,9 +78,10 @@ nonisolated enum TransactionDraftGuard {
 
     private static func create(
         _ payload: TransactionDraft.Payload,
+        id: UUID = UUID(),
         context: TransactionDraft.PendingSplitContext? = nil
     ) -> TransactionDraft {
-        var draft = TransactionDraft(id: UUID(), startedAt: Date(), payload: payload)
+        var draft = TransactionDraft(id: id, startedAt: Date(), payload: payload)
         draft.pendingSplitContext = context
         save(trimmedToLimit: TransactionDraftStore.load() + [draft])
         return draft

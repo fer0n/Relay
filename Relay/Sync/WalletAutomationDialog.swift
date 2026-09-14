@@ -176,13 +176,17 @@ nonisolated enum WalletAutomationDialog {
     /// No "success notification" gate — the reminder isn't a courtesy ping, it's
     /// the only prompt for the approval this parameter exists to require. (It
     /// still respects the app-wide switch, via TransactionDraftGuard.)
+    ///
+    /// `draftId` must be the one the claim was made with (see
+    /// `TransactionClaimStore.claimOrSuppress(_:parkingDraft:)`).
     static func handleAwaitingConfirmation(
         _ claimId: UUID,
+        draftId: UUID,
         payload: TransactionDraft.Payload,
         source: String
     ) -> String {
-        let draftId = TransactionDraftGuard.beginAwaitingConfirmation(payload, source: source)
-        TransactionClaimStore.awaitConfirmation(claimId, draftId: draftId)
+        TransactionDraftGuard.beginAwaitingConfirmation(payload, id: draftId, source: source)
+        clearDraftIfSuperseded(claimId, draftId: draftId)
         return String(
             format: String(localized: "%@ at %@ needs confirmation – waiting in Relay."),
             payload.amount.asMoneyString,
@@ -222,6 +226,7 @@ nonisolated enum WalletAutomationDialog {
     /// ordinary Add/Discard reminder, having no second question to stand in.
     static func handleAwaitingSplitConfirmation(
         _ claimId: UUID,
+        draftId: UUID,
         merchant: String,
         amount: Double,
         source: String
@@ -232,7 +237,7 @@ nonisolated enum WalletAutomationDialog {
         let template = info.flatMap { config.templates[$0.templateName] }
 
         guard template?.splitOption == .ask, SplitAvailability.hasKnownSharedLedger else {
-            return handleAwaitingConfirmation(claimId, payload: payload, source: source)
+            return handleAwaitingConfirmation(claimId, draftId: draftId, payload: payload, source: source)
         }
 
         // A nil friend is allowed through: "Don't Split" still resolves the draft
@@ -240,16 +245,22 @@ nonisolated enum WalletAutomationDialog {
         // they would anyway (see WalletDraftCompletion).
         let description = info?.payeeName ?? merchant
         let friend = friendWithoutAsking(template: template)
-        let draftId = TransactionDraftGuard.beginAwaitingSplitChoice(
+        TransactionDraftGuard.beginAwaitingSplitChoice(
             payload,
+            id: draftId,
             context: TransactionDraft.PendingSplitContext(description: description, target: friend)
         )
-        TransactionClaimStore.awaitConfirmation(claimId, draftId: draftId)
+        clearDraftIfSuperseded(claimId, draftId: draftId)
         return String(
             format: String(localized: "%@ at %@ – waiting on your split choice."),
             amount.asMoneyString,
             description
         )
+    }
+
+    private static func clearDraftIfSuperseded(_ claimId: UUID, draftId: UUID) {
+        guard TransactionClaimStore.wasSuperseded(claimId) else { return }
+        TransactionDraftGuard.complete(draftId)
     }
 
     /// Nil means the question genuinely can't be answered without asking.

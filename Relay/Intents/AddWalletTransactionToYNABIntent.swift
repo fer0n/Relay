@@ -129,6 +129,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
         // automation already handled must leave behind no draft, no reminder,
         // and no API request (YNAB allows 200/hr, and a second automation
         // roughly doubles the runs).
+        let confirmationDraftId = requireConfirmation ? UUID() : nil
         let claimId: UUID
         switch TransactionClaimStore.claimOrSuppress(
             TransactionClaim.Candidate(
@@ -138,7 +139,8 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
                 accountId: config.cards[card],
                 merchant: merchant,
                 parksDraftOnly: requireConfirmation || !canFileMerchant
-            )
+            ),
+            parkingDraft: confirmationDraftId
         ) {
         case .suppressed(let suppression):
             let dialog = WalletAutomationDialog.handleSuppression(suppression)
@@ -151,9 +153,10 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
         // Deliberately not gated on `ensureCompletion`: that switch rescues a
         // run that might not finish, whereas here the draft *is* the outcome,
         // so honouring it would drop the transaction.
-        if requireConfirmation {
+        if let confirmationDraftId {
             let dialog = WalletAutomationDialog.handleAwaitingConfirmation(
                 claimId,
+                draftId: confirmationDraftId,
                 payload: .ynabWallet(merchant: merchant, amount: amount, card: card),
                 source: claimSource
             )

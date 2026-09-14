@@ -69,17 +69,28 @@ enum Outcome {
 
     /// A single locked step, so two simultaneous automations can't both decide
     /// they're first.
-    static func claimOrSuppress(_ candidate: TransactionClaim.Candidate) -> Outcome {
+    ///
+    /// `parkingDraft` records a confirm-only run as awaiting that draft in this
+    /// same step — see `wasSuperseded`.
+    static func claimOrSuppress(_ candidate: TransactionClaim.Candidate, parkingDraft draftId: UUID? = nil) -> Outcome {
         lock.lock()
         defer { lock.unlock() }
 
         var claims = load()
+        let outcome = claimOrSuppress(candidate, parkingDraft: draftId, in: &claims)
+        save(claims)
+        return outcome
+    }
 
+    static func claimOrSuppress(
+        _ candidate: TransactionClaim.Candidate,
+        parkingDraft draftId: UUID? = nil,
+        in claims: inout [TransactionClaim]
+    ) -> Outcome {
         if let matched = TransactionClaim.firstMatch(in: claims, for: candidate, window: matchWindow) {
             let run = candidate.asSuppressedRun
             if let index = claims.firstIndex(where: { $0.id == matched.id }) {
                 claims[index].suppressed.append(run)
-                save(claims)
             }
             logger.log("suppressing \(candidate.source, privacy: .public) run — duplicate of \(matched.source, privacy: .public) claim from \(Int(candidate.occurredAt.timeIntervalSince(matched.claimedAt)), privacy: .public)s earlier")
             return .suppressed(Suppression(matched: matched, run: run, historyEntryId: matched.historyEntryId))
@@ -93,11 +104,11 @@ enum Outcome {
             claimedAt: candidate.occurredAt,
             accountId: candidate.accountId,
             merchant: candidate.merchant,
-            state: .inFlight,
-            historyEntryId: nil
+            state: draftId == nil ? .inFlight : .awaitingConfirmation,
+            historyEntryId: nil,
+            draftId: draftId
         )
         claims.append(claim)
-        save(claims)
         logger.log("claimed \(candidate.source, privacy: .public) run for \(candidate.destination.rawValue, privacy: .public)")
         return .claimed(claim.id)
     }
@@ -118,7 +129,14 @@ struct CommitResult {
         defer { lock.unlock() }
 
         var claims = load()
-        guard let index = claims.firstIndex(where: { $0.id == id }) else { return CommitResult() }
+        guard let result = commit(id, historyEntryId: historyEntryId, in: &claims) else { return CommitResult() }
+        save(claims)
+        return result
+    }
+
+    /// Nil when `id` isn't in `claims`.
+    static func commit(_ id: UUID, historyEntryId: UUID?, in claims: inout [TransactionClaim]) -> CommitResult? {
+        guard let index = claims.firstIndex(where: { $0.id == id }) else { return nil }
         claims[index].state = .committed
         claims[index].historyEntryId = historyEntryId
 
@@ -137,8 +155,20 @@ struct CommitResult {
             logger.log("superseded awaiting-confirmation \(superseded.source, privacy: .public) run")
         }
 
-        save(claims)
         return result
+    }
+
+    /// Whether a real write retired this claim before its run finished saving the
+    /// draft — that commit had no draft to clear yet, so the run clears its own.
+    static func wasSuperseded(_ id: UUID) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return wasSuperseded(id, in: load())
+    }
+
+    /// A missing claim isn't superseded: losing the ledger mustn't lose the draft.
+    static func wasSuperseded(_ id: UUID, in claims: [TransactionClaim]) -> Bool {
+        claims.first { $0.id == id }.map { $0.state != .awaitingConfirmation } ?? false
     }
 
     /// Marks a run that deliberately wrote nothing, recording the draft it left

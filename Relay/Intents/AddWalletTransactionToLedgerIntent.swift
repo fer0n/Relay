@@ -57,6 +57,7 @@ struct AddWalletTransactionToLedgerIntent: AppIntent {
         let claimSource = TransactionClaim.normalizedSource(source)
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) source=\(claimSource, privacy: .public)")
 
+        let confirmationDraftId = requireConfirmation ? UUID() : nil
         let claimId: UUID
         switch TransactionClaimStore.claimOrSuppress(
             TransactionClaim.Candidate(
@@ -66,7 +67,8 @@ struct AddWalletTransactionToLedgerIntent: AppIntent {
                 accountId: nil,
                 merchant: merchant,
                 parksDraftOnly: requireConfirmation
-            )
+            ),
+            parkingDraft: confirmationDraftId
         ) {
         case .suppressed(let suppression):
             let dialog = WalletAutomationDialog.handleSuppression(suppression)
@@ -76,9 +78,10 @@ struct AddWalletTransactionToLedgerIntent: AppIntent {
             claimId = id
         }
 
-        if requireConfirmation {
+        if let confirmationDraftId {
             let dialog = WalletAutomationDialog.handleAwaitingSplitConfirmation(
                 claimId,
+                draftId: confirmationDraftId,
                 merchant: merchant,
                 amount: amount,
                 source: claimSource
