@@ -25,19 +25,24 @@ import Foundation
 /// rather than becoming rows of their own.
 nonisolated struct SuppressedRun: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
-    /// The automation that lost the race — shown as "also seen from …".
+    /// The automation that lost the race — shown as "also seen from …" via
+    /// `label`, since an unnamed automation's source is empty.
     var source: String
     /// Usually differs from the winning run's (a bank push says "Kartenzahlung
     /// ACME GMBH//BERLIN" where Wallet says "ACME"), which is why it's shown.
     var merchant: String
     var amount: Double
     var occurredAt: Date
+
+    var label: String { TransactionClaim.label(for: source) }
 }
 
 nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
     let id: UUID
-    /// Two runs sharing a source are never duplicates of each other: the same
-    /// automation firing twice means the user really did pay twice.
+    /// Which automation this run came from. Two runs sharing one are never
+    /// duplicates of each other: the same automation firing twice means the user
+    /// really did pay twice. Empty for an automation that never set the
+    /// parameter, which is a source in its own right — see `normalizedSource`.
     let source: String
     /// Part of the match key, so a YNAB-destined and a ledger-destined card
     /// charged the same amount in the same window don't collapse. A real
@@ -147,6 +152,8 @@ nonisolated struct TransactionClaim: Codable, Identifiable, Equatable {
     var asSuppressedRun: SuppressedRun {
         SuppressedRun(source: source, merchant: merchant, amount: amount, occurredAt: claimedAt)
     }
+
+    var label: String { Self.label(for: source) }
 }
 
 nonisolated extension TransactionClaim {
@@ -179,14 +186,23 @@ nonisolated extension TransactionClaim {
         return claims.filter { $0.state == .awaitingConfirmation && $0.isSamePurchase(as: candidate, window: window) }
     }
 
-    /// Recorded when a shortcut leaves the parameter blank, as every automation
-    /// built before it existed does.
-    static let defaultSource = "wallet"
-
     /// Case is preserved for display; comparison is case-insensitive.
+    ///
+    /// A blank parameter deliberately stays blank rather than being filled in as
+    /// "wallet": every automation built before the parameter existed leaves it
+    /// blank, so that name would be *invented*, and a user naming their second
+    /// automation "Wallet" then collided with it and silently got no dedupe at
+    /// all. Blank is simply the unnamed automation, which is as distinct from
+    /// "Wallet" as any other pair of names. `label` supplies the display name.
     static func normalizedSource(_ raw: String?) -> String {
-        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? defaultSource : trimmed
+        raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    /// What to call `source` in front of the user, since the unnamed automation
+    /// is in practice the Wallet one — it's the only automation that predates
+    /// the parameter.
+    static func label(for source: String) -> String {
+        source.isEmpty ? String(localized: "Wallet") : source
     }
 }
 

@@ -31,11 +31,12 @@ struct TransactionClaimStoreTests {
     }
 
     private static func push(
+        source: String = "bank notification",
         destination: TransactionService = .ynab,
         at offset: TimeInterval = 0
     ) -> TransactionClaim.Candidate {
         TransactionClaim.Candidate(
-            source: "bank notification",
+            source: source,
             destination: destination,
             amount: 12.34,
             accountId: nil,
@@ -170,6 +171,52 @@ struct TransactionClaimStoreTests {
         ))
 
         #expect(suppression.historyEntryId == entryId)
+    }
+
+    // MARK: - The confirm-only automation named "Wallet"
+
+    /// End to end over the store, with the confirm-only automation hand-named
+    /// after the Wallet one — which used to collide with the "wallet" a blank
+    /// Source was filled in with, and dedupe nothing.
+    @Test
+    func walletThenPushNamedWalletSuppressesThePush() throws {
+        var claims: [TransactionClaim] = []
+        let walletId = try #require(Self.claimedId(TransactionClaimStore.claimOrSuppress(Self.wallet(at: 0), in: &claims)))
+        let entryId = UUID()
+        _ = TransactionClaimStore.commit(walletId, historyEntryId: entryId, in: &claims)
+
+        let outcome = TransactionClaimStore.claimOrSuppress(Self.push(source: "Wallet", at: 60), parkingDraft: UUID(), in: &claims)
+
+        let suppression = try #require(Self.suppression(outcome))
+        #expect(suppression.matched.id == walletId)
+        #expect(suppression.historyEntryId == entryId)
+        #expect(claims.count == 1)
+    }
+
+    @Test
+    func pushNamedWalletThenWalletClearsTheParkedDraft() throws {
+        var claims: [TransactionClaim] = []
+        let draftId = UUID()
+        let pushId = try #require(Self.claimedId(TransactionClaimStore.claimOrSuppress(Self.push(source: "Wallet", at: 0), parkingDraft: draftId, in: &claims)))
+        let walletId = try #require(Self.claimedId(TransactionClaimStore.claimOrSuppress(Self.wallet(at: 60), in: &claims)))
+
+        let result = try #require(TransactionClaimStore.commit(walletId, historyEntryId: UUID(), in: &claims))
+
+        #expect(result.supersededDraftIds == [draftId])
+        #expect(claims.first { $0.id == pushId }?.state == .abandoned)
+    }
+
+    /// The protection the source rule exists for: two pushes from the one
+    /// automation are two purchases, not two sightings.
+    @Test
+    func twoPushesFromTheSameAutomationBothClaim() throws {
+        var claims: [TransactionClaim] = []
+        _ = TransactionClaimStore.claimOrSuppress(Self.push(at: 0), parkingDraft: UUID(), in: &claims)
+
+        let outcome = TransactionClaimStore.claimOrSuppress(Self.push(at: 60), parkingDraft: UUID(), in: &claims)
+
+        #expect(Self.claimedId(outcome) != nil)
+        #expect(claims.count == 2)
     }
 
     @Test

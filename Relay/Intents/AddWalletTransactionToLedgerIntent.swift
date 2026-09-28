@@ -29,7 +29,7 @@ struct AddWalletTransactionToLedgerIntent: AppIntent {
     @Parameter(title: "Your Share", description: "Only used when Split is Manual")
     var splitOwnShare: Double?
 
-    @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
+    @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase. Leave blank on the Wallet automation and give every other one its own name, e.g. \"bank notification\".")
     var source: String?
 
     @Parameter(title: "Require Confirmation", description: "Never add to a ledger automatically. A purchase another automation already handled is skipped as usual; anything else is saved as a draft to approve in Relay.", default: false)
@@ -72,7 +72,7 @@ struct AddWalletTransactionToLedgerIntent: AppIntent {
         ) {
         case .suppressed(let suppression):
             let dialog = WalletAutomationDialog.handleSuppression(suppression)
-            logger.log("perform() done — suppressed as duplicate of \(suppression.matched.source, privacy: .public)")
+            logger.log("perform() done — suppressed as duplicate of \(suppression.matched.label, privacy: .public)")
             return .result(dialog: "\(dialog)")
         case .claimed(let id):
             claimId = id

@@ -104,11 +104,26 @@ struct TransactionClaimMatchTests {
         #expect(!Self.claim(source: "Wallet").matches(Self.candidate(source: "wallet", at: 60), window: Self.window))
     }
 
+    /// Blank stays blank rather than becoming "wallet": the invented name used to
+    /// collide with a second automation the user had named "Wallet" by hand.
     @Test
-    func blankSourceNormalizesToWallet() {
-        #expect(TransactionClaim.normalizedSource(nil) == "wallet")
-        #expect(TransactionClaim.normalizedSource("   ") == "wallet")
+    func blankSourceStaysBlank() {
+        #expect(TransactionClaim.normalizedSource(nil).isEmpty)
+        #expect(TransactionClaim.normalizedSource("   ").isEmpty)
         #expect(TransactionClaim.normalizedSource("  bank notification ") == "bank notification")
+    }
+
+    @Test
+    func unnamedAutomationIsDisplayedAsWallet() {
+        #expect(TransactionClaim.label(for: "") == "Wallet")
+        #expect(TransactionClaim.label(for: "bank notification") == "bank notification")
+    }
+
+    /// The unnamed automation is a source in its own right, so it still can't be
+    /// a duplicate of itself.
+    @Test
+    func twoUnnamedRunsNeverMatch() {
+        #expect(!Self.claim(source: "").matches(Self.candidate(source: "", at: 60), window: Self.window))
     }
 
     // MARK: - Amount
@@ -355,17 +370,53 @@ struct TransactionClaimMatchTests {
         #expect(parked.matches(push, window: Self.window))
     }
 
+    /// The setup that used to dedupe nothing: the Wallet automation on a blank
+    /// Source, the confirm-only one named "Wallet" by hand.
     @Test(arguments: [TransactionService.ynab, .ledger])
-    func blankSourceOnTheSecondAutomationDefeatsMerging(destination: TransactionService) {
-        let wallet = Self.claim(source: "wallet", destination: destination, at: 0, accountId: nil, state: .committed)
-        let unnamed = Self.candidate(
+    func unnamedWalletRunMergesWithAnAutomationNamedWallet(destination: TransactionService) {
+        let wallet = Self.claim(
             source: TransactionClaim.normalizedSource(nil),
             destination: destination,
-            at: 90,
+            at: 0,
             accountId: nil,
-            parksDraftOnly: true
+            state: .committed
         )
+        let push = Self.candidate(source: "Wallet", destination: destination, at: 90, accountId: nil, parksDraftOnly: true)
 
-        #expect(TransactionClaim.firstMatch(in: [wallet], for: unnamed, window: Self.window) == nil)
+        #expect(TransactionClaim.firstMatch(in: [wallet], for: push, window: Self.window)?.id == wallet.id)
+    }
+
+    /// And the mirror image: the Wallet run arriving second takes over the draft
+    /// the hand-named confirm-only run parked.
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func walletRunSupersedesAConfirmationDraftNamedWallet(destination: TransactionService) {
+        let draftId = UUID()
+        let parked = Self.claim(
+            source: "Wallet",
+            destination: destination,
+            at: 0,
+            accountId: nil,
+            state: .awaitingConfirmation,
+            draftId: draftId
+        )
+        let unnamed = TransactionClaim.normalizedSource(nil)
+
+        let walletRun = Self.candidate(source: unnamed, destination: destination, at: 90, accountId: nil)
+        #expect(TransactionClaim.firstMatch(in: [parked], for: walletRun, window: Self.window) == nil)
+
+        let wallet = Self.claim(source: unnamed, destination: destination, at: 90, accountId: nil, state: .committed)
+        let superseded = TransactionClaim.supersededConfirmations(in: [parked, wallet], by: wallet, window: Self.window)
+        #expect(superseded.map(\.draftId) == [draftId])
+    }
+
+    /// What's left of the trap, and all the Source parameter can do about it:
+    /// two automations that both decline to name themselves are indistinguishable.
+    @Test(arguments: [TransactionService.ynab, .ledger])
+    func twoUnnamedAutomationsStillCannotBeToldApart(destination: TransactionService) {
+        let unnamed = TransactionClaim.normalizedSource(nil)
+        let wallet = Self.claim(source: unnamed, destination: destination, at: 0, accountId: nil, state: .committed)
+        let push = Self.candidate(source: unnamed, destination: destination, at: 90, accountId: nil, parksDraftOnly: true)
+
+        #expect(TransactionClaim.firstMatch(in: [wallet], for: push, window: Self.window) == nil)
     }
 }

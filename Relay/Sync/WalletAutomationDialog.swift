@@ -145,7 +145,7 @@ nonisolated enum WalletAutomationDialog {
             format: String(localized: "%@ at %@ was already handled by \"%@\" %@ – skipped."),
             suppression.run.amount.asMoneyString,
             matched.merchant,
-            matched.source,
+            matched.label,
             matched.claimedAt.formatted(.relative(presentation: .numeric))
         )
 

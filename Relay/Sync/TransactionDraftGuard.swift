@@ -44,7 +44,7 @@ nonisolated enum TransactionDraftGuard {
         scheduleNotification(
             for: draft,
             title: String(localized: "Confirm Transaction"),
-            body: String(localized: "\(draft.summary), seen by \"\(source)\". Add it?"),
+            body: String(localized: "\(draft.summary), seen by \"\(TransactionClaim.label(for: source))\". Add it?"),
             categoryIdentifier: WalletConfirmNotification.categoryIdentifier,
             splitActions: false
         )

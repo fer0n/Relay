@@ -58,7 +58,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
     /// Lets the same purchase arriving from two automations be recognised. Blank
     /// means "wallet", keeping older automations working. Two runs sharing a
     /// source are never merged — see TransactionClaim.
-    @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation.")
+    @Parameter(title: "Source", description: "Distinguishes this automation from others firing for the same purchase. Leave blank on the Wallet automation and give every other one its own name, e.g. \"bank notification\".")
     var source: String?
 
     /// For notification-driven automations, where the trigger is a bank push
@@ -144,7 +144,7 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
         ) {
         case .suppressed(let suppression):
             let dialog = WalletAutomationDialog.handleSuppression(suppression)
-            logger.log("perform() done — suppressed as duplicate of \(suppression.matched.source, privacy: .public)")
+            logger.log("perform() done — suppressed as duplicate of \(suppression.matched.label, privacy: .public)")
             return .result(dialog: "\(dialog)")
         case .claimed(let id):
             claimId = id

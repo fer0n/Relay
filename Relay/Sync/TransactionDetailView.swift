@@ -270,7 +270,7 @@ private struct HistoryDetailContent: View {
                 Section("Duplicates Skipped") {
                     ForEach(entry.suppressed) { run in
                         DraftDetailRow(icon: Const.Symbol.duplicateSkipped, title: "Also seen from", isEditable: false) {
-                            Text(run.merchant == entry.merchant ? run.source : "\(run.source) · \(run.merchant)")
+                            Text(run.merchant == entry.merchant ? run.label : "\(run.label) · \(run.merchant)")
                         }
                         .cardRowBackground()
                     }

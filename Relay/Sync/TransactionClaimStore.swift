@@ -92,7 +92,7 @@ enum Outcome {
             if let index = claims.firstIndex(where: { $0.id == matched.id }) {
                 claims[index].suppressed.append(run)
             }
-            logger.log("suppressing \(candidate.source, privacy: .public) run — duplicate of \(matched.source, privacy: .public) claim from \(Int(candidate.occurredAt.timeIntervalSince(matched.claimedAt)), privacy: .public)s earlier")
+            logger.log("suppressing \(TransactionClaim.label(for: candidate.source), privacy: .public) run — duplicate of \(matched.label, privacy: .public) claim from \(Int(candidate.occurredAt.timeIntervalSince(matched.claimedAt)), privacy: .public)s earlier")
             return .suppressed(Suppression(matched: matched, run: run, historyEntryId: matched.historyEntryId))
         }
 
@@ -109,7 +109,7 @@ enum Outcome {
             draftId: draftId
         )
         claims.append(claim)
-        logger.log("claimed \(candidate.source, privacy: .public) run for \(candidate.destination.rawValue, privacy: .public)")
+        logger.log("claimed \(TransactionClaim.label(for: candidate.source), privacy: .public) run for \(candidate.destination.rawValue, privacy: .public)")
         return .claimed(claim.id)
     }
 
@@ -152,7 +152,7 @@ struct CommitResult {
             if let draftId = superseded.draftId {
                 result.supersededDraftIds.append(draftId)
             }
-            logger.log("superseded awaiting-confirmation \(superseded.source, privacy: .public) run")
+            logger.log("superseded awaiting-confirmation \(superseded.label, privacy: .public) run")
         }
 
         return result

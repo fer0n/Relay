@@ -1358,6 +1358,7 @@
       }
     },
     "Distinguishes this automation from others firing for the same purchase, e.g. \"wallet\" vs. \"bank notification\". Leave blank for the Wallet automation." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1366,6 +1367,9 @@
           }
         }
       }
+    },
+    "Distinguishes this automation from others firing for the same purchase. Leave blank on the Wallet automation and give every other one its own name, e.g. \"bank notification\"." : {
+
     },
     "Don't Split" : {
       "localizations" : {
@@ -3375,6 +3379,9 @@
       }
     },
     "Verify Backup" : {
+
+    },
+    "Wallet" : {
 
     },
     "Wallet transactions from these exact merchant names go straight to this template. Edit the payee name, swipe to unlink one, or use the arrow to move one to a different template." : {
