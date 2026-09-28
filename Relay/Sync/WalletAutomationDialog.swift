@@ -127,6 +127,18 @@ nonisolated enum WalletAutomationDialog {
         )
     }
 
+    /// Nil when the run carries a transaction. Otherwise notifies and returns the
+    /// dialog, leaving no draft or claim behind.
+    static func handleMissingInput(merchant: String, amount: Double) -> String? {
+        guard merchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, amount == 0 else { return nil }
+        let dialog = String(localized: "The automation didn't receive a merchant or amount – nothing was added.")
+        WalletCompletionNotification.postConfirmation(
+            title: String(localized: "No Transaction Details"),
+            dialog: dialog
+        )
+        return dialog
+    }
+
     /// Finishes off a run that duplicates a purchase the other automation already
     /// added (see TransactionClaim). Posts nothing: the run that claimed the
     /// purchase owns its one notification.

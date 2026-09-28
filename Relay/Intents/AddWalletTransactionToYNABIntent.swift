@@ -114,6 +114,11 @@ struct AddWalletTransactionToYNABIntent: AppIntent {
         let claimSource = TransactionClaim.normalizedSource(source)
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) card=\(card, privacy: .public) source=\(claimSource, privacy: .public)")
 
+        if let dialog = WalletAutomationDialog.handleMissingInput(merchant: merchant, amount: amount) {
+            logger.log("perform() done — no merchant or amount received")
+            return .result(dialog: "\(dialog)")
+        }
+
         // Loaded up front so the duplicate check below can resolve `card` to a
         // YNAB account id — matching on that rather than the raw string is what
         // lets Wallet's "Visa ••1234" and a bank app's "DKB Visa" be recognised

@@ -57,6 +57,11 @@ struct AddWalletTransactionToLedgerIntent: AppIntent {
         let claimSource = TransactionClaim.normalizedSource(source)
         logger.log("perform() start — merchant=\(merchant, privacy: .public) amount=\(amount, privacy: .public) source=\(claimSource, privacy: .public)")
 
+        if let dialog = WalletAutomationDialog.handleMissingInput(merchant: merchant, amount: amount) {
+            logger.log("perform() done — no merchant or amount received")
+            return .result(dialog: "\(dialog)")
+        }
+
         let confirmationDraftId = requireConfirmation ? UUID() : nil
         let claimId: UUID
         switch TransactionClaimStore.claimOrSuppress(
