@@ -823,7 +823,7 @@ final class ContinueWalletTransactionModel {
         let groupId = (action != .never && target != nil) ? UUID() : nil
 
         async let ynabOutcome = PendingSync.createYNABTransaction(transaction, token: token, summary: "\(formattedAmount) at \(finalPayeeName)", groupId: groupId, merchant: isManual ? nil : merchant)
-        async let splitDialogFragment = createSplitIfNeeded(target: target, description: splitDescription, amount: amount, action: action, allocation: allocation, groupId: groupId, merchant: isManual ? nil : merchant)
+        async let splitDialogFragment = createSplitIfNeeded(target: target, description: splitDescription, amount: amount, action: action, allocation: allocation, date: isManual ? nil : draft.startedAt, groupId: groupId, merchant: isManual ? nil : merchant)
 
         do {
             let outcome = try await ynabOutcome
@@ -867,11 +867,12 @@ final class ContinueWalletTransactionModel {
         amount: Double,
         action: SplitOption,
         allocation: SplitAllocation,
+        date: Date?,
         groupId: UUID?,
         merchant: String?
     ) async -> String? {
         guard action != .never, let target else { return nil }
-        return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, target: target, allocation: allocation, groupId: groupId, merchant: merchant).fragment
+        return await WalletAutomationDialog.splitDialogFragment(amount: amount, description: description, target: target, allocation: allocation, date: date, groupId: groupId, merchant: merchant).fragment
     }
 
     private func submitSplit() async -> Bool {
@@ -975,6 +976,7 @@ final class ContinueWalletTransactionModel {
                 description: finalDescription,
                 target: target,
                 allocation: allocation,
+                date: isManual ? nil : draft.startedAt,
                 merchant: isManual ? nil : merchant
             )
             TransactionDraftGuard.complete(draft.id)

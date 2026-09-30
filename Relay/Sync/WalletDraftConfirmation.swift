@@ -110,6 +110,7 @@ case completed(title: String, dialog: String)
                 description: info.payeeName,
                 friend: friend!,
                 ownShare: nil,
+                date: draft.startedAt,
                 groupId: groupId,
                 merchant: merchant
             ).fragment
@@ -172,6 +173,7 @@ case completed(title: String, dialog: String)
                 description: description,
                 friend: friend,
                 ownShare: nil,
+                date: draft.startedAt,
                 merchant: merchant
             )
             let dialog = WalletAutomationDialog.ledgerWalletDialog(

@@ -2104,6 +2104,9 @@
     "No shared ledgers" : {
 
     },
+    "No Transaction Details" : {
+
+    },
     "No transactions found to import from %@." : {
       "localizations" : {
         "de" : {
@@ -3227,6 +3230,9 @@
           }
         }
       }
+    },
+    "The automation didn't receive a merchant or amount – nothing was added." : {
+
     },
     "The expense amount, e.g. 12.34" : {
       "localizations" : {

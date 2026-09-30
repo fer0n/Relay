@@ -46,6 +46,7 @@ nonisolated enum WalletAutomationDialog {
         description: String,
         friend: SplitTargetEntity,
         ownShare: Double?,
+        date: Date? = nil,
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async -> (fragment: String, isQueued: Bool) {
@@ -60,6 +61,7 @@ nonisolated enum WalletAutomationDialog {
                 description: description,
                 friend: friend,
                 ownShare: ownShare,
+                date: date,
                 groupId: groupId,
                 merchant: merchant
             )
@@ -74,6 +76,7 @@ nonisolated enum WalletAutomationDialog {
         description: String,
         target: SplitTarget,
         allocation: SplitAllocation,
+        date: Date? = nil,
         groupId: UUID? = nil,
         merchant: String? = nil
     ) async -> (fragment: String, isQueued: Bool) {
@@ -83,6 +86,7 @@ nonisolated enum WalletAutomationDialog {
                 description: description,
                 target: target,
                 allocation: allocation,
+                date: date,
                 groupId: groupId,
                 merchant: merchant
             )

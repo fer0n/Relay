@@ -80,6 +80,7 @@ nonisolated enum WalletDraftCompletion {
                 description: context.description,
                 friend: friend,
                 ownShare: ownShare,
+                date: draft.startedAt,
                 merchant: draft.merchant
             )
             let dialog = WalletAutomationDialog.ledgerWalletDialog(
