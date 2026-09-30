@@ -506,6 +506,36 @@
         }
       }
     },
+    "Add & Split Equally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinzufügen & gleich aufteilen"
+          }
+        }
+      }
+    },
+    "Add & Split Manually…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinzufügen & manuell aufteilen…"
+          }
+        }
+      }
+    },
+    "Add Without Splitting" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Aufteilen hinzufügen"
+          }
+        }
+      }
+    },
     "Add ${amount} at ${merchant} with ${card} to YNAB" : {
       "localizations" : {
         "de" : {

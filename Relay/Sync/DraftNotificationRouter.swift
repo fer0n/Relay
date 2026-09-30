@@ -47,6 +47,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         center.setNotificationCategories([
             WalletSplitNotification.category,
             WalletConfirmNotification.category,
+            WalletConfirmNotification.splitCategory,
             WalletIncompleteNotification.category
         ])
     }
@@ -121,18 +122,16 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
             logger.log("discarded draft id=\(id.uuidString, privacy: .public)")
             return
         case WalletConfirmNotification.addAction:
-            switch await WalletDraftConfirmation.confirm(draft) {
-            case .completed(let title, let dialog):
-                WalletCompletionNotification.postConfirmation(title: title, dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
-            case .followUpPosted:
-                // The split question took over this draft's reminder slot, so a
-                // "done" banner on top would contradict it.
-                break
-            case .needsApp:
-                // A background action doesn't bring Relay forward, so
-                // pendingDraftID alone wouldn't reach the user.
-                TransactionDraftGuard.notifyNeedsApp(id)
-            }
+            await confirm(draft, split: nil, ownShareReply: nil)
+            return
+        case WalletConfirmNotification.addSplitEquallyAction:
+            await confirm(draft, split: .always, ownShareReply: nil)
+            return
+        case WalletConfirmNotification.addSplitManualAction:
+            await confirm(draft, split: .manual, ownShareReply: replyText)
+            return
+        case WalletConfirmNotification.addWithoutSplitAction:
+            await confirm(draft, split: .never, ownShareReply: nil)
             return
         default:
             break
@@ -162,6 +161,21 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
             // Couldn't finish from the notification, and a background action
             // doesn't bring Relay forward, so re-nudge instead.
             TransactionDraftGuard.notifyNeedsApp(id)
+        }
+    }
+
+    private func confirm(_ draft: TransactionDraft, split: SplitOption?, ownShareReply: String?) async {
+        switch await WalletDraftConfirmation.confirm(draft, split: split, ownShareReply: ownShareReply) {
+        case .completed(let title, let dialog):
+            WalletCompletionNotification.postConfirmation(title: title, dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
+        case .followUpPosted:
+            // The split question took over this draft's reminder slot, so a
+            // "done" banner on top would contradict it.
+            break
+        case .needsApp:
+            // A background action doesn't bring Relay forward, so
+            // pendingDraftID alone wouldn't reach the user.
+            TransactionDraftGuard.notifyNeedsApp(draft.id)
         }
     }
 

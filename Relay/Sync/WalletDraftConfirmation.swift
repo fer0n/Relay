@@ -29,10 +29,12 @@ case completed(title: String, dialog: String)
         case needsApp
     }
 
-    static func confirm(_ draft: TransactionDraft) async -> Result {
+    /// `split` answers the split up front, from the combined confirm-and-split
+    /// reminder; nil falls back to the template.
+    static func confirm(_ draft: TransactionDraft, split: SplitOption? = nil, ownShareReply: String? = nil) async -> Result {
         switch draft.payload {
         case .ynabWallet(let merchant, let amount, let card):
-            await confirmYNAB(draft: draft, merchant: merchant, amount: amount, card: card)
+            await confirmYNAB(draft: draft, merchant: merchant, amount: amount, card: card, split: split, ownShareReply: ownShareReply)
         case .ledgerWallet(let merchant, let amount, _):
             await confirmSplit(draft: draft, merchant: merchant, amount: amount)
         }
@@ -40,7 +42,14 @@ case completed(title: String, dialog: String)
 
     // MARK: - YNAB
 
-    private static func confirmYNAB(draft: TransactionDraft, merchant: String, amount: Double, card: String) async -> Result {
+    private static func confirmYNAB(
+        draft: TransactionDraft,
+        merchant: String,
+        amount: Double,
+        card: String,
+        split: SplitOption?,
+        ownShareReply: String?
+    ) async -> Result {
         let config = WalletTransactionConfigStore.load()
         // Both are questions the intent would have asked, so hand over to the app
         // rather than inventing a payee or picking an account.
@@ -58,10 +67,35 @@ case completed(title: String, dialog: String)
         }
 
         let template = config.templates[info.templateName]
-        // A template can carry a split setting from before the last ledger
-        // went away — same treatment as the intents give it.
-        let splitOption = await SplitAvailability.canSplit ? (template?.splitOption ?? .never) : .never
+        let canSplit = await SplitAvailability.canSplit
         let friend = WalletAutomationDialog.friendWithoutAsking(template: template)
+        let splitOption: SplitTemplateOption
+        var ownShare: Double?
+        switch split {
+        case nil:
+            // A template can carry a split setting from before the last ledger
+            // went away — same treatment as the intents give it.
+            splitOption = canSplit ? (template?.splitOption ?? .never) : .never
+        case .never:
+            splitOption = .never
+        case .always, .manual:
+            // Checked before anything is written, so falling back to the app
+            // leaves the whole draft for the form rather than half of it.
+            guard canSplit, friend != nil else {
+                logger.log("confirm: split answered but nothing to split with — needs app")
+                return .needsApp
+            }
+            if split == .manual {
+                switch SplitExpenseService.parseOwnShare(ownShareReply ?? "", amount: amount) {
+                case .valid(let parsed):
+                    ownShare = parsed
+                case .invalid(let message):
+                    logger.log("confirm: manual share reply invalid (\(message, privacy: .public)) — needs app")
+                    return .needsApp
+                }
+            }
+            splitOption = .always
+        }
 
         // A lone YNAB transaction needs no group id to hang a split off.
         let groupId = splitOption == .never ? nil : UUID()
@@ -109,7 +143,7 @@ case completed(title: String, dialog: String)
                 amount: amount,
                 description: info.payeeName,
                 friend: friend!,
-                ownShare: nil,
+                ownShare: ownShare,
                 date: draft.startedAt,
                 groupId: groupId,
                 merchant: merchant
@@ -203,9 +237,11 @@ case completed(title: String, dialog: String)
 
     /// Approving the draft counts as the claim that parked it finally writing, so
     /// the other automation turning up late in the window is suppressed rather
-    /// than adding the purchase a second time.
-    private static func commitClaim(for draft: TransactionDraft, wroteEntry: Bool) {
-        guard let claimId = TransactionClaimStore.claimId(forDraft: draft.id) else { return }
+    /// than adding the purchase a second time. A claim already committed keeps
+    /// the entry it was committed with.
+    static func commitClaim(for draft: TransactionDraft, wroteEntry: Bool) {
+        guard let claimId = TransactionClaimStore.claimId(forDraft: draft.id),
+              !TransactionClaimStore.wasSuperseded(claimId) else { return }
         WalletAutomationDialog.commitClaim(claimId, historyEntryId: wroteEntry ? TransactionHistoryStore.newestEntryID() : nil)
     }
 

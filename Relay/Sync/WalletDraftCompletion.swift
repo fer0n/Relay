@@ -88,9 +88,10 @@ nonisolated enum WalletDraftCompletion {
                 formattedAmount: formattedAmount,
                 description: context.description
             )
+            let isQueued: Bool = if case .queued = outcome { true } else { false }
+            WalletDraftConfirmation.commitClaim(for: draft, wroteEntry: !isQueued)
             TransactionDraftGuard.complete(draft.id)
             logger.log("completed split in background: \(dialog, privacy: .public)")
-            let isQueued: Bool = if case .queued = outcome { true } else { false }
             let content = WalletAutomationDialog.notificationContent(
                 isQueued: isQueued,
                 formattedAmount: formattedAmount,

@@ -201,13 +201,34 @@ nonisolated enum WalletAutomationDialog {
         payload: TransactionDraft.Payload,
         source: String
     ) -> String {
-        TransactionDraftGuard.beginAwaitingConfirmation(payload, id: draftId, source: source)
+        TransactionDraftGuard.beginAwaitingConfirmation(
+            payload,
+            id: draftId,
+            source: source,
+            offersSplit: confirmationOffersSplit(payload)
+        )
         clearDraftIfSuperseded(claimId, draftId: draftId)
         return String(
             format: String(localized: "%@ at %@ needs confirmation – waiting in Relay."),
             payload.amount.asMoneyString,
             payload.merchant
         )
+    }
+
+    /// Whether "Add" on a YNAB draft would only lead to a second question about
+    /// the split — mirrors `WalletDraftConfirmation.confirmYNAB`.
+    private static func confirmationOffersSplit(_ payload: TransactionDraft.Payload) -> Bool {
+        guard case .ynabWallet(let merchant, _, let card) = payload,
+              SplitAvailability.hasKnownSharedLedger else { return false }
+        let config = WalletTransactionConfigStore.load()
+        guard let info = config.resolvedMerchantInfo(for: merchant),
+              config.cards[card] != nil else { return false }
+        let template = config.templates[info.templateName]
+        switch template?.splitOption ?? .never {
+        case .never: return false
+        case .always: return friendWithoutAsking(template: template) == nil
+        case .manual, .ask: return true
+        }
     }
 
     /// Finishes off a run that stopped because its merchant has no template. Same
@@ -235,11 +256,12 @@ nonisolated enum WalletAutomationDialog {
 
     /// The split flavour of `handleAwaitingConfirmation`.
     ///
-    /// Under "Ask Each Time" the split question already *is* a confirmation: the
-    /// expense is the whole transaction here, so "Don't Split" does what Discard
-    /// would. Asking both would be two questions about one purchase, so the draft
-    /// goes straight to the split-choice reminder. Everything else gets the
-    /// ordinary Add/Discard reminder, having no second question to stand in.
+    /// Unless the template already says to split equally, the split question
+    /// already *is* a confirmation: the expense is the whole transaction here, so
+    /// "Don't Split" does what Discard would. Asking both would be two questions
+    /// about one purchase, so the draft goes straight to the split-choice
+    /// reminder. "Split Equally" gets the ordinary Add/Discard reminder, having
+    /// no second question to stand in.
     static func handleAwaitingSplitConfirmation(
         _ claimId: UUID,
         draftId: UUID,
@@ -252,7 +274,7 @@ nonisolated enum WalletAutomationDialog {
         let info = config.resolvedMerchantInfo(for: merchant)
         let template = info.flatMap { config.templates[$0.templateName] }
 
-        guard template?.splitOption == .ask, SplitAvailability.hasKnownSharedLedger else {
+        guard template?.splitOption != .always, SplitAvailability.hasKnownSharedLedger else {
             return handleAwaitingConfirmation(claimId, draftId: draftId, payload: payload, source: source)
         }
 

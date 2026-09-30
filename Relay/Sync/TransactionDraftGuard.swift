@@ -39,13 +39,20 @@ nonisolated enum TransactionDraftGuard {
     /// own. The quiet-period delay doubles as a grace window for the other
     /// automation to supersede it (see TransactionClaim.supersededConfirmations).
     @discardableResult
-    static func beginAwaitingConfirmation(_ payload: TransactionDraft.Payload, id: UUID = UUID(), source: String) -> UUID {
+    static func beginAwaitingConfirmation(
+        _ payload: TransactionDraft.Payload,
+        id: UUID = UUID(),
+        source: String,
+        offersSplit: Bool = false
+    ) -> UUID {
         let draft = create(payload, id: id)
         scheduleNotification(
             for: draft,
             title: String(localized: "Confirm Transaction"),
             body: String(localized: "\(draft.summary), seen by \"\(TransactionClaim.label(for: source))\". Add it?"),
-            categoryIdentifier: WalletConfirmNotification.categoryIdentifier,
+            categoryIdentifier: offersSplit
+                ? WalletConfirmNotification.splitCategoryIdentifier
+                : WalletConfirmNotification.categoryIdentifier,
             splitActions: false
         )
         return draft.id
