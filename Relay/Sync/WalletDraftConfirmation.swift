@@ -3,7 +3,7 @@
 //  Relay
 //
 //  Answers "Add" on a "Confirm Transaction" reminder (see
-//  WalletConfirmNotification) in the background, without opening the app.
+//  DraftAction) in the background, without opening the app.
 //
 //  The draft was left by an automation that returned before resolving anything,
 //  so unlike WalletDraftCompletion — which works from a context the interrupted

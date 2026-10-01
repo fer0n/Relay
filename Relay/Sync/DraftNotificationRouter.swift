@@ -44,12 +44,7 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
     func start() {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        center.setNotificationCategories([
-            WalletSplitNotification.category,
-            WalletConfirmNotification.category,
-            WalletConfirmNotification.splitCategory,
-            WalletIncompleteNotification.category
-        ])
+        center.setNotificationCategories(Set(DraftNotificationCategory.allCases.map(\.category)))
     }
 
     /// The `async` half of the delegate requirement, not the completion-handler
@@ -100,8 +95,8 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
         }
     }
 
-    /// A plain tap opens the draft; a split-choice or confirm action tries to
-    /// finish it in the background, falling back to opening the app.
+    /// A plain tap opens the draft; an action tries to finish it in the
+    /// background, falling back to a re-nudge into the app.
     private func handleDraftResponse(id: UUID, actionIdentifier: String, replyText: String?) async {
         logger.log("draft response id=\(id.uuidString, privacy: .public) action=\(actionIdentifier, privacy: .public)")
 
@@ -111,71 +106,22 @@ final class DraftNotificationRouter: NSObject, UNUserNotificationCenterDelegate 
             return
         }
 
-        // Answers to a "Confirm Transaction" reminder — a purchase Relay saw but
-        // deliberately didn't add.
-        switch actionIdentifier {
-        case WalletConfirmNotification.discardAction, WalletIncompleteNotification.discardAction:
-            // The claim behind it is left alone: it doesn't shadow an automation
-            // that can write, so saying no here doesn't block the purchase from
-            // being added properly later.
-            TransactionDraftGuard.complete(id)
-            logger.log("discarded draft id=\(id.uuidString, privacy: .public)")
-            return
-        case WalletConfirmNotification.addAction:
-            await confirm(draft, split: nil, ownShareReply: nil)
-            return
-        case WalletConfirmNotification.addSplitEquallyAction:
-            await confirm(draft, split: .always, ownShareReply: nil)
-            return
-        case WalletConfirmNotification.addSplitManualAction:
-            await confirm(draft, split: .manual, ownShareReply: replyText)
-            return
-        case WalletConfirmNotification.addWithoutSplitAction:
-            await confirm(draft, split: .never, ownShareReply: nil)
-            return
-        default:
-            break
-        }
-
-        let splitAction: SplitOption
-        switch actionIdentifier {
-        case WalletSplitNotification.equallyAction:
-            splitAction = .always
-        case WalletSplitNotification.manualAction:
-            splitAction = .manual
-        case WalletSplitNotification.noneAction:
-            splitAction = .never
-        default:
-            // Default tap (or dismiss handed to us) — open the draft in-app.
+        guard let action = DraftAction(identifier: actionIdentifier) else {
             pendingDraftID = id
             return
         }
 
-        switch await WalletDraftCompletion.complete(draft: draft, action: splitAction, ownShareReply: replyText) {
+        switch await DraftActionHandler.perform(action, on: draft, ownShareReply: replyText) {
         case .completed(let title, let dialog):
             WalletCompletionNotification.postConfirmation(title: title, dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
-        case .resolved:
-            // "Don't Split" — the transaction was already complete.
-            break
-        case .needsApp:
-            // Couldn't finish from the notification, and a background action
-            // doesn't bring Relay forward, so re-nudge instead.
-            TransactionDraftGuard.notifyNeedsApp(id)
-        }
-    }
-
-    private func confirm(_ draft: TransactionDraft, split: SplitOption?, ownShareReply: String?) async {
-        switch await WalletDraftConfirmation.confirm(draft, split: split, ownShareReply: ownShareReply) {
-        case .completed(let title, let dialog):
-            WalletCompletionNotification.postConfirmation(title: title, dialog: dialog, historyEntryID: TransactionHistoryStore.newestEntryID())
-        case .followUpPosted:
-            // The split question took over this draft's reminder slot, so a
-            // "done" banner on top would contradict it.
+        case .resolved, .followUpPosted:
+            // A follow-up took over this draft's reminder slot, so a "done"
+            // banner on top would contradict it.
             break
         case .needsApp:
             // A background action doesn't bring Relay forward, so
             // pendingDraftID alone wouldn't reach the user.
-            TransactionDraftGuard.notifyNeedsApp(draft.id)
+            TransactionDraftGuard.notifyNeedsApp(id)
         }
     }
 

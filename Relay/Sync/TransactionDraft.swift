@@ -21,6 +21,10 @@ nonisolated struct TransactionDraft: Codable, Identifiable {
     /// `.ledgerWallet` draft, where the split *is* the transaction, has none.
     var pendingSplitContext: PendingSplitContext?
 
+    /// The automation that saw it, on a draft left for approval by "Require
+    /// Confirmation" — what makes its reminder ask Add/Discard.
+    var confirmationSource: String?
+
     enum Payload: Codable {
         case ynabWallet(merchant: String, amount: Double, card: String)
         /// `ownShare` carries forward an already-resolved manual split amount so

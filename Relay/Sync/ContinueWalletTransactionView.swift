@@ -24,10 +24,13 @@ struct ContinueWalletTransactionView: View {
 
     /// Nil hides the Discard section entirely, e.g. for manual entries.
     let onDiscard: (() -> Void)?
+    /// Nil hides the reminder's quick replies (see DraftActionsSection).
+    let onDraftAction: ((DraftActionHandler.Outcome) -> Void)?
 
-    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitTargetEntity? = nil) {
+    init(draft: TransactionDraft, isManual: Bool = false, prefill: TransactionHistoryEntry? = nil, onDiscard: (() -> Void)? = nil, onDraftAction: ((DraftActionHandler.Outcome) -> Void)? = nil, isAuthenticatedOverride: Bool? = nil, friendOverride: SplitTargetEntity? = nil) {
         _model = State(initialValue: ContinueWalletTransactionModel(draft: draft, isManual: isManual, prefill: prefill, isAuthenticatedOverride: isAuthenticatedOverride, friendOverride: friendOverride))
         self.onDiscard = onDiscard
+        self.onDraftAction = onDraftAction
     }
 
     var body: some View {
@@ -108,6 +111,10 @@ struct ContinueWalletTransactionView: View {
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.sheetBackgroundColor)
+
+            if let onDraftAction {
+                DraftActionsSection(draft: model.draft, onOutcome: onDraftAction)
+            }
 
             Section {
                 TemplatePickerRow(

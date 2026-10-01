@@ -201,12 +201,7 @@ nonisolated enum WalletAutomationDialog {
         payload: TransactionDraft.Payload,
         source: String
     ) -> String {
-        TransactionDraftGuard.beginAwaitingConfirmation(
-            payload,
-            id: draftId,
-            source: source,
-            offersSplit: confirmationOffersSplit(payload)
-        )
+        TransactionDraftGuard.beginAwaitingConfirmation(payload, id: draftId, source: source)
         clearDraftIfSuperseded(claimId, draftId: draftId)
         return String(
             format: String(localized: "%@ at %@ needs confirmation – waiting in Relay."),
@@ -217,7 +212,7 @@ nonisolated enum WalletAutomationDialog {
 
     /// Whether "Add" on a YNAB draft would only lead to a second question about
     /// the split — mirrors `WalletDraftConfirmation.confirmYNAB`.
-    private static func confirmationOffersSplit(_ payload: TransactionDraft.Payload) -> Bool {
+    static func confirmationOffersSplit(_ payload: TransactionDraft.Payload) -> Bool {
         guard case .ynabWallet(let merchant, _, let card) = payload,
               SplitAvailability.hasKnownSharedLedger else { return false }
         let config = WalletTransactionConfigStore.load()

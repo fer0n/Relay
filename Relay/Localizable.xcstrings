@@ -526,16 +526,6 @@
         }
       }
     },
-    "Add Without Splitting" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Aufteilen hinzufügen"
-          }
-        }
-      }
-    },
     "Add ${amount} at ${merchant} with ${card} to YNAB" : {
       "localizations" : {
         "de" : {
@@ -701,6 +691,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wallet-Transaktion zu YNAB hinzufügen"
+          }
+        }
+      }
+    },
+    "Add Without Splitting" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Aufteilen hinzufügen"
           }
         }
       }
@@ -1116,6 +1116,9 @@
       }
     },
     "Couldn't find that ledger." : {
+
+    },
+    "Couldn't finish automatically — complete it below." : {
 
     },
     "Couldn't read that file: %@" : {

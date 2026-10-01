@@ -39,23 +39,9 @@ nonisolated enum TransactionDraftGuard {
     /// own. Fires right away: a later real write that supersedes it (see
     /// TransactionClaim.supersededConfirmations) clears the delivered banner too.
     @discardableResult
-    static func beginAwaitingConfirmation(
-        _ payload: TransactionDraft.Payload,
-        id: UUID = UUID(),
-        source: String,
-        offersSplit: Bool = false
-    ) -> UUID {
-        let draft = create(payload, id: id)
-        scheduleNotification(
-            for: draft,
-            delay: 1,
-            title: String(localized: "Confirm Transaction"),
-            body: String(localized: "\(draft.summary), seen by \"\(TransactionClaim.label(for: source))\". Add it?"),
-            categoryIdentifier: offersSplit
-                ? WalletConfirmNotification.splitCategoryIdentifier
-                : WalletConfirmNotification.categoryIdentifier,
-            splitActions: false
-        )
+    static func beginAwaitingConfirmation(_ payload: TransactionDraft.Payload, id: UUID = UUID(), source: String) -> UUID {
+        let draft = create(payload, id: id) { $0.confirmationSource = source }
+        scheduleNotification(for: draft, delay: 1)
         return draft.id
     }
 
@@ -67,7 +53,7 @@ nonisolated enum TransactionDraftGuard {
         id: UUID = UUID(),
         context: TransactionDraft.PendingSplitContext
     ) -> UUID {
-        let draft = create(payload, id: id, context: context)
+        let draft = create(payload, id: id) { $0.pendingSplitContext = context }
         scheduleNotification(for: draft)
         return draft.id
     }
@@ -87,10 +73,10 @@ nonisolated enum TransactionDraftGuard {
     private static func create(
         _ payload: TransactionDraft.Payload,
         id: UUID = UUID(),
-        context: TransactionDraft.PendingSplitContext? = nil
+        configure: (inout TransactionDraft) -> Void = { _ in }
     ) -> TransactionDraft {
         var draft = TransactionDraft(id: id, startedAt: Date(), payload: payload)
-        draft.pendingSplitContext = context
+        configure(&draft)
         save(trimmedToLimit: TransactionDraftStore.load() + [draft])
         return draft
     }
@@ -192,7 +178,7 @@ nonisolated enum TransactionDraftGuard {
             for: draft,
             delay: 1,
             body: String(localized: "\(draft.summary). Couldn't finish automatically — tap to complete in Relay."),
-            splitActions: false
+            category: .incomplete
         )
     }
 
@@ -275,28 +261,29 @@ nonisolated enum TransactionDraftGuard {
             .contains { $0.request.identifier == id.uuidString }
     }
 
-    /// `splitActions` nil follows the draft's armed `pendingSplitContext`, so
-    /// every path carries the quick replies exactly while the split is open.
-    /// `log` is off for heartbeat renewals, which re-add the same reminder.
+    /// `category` nil follows the draft's own (see `notificationCategory`), so
+    /// every path carries the quick replies exactly while they apply. `log` is
+    /// off for heartbeat renewals, which re-add the same reminder.
     private static func scheduleNotification(
         for draft: TransactionDraft,
         delay: TimeInterval = fireDelay,
-        title: String? = nil,
         body: String? = nil,
-        categoryIdentifier: String? = nil,
-        splitActions: Bool? = nil,
+        category: DraftNotificationCategory? = nil,
         log: Bool = true
     ) {
         guard NotificationsPreferenceStore.isEnabled else { return }
 
-        let attachActions = splitActions ?? (draft.pendingSplitContext != nil)
+        let category = category ?? draft.notificationCategory
         if log {
-            logger.log("scheduling draft reminder id=\(draft.id.uuidString, privacy: .public) delay=\(delay, privacy: .public) actions=\(attachActions, privacy: .public)")
+            logger.log("scheduling draft reminder id=\(draft.id.uuidString, privacy: .public) delay=\(delay, privacy: .public) category=\(category.identifier, privacy: .public)")
         }
 
-        let content = attachActions
-            ? splitQuestionContent(for: draft)
-            : incompleteContent(for: draft, title: title, body: body, categoryIdentifier: categoryIdentifier)
+        let content = switch category {
+        case .splitChoice: splitQuestionContent(for: draft)
+        case .confirm, .confirmSplit: confirmContent(for: draft)
+        case .incomplete: incompleteContent(for: draft, body: body)
+        }
+        content.categoryIdentifier = category.identifier
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
         let request = UNNotificationRequest(identifier: draft.id.uuidString, content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request) { error in
@@ -311,7 +298,6 @@ nonisolated enum TransactionDraftGuard {
     private static func splitQuestionContent(for draft: TransactionDraft) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.sound = .default
-        content.categoryIdentifier = WalletSplitNotification.categoryIdentifier
         content.title = draft.summary
         if let friendName = draft.pendingSplitContext?.friend?.firstName {
             content.body = String(localized: "Split with \(friendName)?")
@@ -321,16 +307,19 @@ nonisolated enum TransactionDraftGuard {
         return content
     }
 
-    private static func incompleteContent(
-        for draft: TransactionDraft,
-        title: String?,
-        body: String?,
-        categoryIdentifier: String?
-    ) -> UNMutableNotificationContent {
+    private static func confirmContent(for draft: TransactionDraft) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.sound = .default
-        content.categoryIdentifier = categoryIdentifier ?? WalletIncompleteNotification.categoryIdentifier
-        content.title = title ?? String(localized: "Transaction Incomplete")
+        content.title = String(localized: "Confirm Transaction")
+        let source = TransactionClaim.label(for: draft.confirmationSource ?? "")
+        content.body = String(localized: "\(draft.summary), seen by \"\(source)\". Add it?")
+        return content
+    }
+
+    private static func incompleteContent(for draft: TransactionDraft, body: String?) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.sound = .default
+        content.title = String(localized: "Transaction Incomplete")
         content.body = body ?? String(localized: "\(draft.summary). Tap to continue.")
         return content
     }

@@ -54,13 +54,16 @@ private struct DraftDetailContent: View {
 
     @State private var draft: TransactionDraft?
     @State private var isLoaded = false
+    /// Remounts the form when a quick reply repoints the draft at its split.
+    @State private var revision = 0
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Group {
             if let draft {
-                ContinueWalletTransactionView(draft: draft, onDiscard: delete)
+                ContinueWalletTransactionView(draft: draft, onDiscard: delete, onDraftAction: handle)
+                    .id(revision)
             } else if isLoaded {
                 ContentUnavailableView(
                     "Already Handled",
@@ -81,6 +84,21 @@ private struct DraftDetailContent: View {
         guard let draft else { return }
         TransactionDraftGuard.complete(draft.id)
         dismiss()
+    }
+
+    private func handle(_ outcome: DraftActionHandler.Outcome) {
+        switch outcome {
+        case .completed, .resolved:
+            dismiss()
+        case .followUpPosted:
+            // The split question is answered right here, so its reminder goes
+            // back to guarding the open screen instead of popping over it.
+            TransactionDraftGuard.touch(draftId)
+            draft = TransactionDraftStore.load().first { $0.id == draftId }
+            revision += 1
+        case .needsApp:
+            break
+        }
     }
 }
 
