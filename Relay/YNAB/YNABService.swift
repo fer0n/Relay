@@ -84,7 +84,11 @@ nonisolated enum YNABService {
     }
 
     static func todayDateString() -> String {
-        DateFormatter.yyyyMMdd.string(from: Date())
+        dateString(for: Date())
+    }
+
+    static func dateString(for date: Date) -> String {
+        DateFormatter.yyyyMMdd.string(from: date)
     }
 
     private static func get(_ path: String, token: String) async throws -> Data {

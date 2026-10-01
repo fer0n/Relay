@@ -809,7 +809,7 @@ final class ContinueWalletTransactionModel {
         let milliunits = -Int((amount * Const.milliunitsPerUnit).rounded())
         let transaction = YNABTransactionRequest(
             accountId: accountId,
-            date: YNABService.todayDateString(),
+            date: YNABService.dateString(for: isManual ? Date() : draft.startedAt),
             amount: milliunits,
             payeeName: finalPayeeName,
             categoryId: finalCategoryId,

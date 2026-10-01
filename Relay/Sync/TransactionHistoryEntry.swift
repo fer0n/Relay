@@ -73,6 +73,21 @@ nonisolated struct TransactionHistoryEntry: Codable, Identifiable {
         split == nil ? nil : .ledger
     }
 
+    /// The transaction's own date, so a draft finished later keeps the
+    /// purchase's date rather than when it was written.
+    var date: Date {
+        if let split { return split.ledgerExpense.date }
+        switch payload {
+        case .ledgerExpense(let expense):
+            return expense.date
+        case .ynabTransaction(let transaction):
+            // YNAB dates carry no time, so keep createdAt's on the same day.
+            guard let day = DateFormatter.yyyyMMdd.date(from: transaction.date),
+                  !Calendar.current.isDate(day, inSameDayAs: createdAt) else { return createdAt }
+            return day
+        }
+    }
+
     /// Payee (YNAB) or description (a split).
     var title: String { payload.title }
 

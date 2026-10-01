@@ -226,7 +226,7 @@ private struct HistoryDetailContent: View {
         TransactionDetailContent(
             amount: entry.formattedAmount,
             serviceIcons: [entry.service.systemImage] + (entry.secondaryService.map { [$0.systemImage] } ?? []),
-            date: entry.createdAt,
+            date: entry.date,
             detailLine: merchantDetailLine,
             destroyLabel: "Delete",
             destroyConfirmationTitle: "Delete this transaction?",

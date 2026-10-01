@@ -135,7 +135,7 @@ struct ContentRecentSection: View {
                     TransactionSummaryRow(
                         service: entry.service,
                         secondaryService: entry.secondaryService,
-                        date: entry.createdAt,
+                        date: entry.date,
                         title: entry.title,
                         amount: entry.formattedAmount,
                         detail: entry.detail,

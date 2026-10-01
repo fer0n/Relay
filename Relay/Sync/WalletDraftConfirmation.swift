@@ -102,7 +102,7 @@ case completed(title: String, dialog: String)
         let formattedAmount = amount.asMoneyString
         let transaction = YNABTransactionRequest(
             accountId: accountId,
-            date: YNABService.todayDateString(),
+            date: YNABService.dateString(for: draft.startedAt),
             amount: -Int((amount * Const.milliunitsPerUnit).rounded()), // outflow
             payeeName: info.payeeName,
             categoryId: template?.categoryId,
