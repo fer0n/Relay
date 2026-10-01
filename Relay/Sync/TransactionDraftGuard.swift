@@ -36,8 +36,8 @@ nonisolated enum TransactionDraftGuard {
     }
 
     /// For "Require Confirmation" automations, which Relay never adds on its
-    /// own. The quiet-period delay doubles as a grace window for the other
-    /// automation to supersede it (see TransactionClaim.supersededConfirmations).
+    /// own. Fires right away: a later real write that supersedes it (see
+    /// TransactionClaim.supersededConfirmations) clears the delivered banner too.
     @discardableResult
     static func beginAwaitingConfirmation(
         _ payload: TransactionDraft.Payload,
@@ -48,6 +48,7 @@ nonisolated enum TransactionDraftGuard {
         let draft = create(payload, id: id)
         scheduleNotification(
             for: draft,
+            delay: 1,
             title: String(localized: "Confirm Transaction"),
             body: String(localized: "\(draft.summary), seen by \"\(TransactionClaim.label(for: source))\". Add it?"),
             categoryIdentifier: offersSplit
