@@ -36,10 +36,6 @@ struct TemplatesView: View {
     }
 
     var body: some View {
-        deleteConfirmation(list)
-    }
-
-    private var list: some View {
         List {
             Section {
                 NavigationLink {
@@ -100,23 +96,14 @@ struct TemplatesView: View {
             }
             .tint(.red)
         }
-    }
-
-    /// One dialog for the list, not one per row: inside `templateLink` it
-    /// built a modifier and a binding for every template on screen. Attached
-    /// here rather than to the swipe button because on iOS 26 a dialog
-    /// anchored to a control inside `.swipeActions` animates wrong, that
-    /// control being torn down as the swipe closes.
-    private func deleteConfirmation<Content: View>(_ content: Content) -> some View {
-        content.confirmationDialog(
-            "Delete \"\(pendingDeletion ?? "")\"?",
+        .confirmationDialog(
+            "Delete \"\(name)\"?",
             isPresented: Binding(
-                get: { pendingDeletion != nil },
+                get: { pendingDeletion == name },
                 set: { if !$0 { pendingDeletion = nil } }
             ),
-            titleVisibility: .visible,
-            presenting: pendingDeletion
-        ) { name in
+            titleVisibility: .visible
+        ) {
             Button("Delete", role: .destructive) {
                 // Deferred a tick so the dialog finishes dismissing on its own
                 // before the row-removal animation starts — doing both in the
@@ -125,7 +112,7 @@ struct TemplatesView: View {
                     withAnimation { deleteTemplate(name) }
                 }
             }
-        } message: { _ in
+        } message: {
             Text("Any merchants matched to this template will need a new one assigned.")
         }
     }

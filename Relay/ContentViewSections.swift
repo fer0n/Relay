@@ -122,8 +122,8 @@ struct ContentRecentSection: View {
     let onDelete: (TransactionHistoryEntry) -> Void
 
     /// Set by the swipe action's Delete button to gate a confirmation before
-    /// actually deleting. The dialog it drives hangs off the section, not the
-    /// row — see below.
+    /// actually deleting. The dialog hangs off the row, not the swipe button,
+    /// which is torn down as the swipe closes.
     @State private var entryPendingDelete: TransactionHistoryEntry?
 
     var body: some View {
@@ -163,30 +163,24 @@ struct ContentRecentSection: View {
                     }
                     .tint(.red)
                 }
-            }
-        }
-        // One dialog for the section, not one per row: attached inside the
-        // ForEach it built a modifier and a binding for every entry on
-        // screen. Same fix, and the same anchoring reason, as
-        // LedgerDetailView's — it stays off the swipe button, which is torn
-        // down as the swipe closes.
-        .confirmationDialog(
-            "Delete this transaction?",
-            isPresented: Binding(
-                get: { entryPendingDelete != nil },
-                set: { if !$0 { entryPendingDelete = nil } }
-            ),
-            titleVisibility: .visible,
-            presenting: entryPendingDelete
-        ) { entry in
-            Button("Delete", role: .destructive) {
-                withAnimation {
-                    entryPendingDelete = nil
-                    onDelete(entry)
+                .confirmationDialog(
+                    "Delete this transaction?",
+                    isPresented: Binding(
+                        get: { entryPendingDelete?.id == entry.id },
+                        set: { if !$0 { entryPendingDelete = nil } }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        withAnimation {
+                            entryPendingDelete = nil
+                            onDelete(entry)
+                        }
+                    }
+                } message: {
+                    Text("This will only delete locally, YNAB and your ledgers are unaffected.")
                 }
             }
-        } message: { _ in
-            Text("This will only delete locally, YNAB and your ledgers are unaffected.")
         }
     }
 }

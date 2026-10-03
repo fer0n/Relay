@@ -18,8 +18,8 @@ struct LedgerDetailView: View {
     @State private var selectedExpense: LedgerExpense?
     @State private var showRecordPayment = false
     @State private var renaming: Ledger?
-    // Not anchored to the swipe button: iOS 26 animates that wrong, the
-    // control being torn down as the swipe closes.
+    // Anchored to the row, not the swipe button: iOS 26 animates that wrong,
+    // the control being torn down as the swipe closes.
     @State private var expensePendingDelete: LedgerExpense?
     @Namespace private var detailNamespace
 
@@ -76,27 +76,24 @@ struct LedgerDetailView: View {
                         }
                         .tint(.red)
                     }
+                    .confirmationDialog(
+                        "Delete this expense?",
+                        isPresented: Binding(
+                            get: { expensePendingDelete?.id == expense.id },
+                            set: { if !$0 { expensePendingDelete = nil } }
+                        ),
+                        titleVisibility: .visible
+                    ) {
+                        Button("Delete", role: .destructive) {
+                            Task { await store.delete(expense, in: current) }
+                        }
+                    } message: {
+                        Text("This will delete the expense on the ledger for everyone on it.")
+                    }
                 }
             }
         }
         .themedList(background: .backgroundColor)
-        // One dialog for the list: inside the ForEach it built a modifier and
-        // a binding per expense on screen.
-        .confirmationDialog(
-            "Delete this expense?",
-            isPresented: Binding(
-                get: { expensePendingDelete != nil },
-                set: { if !$0 { expensePendingDelete = nil } }
-            ),
-            titleVisibility: .visible,
-            presenting: expensePendingDelete
-        ) { expense in
-            Button("Delete", role: .destructive) {
-                Task { await store.delete(expense, in: current) }
-            }
-        } message: { _ in
-            Text("This will delete the expense on the ledger for everyone on it.")
-        }
         .ledgerRenameAlert($renaming)
         .navigationTitle(current.name)
         .navigationBarTitleDisplayMode(.inline)
