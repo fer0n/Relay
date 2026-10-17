@@ -33,6 +33,7 @@ nonisolated struct FileImportStaging: Codable {
     /// nil with a `ledgerZoneName` set means everyone on that ledger — the
     /// import intent's "Split With" takes either.
     var ledgerParticipantID: String?
+    var sourceKey: String?
 
     init(
         destination: FileImportDestination,
@@ -45,7 +46,8 @@ nonisolated struct FileImportStaging: Codable {
         ledgerZoneName: String? = nil,
         targetFirstName: String? = nil,
         targetFullName: String? = nil,
-        ledgerParticipantID: String? = nil
+        ledgerParticipantID: String? = nil,
+        sourceKey: String? = nil
     ) {
         self.destination = destination
         self.rows = rows
@@ -58,6 +60,7 @@ nonisolated struct FileImportStaging: Codable {
         self.targetFirstName = targetFirstName
         self.targetFullName = targetFullName
         self.ledgerParticipantID = ledgerParticipantID
+        self.sourceKey = sourceKey
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +76,7 @@ nonisolated struct FileImportStaging: Codable {
         targetFirstName = try container.decodeIfPresent(String.self, forKey: .targetFirstName)
         targetFullName = try container.decodeIfPresent(String.self, forKey: .targetFullName)
         ledgerParticipantID = try container.decodeIfPresent(String.self, forKey: .ledgerParticipantID)
+        sourceKey = try container.decodeIfPresent(String.self, forKey: .sourceKey)
     }
 }
 

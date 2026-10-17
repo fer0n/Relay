@@ -552,10 +552,20 @@ struct SharedFileImportView: View {
         if let selectedAccountId, !accounts.contains(where: { $0.id == selectedAccountId }) {
             self.selectedAccountId = nil
         }
+        if selectedAccountId == nil {
+            applyRememberedAccount(sourceKey: staging?.sourceKey)
+        }
         // One account to choose from, so don't make the user confirm the obvious.
         if selectedAccountId == nil, accounts.count == 1 {
             selectedAccountId = accounts[0].id
         }
+    }
+
+    private func applyRememberedAccount(sourceKey: String?) {
+        guard let rememberedId = FileImportPreferences.accountId(forSource: sourceKey),
+              accounts.contains(where: { $0.id == rememberedId })
+        else { return }
+        selectedAccountId = rememberedId
     }
 
     // MARK: - Parsing
@@ -602,6 +612,8 @@ struct SharedFileImportView: View {
             return
         }
 
+        let sourceKey = FileImportPreferences.sourceKey(for: source)
+
         // The common case is "handle the whole statement", minus the odd row.
         let newStaging = FileImportStaging(
             destination: destination,
@@ -614,7 +626,8 @@ struct SharedFileImportView: View {
             ledgerZoneName: splitTarget?.zoneName,
             targetFirstName: splitTarget?.firstName,
             targetFullName: splitTarget?.fullName,
-            ledgerParticipantID: splitTarget?.participantID
+            ledgerParticipantID: splitTarget?.participantID,
+            sourceKey: sourceKey
         )
         do {
             try FileImportStagingStore.save(newStaging)
@@ -625,6 +638,7 @@ struct SharedFileImportView: View {
         hasStaged = true
         handledIDs = FileImportHistoryStore.handledIDs(destination: destination)
         withAnimation { staging = newStaging }
+        applyRememberedAccount(sourceKey: sourceKey)
         refreshLikelyExisting()
     }
 
@@ -709,6 +723,7 @@ struct SharedFileImportView: View {
             totalCreated += bulkResult.transactions.count
             totalSecondary += bulkResult.duplicateImportIds.count
             FileImportHistoryStore.record(selectedRows.map(\.id), destination: .ynab)
+            FileImportPreferences.record(accountId: accountId, forSource: staging.sourceKey)
             removeRows(ids: Set(selectedRows.map(\.id)))
         } catch {
             totalFailed += selectedRows.count

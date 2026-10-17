@@ -88,6 +88,7 @@ struct ImportYNABFileIntent: AppIntent {
 
         do {
             let bulkResult = try await YNABService.createTransactions(built.transactions, token: token)
+            FileImportPreferences.record(accountId: account.id, forSource: FileImportPreferences.sourceKey(for: file))
             return .result(dialog: IntentDialog(stringLiteral: bulkResult.summaryText))
         } catch {
             throw YNABIntentError.from(error)
