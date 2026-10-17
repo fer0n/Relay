@@ -584,6 +584,7 @@
       }
     },
     "Add Amount Parameter" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -592,6 +593,9 @@
           }
         }
       }
+    },
+    "Add an Automation" : {
+
     },
     "Add Expense" : {
       "localizations" : {
@@ -618,6 +622,7 @@
 
     },
     "Add Remaining Parameters" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -762,6 +767,9 @@
           }
         }
       }
+    },
+    "Adjust the Notification Automation" : {
+
     },
     "Already Handled" : {
       "localizations" : {
@@ -1162,6 +1170,7 @@
 
     },
     "Create a New Shortcut" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1175,6 +1184,7 @@
 
     },
     "Create a Wallet Automation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1185,6 +1195,7 @@
       }
     },
     "Create Automation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1531,6 +1542,7 @@
 
     },
     "Everything's Ready" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1616,6 +1628,12 @@
           }
         }
       }
+    },
+    "Get Notification Automation" : {
+
+    },
+    "Get Wallet Automation" : {
+
     },
     "Give at least one of you a share." : {
 
@@ -1807,6 +1825,7 @@
       }
     },
     "In the Shortcuts app, create a personal automation and choose the Wallet trigger. Return here to continue." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1861,6 +1880,9 @@
 
     },
     "Invited" : {
+
+    },
+    "It's the most reliable option, but it has to match the notifications you get. After adding it in Shortcuts, set it to run for your bank's app or Wallet, then edit its regular expressions so they pick the merchant and amount out of that notification's title and body." : {
 
     },
     "Last Backup" : {
@@ -2035,6 +2057,7 @@
 
     },
     "Next" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2045,6 +2068,7 @@
       }
     },
     "Next time you pay with Apple Pay on your phone, Relay will run automatically and add the transaction or prompt you with any necessary actions." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2053,6 +2077,9 @@
           }
         }
       }
+    },
+    "Next time you pay, Relay will run automatically and add the transaction or prompt you with any necessary actions." : {
+
     },
     "No cards yet. A card is remembered the first time you add a wallet transaction with it, then appears here to remap." : {
       "localizations" : {
@@ -2558,6 +2585,7 @@
 
     },
     "Repeat for Merchant (and Card, YNAB action only). Confirm it looks right, then tap the checkmark to save." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2649,9 +2677,6 @@
         }
       }
     },
-    "Search actions for \"Add Wallet Transaction to YNAB\", which can also split to a ledger. Tap \"Amount\", scroll right, then select \"Shortcut Input\"." : {
-
-    },
     "Secure Login" : {
       "localizations" : {
         "de" : {
@@ -2673,6 +2698,7 @@
       }
     },
     "Select all cards & categories on the next screen. Then, tap \"Create New Shortcut\"." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2683,6 +2709,7 @@
       }
     },
     "Set It to Run Immediately" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2693,6 +2720,7 @@
       }
     },
     "Set the automation to run immediately for the best experience." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2733,6 +2761,7 @@
       }
     },
     "Setup Shortcut Action" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3199,6 +3228,7 @@
       }
     },
     "Tap on \"Shortcut Input\" on top, then select \"Amount\"." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
