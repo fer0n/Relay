@@ -49,7 +49,7 @@ struct SharedFileImportView: View {
     @State private var accounts: [YNABAccount] = []
     @State private var isLoadingAccounts = false
     @State private var selectedAccountId: String?
-    @State private var includeMemos = true
+    @State private var includeMemos = FileImportPreferences.includeMemos
 
     @State private var ledgerStore = LedgerStore.shared
     @State private var isLoadingFriends = false
@@ -253,7 +253,10 @@ struct SharedFileImportView: View {
                 syncStagingTargets()
                 refreshLikelyExisting()
             }
-            .onChange(of: includeMemos) { syncStagingTargets() }
+            .onChange(of: includeMemos) { _, newValue in
+                FileImportPreferences.includeMemos = newValue
+                syncStagingTargets()
+            }
             .onAuthenticated(ynabAuth.isAuthenticated) {
                 ynabNotAuthenticated = false
                 Task { await loadActiveTarget() }
