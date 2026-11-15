@@ -63,7 +63,13 @@ final class ContinueWalletTransactionModel {
     var splitRuntimeChoice: SplitChoice? = .never
     /// Which ledger the split books on, and who on it.
     var ledgerZoneName: String?
-    var ledgerParticipantIDs: [String] = []
+    var ledgerParticipantIDs: [String] = [] {
+        didSet {
+            if let payerID, !ledgerParticipantIDs.contains(payerID) { self.payerID = nil }
+        }
+    }
+    /// Nil means you paid.
+    var payerID: String?
     var ownShareText = ""
     /// `.shares` only — relative weights, reset to an even 1 each per form,
     /// since they describe this transaction rather than a setting.
@@ -223,20 +229,24 @@ final class ContinueWalletTransactionModel {
         // Re-adds bill exactly who the original did, rather than everyone
         // currently on the ledger — someone may have joined since.
         ledgerParticipantIDs = splitExpense.others.map(\.participantID)
+        let creator = splitExpense.creatorShare
+        if let payer = splitExpense.payer, payer.participantID != creator?.participantID {
+            payerID = payer.participantID
+        }
+        let ownOwed = creator?.owedCents ?? 0
 
         // An even split reproduces as "Split Equally" so re-adding it follows a
         // changed amount, rather than freezing yesterday's cents into a manual
         // share.
-        let payerOwed = splitExpense.payer?.owedCents ?? 0
         let evenSplit = SplitAllocation.equal.owedCents(
             totalCents: splitExpense.costCents,
-            participantCount: splitExpense.others.count
+            participantCount: splitExpense.shares.count - 1
         )
-        if payerOwed == evenSplit?.first {
+        if ownOwed == evenSplit?.first {
             splitRuntimeChoice = .always
         } else {
             splitRuntimeChoice = .manual
-            ownShareText = String(Double(payerOwed) / Const.centsPerUnit)
+            ownShareText = String(Double(ownOwed) / Const.centsPerUnit)
         }
     }
 
@@ -393,6 +403,10 @@ final class ContinueWalletTransactionModel {
     func selectLedger(_ ledger: Ledger) {
         ledgerZoneName = ledger.zoneName
         ledgerParticipantIDs = ledger.others.map(\.id)
+    }
+
+    var resolvedPayer: SplitParticipant? {
+        splitParticipants.first { $0.id == payerID }
     }
 
     /// Empty means the form offers no Split section at all.
@@ -976,6 +990,7 @@ final class ContinueWalletTransactionModel {
                 description: finalDescription,
                 target: target,
                 allocation: allocation,
+                paidBy: isManual ? resolvedPayer?.id : nil,
                 date: isManual ? nil : draft.startedAt,
                 merchant: isManual ? nil : merchant
             )

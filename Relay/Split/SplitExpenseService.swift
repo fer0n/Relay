@@ -22,13 +22,14 @@ nonisolated enum OwnShareParse {
 
 @MainActor
 enum SplitExpenseService {
-    /// The signed-in user fronts the whole cost. `groupId` groups history
-    /// entries, not ledgers.
+    /// `allocation` is `[you, others…]` whoever paid; nil `paidBy` means you.
+    /// `groupId` groups history entries, not ledgers.
     static func addExpense(
         amount: Double,
         description: String,
         target: SplitTarget,
         allocation: SplitAllocation,
+        paidBy: String? = nil,
         date: Date? = nil,
         groupId: UUID? = nil,
         merchant: String? = nil
@@ -41,24 +42,36 @@ enum SplitExpenseService {
         }
         // The ledger's id first — what existing shares are keyed by. The
         // container's is the same string, for before it loads.
-        guard let payerID = ledger.currentUser?.id ?? LedgerStore.shared.currentUserID else {
+        guard let currentUserID = ledger.currentUser?.id ?? LedgerStore.shared.currentUserID else {
             throw LedgerExpenseError.notAvailable
         }
 
-        // A whole-ledger target includes the payer, who'd be billed twice.
-        let others = target.participants.filter { $0.id != payerID }
+        // A whole-ledger target includes the current user, who'd be billed twice.
+        let others = target.participants.filter { $0.id != currentUserID }
         guard !others.isEmpty else {
             throw LedgerExpenseError.validation(String(localized: "Pick at least one person to split with."))
         }
+        let payerID = paidBy ?? currentUserID
+        let payer = others.first { $0.id == payerID }
+        guard payerID == currentUserID || payer != nil else {
+            throw LedgerExpenseError.validation(String(localized: "Whoever paid has to be on the split."))
+        }
 
         let costCents = SplitShareMath.cents(fromAmount: amount)
-        guard let shares = LedgerBalanceMath.shares(
+        guard let ownShares = LedgerBalanceMath.shares(
             costCents: costCents,
-            payerID: payerID,
-            participantIDs: [payerID] + others.map(\.id),
+            payerID: currentUserID,
+            participantIDs: [currentUserID] + others.map(\.id),
             allocation: allocation
         ) else {
             throw LedgerExpenseError.validation(String(localized: "Your share must be between 0 and the total amount."))
+        }
+        let shares = ownShares.map {
+            LedgerExpenseShare(
+                participantID: $0.participantID,
+                paidCents: $0.participantID == payerID ? costCents : 0,
+                owedCents: $0.owedCents
+            )
         }
 
         let expense = LedgerExpense(
@@ -68,7 +81,8 @@ enum SplitExpenseService {
             date: date ?? Date(),
             shares: shares
         )
-        let summary = "\(amount.asMoneyString) expense for \(description), split with \(target.displayName)"
+        let paidBySuffix = payer.map { ", paid by \($0.firstName)" } ?? ""
+        let summary = "\(amount.asMoneyString) expense for \(description), split with \(target.displayName)\(paidBySuffix)"
         switch await LedgerStore.shared.save(
             expense,
             in: ledger,
@@ -91,7 +105,7 @@ enum SplitExpenseService {
             groupId: groupId,
             merchant: merchant
         )
-        return .created(shareSummary: shareSummary(shares: shares, payerID: payerID, others: others))
+        return .created(shareSummary: shareSummary(shares: shares, currentUserID: currentUserID, others: others))
     }
 
     /// The picked-entity shape. A nil `ownShare` splits equally.
@@ -121,11 +135,11 @@ enum SplitExpenseService {
 
     private static func shareSummary(
         shares: [LedgerExpenseShare],
-        payerID: String,
+        currentUserID: String,
         others: [SplitParticipant]
     ) -> String {
         let byID = Dictionary(uniqueKeysWithValues: shares.map { ($0.participantID, $0.owedCents) })
-        return ([(String(localized: "You"), byID[payerID] ?? 0)]
+        return ([(String(localized: "You"), byID[currentUserID] ?? 0)]
             + others.map { ($0.firstName, byID[$0.id] ?? 0) })
             .map { "\($0): \($1.asMoneyString)" }
             .joined(separator: "; ")

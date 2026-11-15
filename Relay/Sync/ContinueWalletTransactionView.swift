@@ -155,6 +155,9 @@ struct ContinueWalletTransactionView: View {
                     }
                     splitDestinationRow
                     friendRow
+                    if model.isManual {
+                        paidByRow
+                    }
                     splitPickerRow
                     splitDetailRows
                 }
@@ -319,6 +322,20 @@ struct ContinueWalletTransactionView: View {
             selectedIDs: $model.ledgerParticipantIDs,
             isIncomplete: model.friendRowIsIncomplete
         )
+    }
+
+    private var paidByRow: some View {
+        DraftDetailRow(icon: Const.Symbol.account, title: "Paid by") {
+            Menu {
+                Button("You") { model.payerID = nil }
+                ForEach(model.splitParticipants) { participant in
+                    Button(participant.firstName) { model.payerID = participant.id }
+                }
+            } label: {
+                MenuPickerLabel { Text(model.resolvedPayer?.firstName ?? String(localized: "You")) }
+            }
+        }
+        .cardRowBackground()
     }
 
     private var splitPickerRow: some View {

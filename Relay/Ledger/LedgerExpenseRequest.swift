@@ -22,6 +22,8 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
     /// Optional so a payload queued before this field existed still decodes;
     /// nil is the `false` an expense defaults to.
     var isSettlement: Bool?
+    /// Optional for the same reason; nil falls back to treating the payer as the creator.
+    var creatorID: String?
 
     init(
         zoneName: String,
@@ -33,7 +35,8 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
         shares: [LedgerExpenseShare],
         participantNames: [String: String],
         date: Date,
-        isSettlement: Bool = false
+        isSettlement: Bool = false,
+        creatorID: String? = nil
     ) {
         self.zoneName = zoneName
         self.ledgerName = ledgerName
@@ -45,6 +48,7 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
         self.participantNames = participantNames
         self.date = date
         self.isSettlement = isSettlement
+        self.creatorID = creatorID
     }
 
     init(expense: LedgerExpense, ledger: Ledger) {
@@ -62,7 +66,8 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
                 uniquingKeysWith: { first, _ in first }
             ),
             date: expense.date,
-            isSettlement: expense.isSettlement
+            isSettlement: expense.isSettlement,
+            creatorID: ledger.currentUserID
         )
     }
 
@@ -71,9 +76,14 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
         shares.first { $0.paidCents > 0 } ?? shares.first
     }
 
+    var creatorShare: LedgerExpenseShare? {
+        shares.first { $0.participantID == creatorID } ?? payer
+    }
+
+    /// Everyone but the creator.
     var others: [LedgerExpenseShare] {
-        let payerID = payer?.participantID
-        return shares.filter { $0.participantID != payerID }
+        let creatorID = creatorShare?.participantID
+        return shares.filter { $0.participantID != creatorID }
     }
 
     /// "Alex: 12.00 €", for the history and queue rows.
@@ -97,7 +107,8 @@ nonisolated struct LedgerExpenseRequest: Codable, Equatable {
             shares: shares,
             participantNames: participantNames,
             date: date,
-            isSettlement: isSettlement ?? false
+            isSettlement: isSettlement ?? false,
+            creatorID: creatorID
         )
     }
 
